@@ -1,13 +1,13 @@
-# Virtual Cortex 6.6
+# Virtual Cortex 6.7
 
 Windows x64 standalone guitar amplifier/effects application and VST3, built with JUCE 8.0.10 and ASIO enabled.
 
 ## Verified build
 
-[Successful 6.6 build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/41426495067)
+[Successful 6.7 build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/41430856615)
 
 - EXE and VST3 compiled using MSVC on Windows Server 2022.
-- All 24 CTest checks passed, including the real JUCE processor, editor renders, four-row routing and the new effects.
+- All 25 CTest checks passed, including the real JUCE processor, editor renders, four-row routing and the new effects.
 - VST3 passed pluginval 1.0.4 at strictness level 5.
 - Standalone stayed running for the 10-second startup test.
 - Inno Setup installer passed install/uninstall and installed-binary checks.
@@ -21,9 +21,32 @@ All four signal rows are visible together. The bottom parameter editor and Gig v
 
 In Grid mode, each enabled row receives the same input and enabled outputs are averaged. Row buttons enable/disable individual lanes. Empty enabled rows contribute dry input; when all rows are disabled, dry input passes through. This is fixed parallel routing, not an arbitrary split/merge graph or independent hardware buses. Enable GRID ENGINE to hear the grid; the existing serial engine remains available.
 
-## New in 6.6
+## Sound-quality priority
 
-Five original Grid effects are now available, bringing the application to 15 processing block types:
+The current effects are original functional implementations. Passing the software checks does not establish studio-quality sound or parity with commercial effects. Development now prioritizes stereo reverb/delay quality, deeper controls and audio evaluation ahead of catalog count. See [STUDIO-EFFECTS-PLAN.md](STUDIO-EFFECTS-PLAN.md) for the researched architecture, repeat-feedback path and Cortex-style advanced editor requirements. Those upgrades are not included in 6.7.
+
+## New in 6.7
+
+Six original blocks bring the catalog to 21 processing block types:
+
+- Vibrato: fully wet fractional-delay modulation, with rate, depth, base delay and mix.
+- Ring modulator: a 10–2000 Hz sine carrier with depth and mix.
+- Gain: per-slot gain from -60 to +12 dB, smoothed transitions and polarity inversion.
+- Low / High Cut: separate second-order high-pass and low-pass filters with mix.
+- Tone EQ: low/high shelves and an adjustable mid peak, with gain, mid frequency, mid Q and mix.
+- Room Reverb: a parallel-comb/allpass delay network with nominal decay, damping, pre-delay, diffusion and mix.
+
+The browser now has a category dropdown for all 21 block types plus global Output. Existing sidebar shortcuts remain. All four routing rows are retained, and the bottom editors start hidden.
+
+The preset reader supports both legacy grids and the expanded V2 encoding. Grids containing only older types retain their legacy encoding when saved. Presets using the six new types require 6.7 or later. The existing preset container keys, plugin IDs and all 28 host parameter IDs remain unchanged.
+
+Tests cover old/new state formats, gain and polarity, filter response, EQ gain, ring-modulation sidebands, room decay, several sample rates, native category selection and state recall. New reverb buffers are allocated during preparation while processing is stopped.
+
+The existing algorithms remain for compatibility. Room Reverb is not a replacement for the old Reverb block. All new algorithms are original and are not certified matches to Neural DSP or branded devices. Modulation and room processing have independent per-channel state, without a stereo-spread design.
+
+## Additions from 6.6
+
+Five original Grid effects were added in 6.6:
 
 - Chorus and flanger: fractional delay modulation with rate, depth, base delay, feedback and mix.
 - Phaser: six allpass stages with rate, depth, center frequency, feedback and mix.
