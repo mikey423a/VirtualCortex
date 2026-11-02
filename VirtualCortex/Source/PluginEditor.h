@@ -29,6 +29,9 @@ public:
  ~VirtualCortexEditor() override;
  void paint(juce::Graphics&) override;
  void resized() override;
+ bool keyPressed(const juce::KeyPress&) override;
+ bool setFullScreenMode(bool enabled);
+ bool isFullScreenMode() const;
  // Used by the native UI review to exercise real selection and insertion.
  void selectSlot(int row,int col);
  void setEditorsVisible(bool visible);
@@ -49,6 +52,8 @@ private:
  std::array<juce::TextButton,2> bankButtons;
  std::array<juce::Label,6> slotValues;
  juce::TextButton headerStompButton{""},previousPreset{"<"},nextPreset{">"},directoryButton{"DIRECTORY"},ioButton{"I/O"},stompModeButton{"STOMP"},presetMenuButton{"PRESET"};
+ juce::Rectangle<int> windowedBounds;
+ juce::TextButton fullScreenButton{"FULL SCREEN"};
  juce::TextButton editorsButton{"SHOW EDITORS"};
  juce::ComboBox rowSelector,categoryBox;
  std::array<juce::TextButton,3> stereoPages,reverbPages;

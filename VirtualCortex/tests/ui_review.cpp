@@ -23,6 +23,10 @@ int main(int argc,char** argv){
   };
   for(int r=0;r<4;++r){auto* lane=editor->findChildWithID("lane-"+juce::String(r));require(lane&&lane->isVisible(),"A parallel row is hidden");}
   auto* initialDrive=editor->findChildWithID("drive");require(initialDrive&&!initialDrive->isVisible(),"Editors must start hidden");
+  require(!editor->findChildWithID("fullscreen-toggle")->isVisible(),"Fullscreen leaked into plugin editor");
+  require(!editor->setFullScreenMode(true),"Plugin attempted to fullscreen host window");
+  capture("four-row-grid-2560x1440.png",2560,1440);
+  capture("four-row-grid-1707x960.png",1707,960); // 1440p at 150% Windows scaling
   capture("four-row-grid-1184x864.png",1184,864);
   capture("four-row-compact-822x600.png",822,600);
   editor->setEditorsVisible(true);
@@ -42,6 +46,30 @@ int main(int argc,char** argv){
   capture("compact-822x600.png",822,600);
   capture("compact-900x560.png",900,560);
   capture("large-1600x900.png",1600,900);
+  capture("editors-2560x1440.png",2560,1440);
+  capture("editors-1707x960.png",1707,960);
+  {
+   juce::AudioProcessor::setTypeOfNextNewPlugin(juce::AudioProcessor::wrapperType_Standalone);
+   auto standaloneProcessor=std::make_unique<VirtualCortexProcessor>();
+   juce::AudioProcessor::setTypeOfNextNewPlugin(juce::AudioProcessor::wrapperType_Undefined);
+   auto standaloneEditor=std::make_unique<VirtualCortexEditor>(*standaloneProcessor);
+   juce::ResizableWindow window("Fullscreen regression",juce::Colours::black,true);
+   window.setUsingNativeTitleBar(true);
+   window.setContentNonOwned(standaloneEditor.get(),false);
+   window.setBounds(60,60,1000,750);window.setVisible(true);
+   const auto bounds=window.getBounds();
+   require(standaloneEditor->findChildWithID("fullscreen-toggle")->isVisible(),"Standalone fullscreen button missing");
+   for(int cycle=0;cycle<3;++cycle){
+    require(standaloneEditor->keyPressed(juce::KeyPress(juce::KeyPress::F11Key))&&window.isFullScreen(),"F11 fullscreen entry failed");
+    require(standaloneEditor->keyPressed(juce::KeyPress(juce::KeyPress::escapeKey))&&!window.isFullScreen(),"Escape fullscreen exit failed");
+    require(window.getBounds()==bounds,"Windowed bounds not restored");
+   }
+   auto* fullscreen=dynamic_cast<juce::Button*>(standaloneEditor->findChildWithID("fullscreen-toggle"));
+   fullscreen->onClick();require(window.isFullScreen(),"Fullscreen button failed");
+   require(standaloneEditor->keyPressed(juce::KeyPress(juce::KeyPress::F11Key))&&!window.isFullScreen(),"F11 fullscreen exit failed");
+   require(!standaloneEditor->keyPressed(juce::KeyPress(juce::KeyPress::escapeKey)),"Windowed Escape consumed");
+   window.clearContentComponent();
+  }
   editor->selectSlot(0,4);require(editor->insertBlock(6),"Block insertion failed");
   {const auto grid=processor->getEditableGrid();require(grid.get(0,4)->type==vc::BlockType::Reverb,"Inserted block has wrong type");}
   require(editor->toggleSelectedSlot(),"Slot bypass failed");
