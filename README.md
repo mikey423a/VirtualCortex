@@ -1,10 +1,10 @@
-# Virtual Cortex 6.11
+# Virtual Cortex 6.12
 
 Windows x64 standalone guitar amplifier/effects application and VST3, built with JUCE 8.0.10 and ASIO enabled.
 
 ## Verified build
 
-[Successful 6.11 build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/41478258299)
+[6.12 Windows build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/41519716711)
 
 - EXE and VST3 compiled using MSVC on Windows Server 2022.
 - All 28 CTest checks passed, including the real JUCE processor, editor renders, four-row routing and the new effects.
@@ -14,6 +14,14 @@ Windows x64 standalone guitar amplifier/effects application and VST3, built with
 - Windows 11 interactive use and Anubis ASIO input/output still need user testing. Installer is unsigned.
 
 Download the VirtualCortex-Windows-x64 artifact for Setup EXE, standalone EXE, VST3 ZIP, hashes and installer logs. Native screenshots and test logs are in VirtualCortex-build-logs.
+
+## New in 6.12: fullscreen and larger displays
+
+The standalone header has a FULL SCREEN button. F11 toggles fullscreen and Esc exits; the previous window position and size are restored. The VST3 leaves window management to the DAW. The old 1776 × 1296 editor limit has been raised to 7680 × 4320, and windows can use different aspect ratios. The existing canvas scales proportionally and remains centered, with black side margins on widescreen displays.
+
+Native editor checks cover 2560 × 1440 pixels and 1707 × 960 logical pixels (approximately a 1440p display at 150% Windows scaling), both with the editors open and hidden. They also exercise repeated fullscreen entry/exit, the fullscreen button, F11/Esc handlers and windowed bounds restoration in a native JUCE window. Mixed-DPI monitor transitions and Windows 11 interactive hardware testing remain pending.
+
+The 6.11.1 reverb coefficient cache is retained: unchanged coefficient inputs reuse their calculated values, with preparation invalidating the cache. Audio output matched the previous implementation exactly in the tested 512,000-frame automated render; this is an optimization, not a new reverb model.
 
 ## Four-row interface
 
