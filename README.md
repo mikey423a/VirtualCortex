@@ -1,10 +1,10 @@
-# Virtual Cortex 6.10.1
+# Virtual Cortex 6.11
 
 Windows x64 standalone guitar amplifier/effects application and VST3, built with JUCE 8.0.10 and ASIO enabled.
 
 ## Verified build
 
-[Successful 6.10.1 build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/41465770775)
+[Successful 6.11 build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/41478258299)
 
 - EXE and VST3 compiled using MSVC on Windows Server 2022.
 - All 28 CTest checks passed, including the real JUCE processor, editor renders, four-row routing and the new effects.
@@ -108,3 +108,13 @@ Further work includes octave-band characterization across the control range, ali
 ## 6.10.1 grid appearance fix
 
 Rounded-square grid blocks now retain their shape in both compact and expanded views. Corner radius and outline thickness scale with the block dimensions instead of keeping a fixed radius that became circular at small sizes. DSP, parameter IDs and preset format are unchanged. Verified Windows build: https://github.com/mikey423a/VirtualCortex/actions/runs/41465770775. All 28 CTests, VST3 pluginval level 5, standalone startup and installer install/uninstall checks passed; native compact and expanded screenshots were inspected. Windows 11 audio behavior and Anubis hardware I/O still require testing. Installer unsigned.
+
+## 6.11 pre-delay transition and mix precision
+
+Verified Windows build: https://github.com/mikey423a/VirtualCortex/actions/runs/41478258299. Source 345b067db573a24b07e781835f0e07def11b7fbb. All 28 CTests, pluginval level 5, standalone startup and installer install/uninstall checks passed.
+
+Stereo Reverb adds PRE GLIDE in the existing editor. Off selects a 20 ms linear crossfade between two fixed pre-delay read positions, including the early-reflection taps and the feed into the late tank. Rapid changes queue the latest position after the current fade; switching to glide during a fade completes that fade first. This avoids sweeping the pre-delay read position in clean mode, but a transition can still cause temporary phase cancellation/comb filtering. Size and tank modulation continue to use moving reads. On retains the prior pitch-changing pre-delay glide.
+
+Existing presets without srPreGlide default it on, preserving their pre-delay behavior. Newly chosen reverb browser presets select clean mode. There are now 70 host parameters; the previous 69 IDs and their order are unchanged, with the new mode appended. Tested mode changes and pre-delay automation allocate no C++ objects in the audio callback. Native tests cover UI binding, saved mode and migration defaults. Portable tests compare real output to the expected two-fixed-head blend at 44.1/48/96/192 kHz, including a mid-fade mode change.
+
+Stereo Delay smoothing now converges exactly to its endpoints: a fully wet long delay does not retain a trace of current dry input, and zero mix reaches exact dry output. Both endpoints are tested at all four rates. Rounded-square grid blocks from 6.10.1 remain. These implementation and software checks do not certify studio-quality listening results, full device-catalog parity, Windows 11 audio behavior or Anubis hardware I/O. Installer unsigned.

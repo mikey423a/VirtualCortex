@@ -2,7 +2,7 @@
 
 Status: researched design and acceptance requirements; stereo delay implemented in 6.9 and the first stereo FDN reverb in 6.10.
 This supersedes catalog-count growth as the immediate priority.
-Current 6.10 passes 28 software checks; these do not certify sonic quality.
+Current 6.11 passes 28 software checks; these do not certify sonic quality.
 
 ## User requirements
 
@@ -117,3 +117,13 @@ The original algorithm uses eight unequal feedback delays, normalized orthogonal
 There are now 69 host parameters: all previous 50 IDs and their order are retained, with 18 reverb controls and one enable appended. Old presets default the new master off. Portable tests verify broadband decay, stereo decorrelation, zero wet width, early timing, damping, ducking, extreme automation, malformed controls, bypass fade and prepare/reset. A nominal 1.2 s unmodulated broadband tail measured approximately 1.10–1.13 s at 44.1/48/96/192 kHz using a -5 to -25 dB Schroeder slope. These measurements cover the tested configuration only. Native tests verify state migration, allocation-free tested automation, output mute and all editor pages.
 
 Further work includes octave-band characterization across the control range, aliasing/discontinuity/CPU measurements, level-matched musical listening, convolution/hybrid modes and additional genuine device implementations. This release does not certify studio-quality sound, full Neural DSP catalog parity, Windows 11 audio behavior or Anubis hardware I/O. Installer unsigned.
+
+## 6.11 pre-delay transition and mix precision
+
+Verified Windows build: https://github.com/mikey423a/VirtualCortex/actions/runs/41478258299. Source 345b067db573a24b07e781835f0e07def11b7fbb. All 28 CTests, pluginval level 5, standalone startup and installer install/uninstall checks passed.
+
+Stereo Reverb adds PRE GLIDE in the existing editor. Off selects a 20 ms linear crossfade between two fixed pre-delay read positions, including the early-reflection taps and the feed into the late tank. Rapid changes queue the latest position after the current fade; switching to glide during a fade completes that fade first. This avoids sweeping the pre-delay read position in clean mode, but a transition can still cause temporary phase cancellation/comb filtering. Size and tank modulation continue to use moving reads. On retains the prior pitch-changing pre-delay glide.
+
+Existing presets without srPreGlide default it on, preserving their pre-delay behavior. Newly chosen reverb browser presets select clean mode. There are now 70 host parameters; the previous 69 IDs and their order are unchanged, with the new mode appended. Tested mode changes and pre-delay automation allocate no C++ objects in the audio callback. Native tests cover UI binding, saved mode and migration defaults. Portable tests compare real output to the expected two-fixed-head blend at 44.1/48/96/192 kHz, including a mid-fade mode change.
+
+Stereo Delay smoothing now converges exactly to its endpoints: a fully wet long delay does not retain a trace of current dry input, and zero mix reaches exact dry output. Both endpoints are tested at all four rates. Rounded-square grid blocks from 6.10.1 remain. These implementation and software checks do not certify studio-quality listening results, full device-catalog parity, Windows 11 audio behavior or Anubis hardware I/O. Installer unsigned.
