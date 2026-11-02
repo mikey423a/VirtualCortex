@@ -61,7 +61,7 @@ int main(int argc,char** argv){
   capture("four-row-delay-1184x864.png",1184,864);
   editor->setEditorsVisible(true);
   bool openedOutput=false;
-  for(int i=0;i<editor->getNumChildComponents();++i)if(auto* button=dynamic_cast<CortexBlockButton*>(editor->getChildComponent(i)))if(button->rail&&button->type==16){button->onClick();openedOutput=true;break;}
+  for(int i=0;i<editor->getNumChildComponents();++i)if(auto* button=dynamic_cast<CortexBlockButton*>(editor->getChildComponent(i)))if(button->rail&&button->type==22){button->onClick();openedOutput=true;break;}
   auto* trim=dynamic_cast<juce::Slider*>(editor->findChildWithID("outputTrim"));
   require(openedOutput&&trim&&trim->isVisible()&&trim->isEnabled(),"Grid output trim UI is disabled");
   capture("grid-output-1184x864.png",1184,864);
@@ -79,6 +79,14 @@ int main(int argc,char** argv){
   require(processor->getEditableGrid().get(3,6)->type==vc::BlockType::Chorus,"Chorus browser selection inserted wrong block");
   require(std::abs(processor->getGridSlotParameters(3,6).rate-.04f)<1.e-5f,"Chorus preset parameters not applied");
   editor->setEditorsVisible(true);capture("chorus-browser-preset.png",1184,864);
+  auto* category=dynamic_cast<juce::ComboBox*>(editor->findChildWithID("device-category"));require(category&&category->getNumItems()==22,"Expanded category selector missing");
+  for(int type:{16,17,18,19,20,21}){
+   editor->selectSlot(1,type-16);category->setSelectedId(type,juce::sendNotificationSync);
+   auto* entry=dynamic_cast<juce::Button*>(editor->findChildWithID("device-0"));require(entry&&entry->isVisible(),"New category has no selectable device");entry->onClick();
+   require((int)processor->getEditableGrid().get(1,type-16)->type==type,"New category inserted wrong block");
+   const auto name=juce::String("expanded-effect-")+juce::String(type)+".png";capture(name.toRawUTF8(),1184,864);
+  }
+  editor->setEditorsVisible(false);capture("four-row-expanded-catalog.png",1184,864);
   editor.reset();processor->releaseResources();
   std::cout<<"PASS: native editor snapshots at three sizes, control binding, insertion and bypass\n";
   return 0;

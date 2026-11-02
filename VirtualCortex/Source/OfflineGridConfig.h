@@ -32,6 +32,12 @@ inline BlockType parseBlockName(const std::string& name) {
  if(name=="Phaser") return BlockType::Phaser;
  if(name=="Wah") return BlockType::Wah;
  if(name=="BitCrusher") return BlockType::BitCrusher;
+ if(name=="Vibrato") return BlockType::Vibrato;
+ if(name=="RingModulator") return BlockType::RingModulator;
+ if(name=="Gain") return BlockType::Gain;
+ if(name=="LowHighCut") return BlockType::LowHighCut;
+ if(name=="ToneEQ") return BlockType::ToneEQ;
+ if(name=="RoomReverb") return BlockType::RoomReverb;
  if(name=="Empty") return BlockType::Empty;
  throw std::runtime_error("Unknown effect: "+name);
 }

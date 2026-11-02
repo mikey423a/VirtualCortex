@@ -50,7 +50,7 @@ private:
  std::array<juce::Label,6> slotValues;
  juce::TextButton headerStompButton{""},previousPreset{"<"},nextPreset{">"},directoryButton{"DIRECTORY"},ioButton{"I/O"},stompModeButton{"STOMP"},presetMenuButton{"PRESET"};
  juce::TextButton editorsButton{"SHOW EDITORS"};
- juce::ComboBox rowSelector;
+ juce::ComboBox rowSelector,categoryBox;
  std::array<juce::Slider,6> slotSliders;
  std::array<juce::String,6> slotLabels{{"DRIVE","MIX","TIME","FEEDBACK","RATE","DEPTH"}};
  juce::TextButton addButton{"ADD TO SLOT"},removeButton{"REMOVE"};

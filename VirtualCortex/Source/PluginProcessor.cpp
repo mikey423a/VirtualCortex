@@ -51,7 +51,7 @@ VirtualCortexProcessor::VirtualCortexProcessor()
 }
 
 vc::SignalGrid VirtualCortexProcessor::getEditableGrid() const noexcept {
- vc::GridBytes bytes{};bytes[0]='V';bytes[1]=1;
+ vc::GridBytes bytes{};bytes[0]='V';bytes[1]=2;
  for(std::size_t r=0;r<4;++r){auto packed=gridRows[r].load(std::memory_order_acquire);
   for(std::size_t c=0;c<8;++c)bytes[2+r*8+c]=static_cast<std::uint8_t>(packed>>(c*8));
  }
@@ -85,7 +85,7 @@ void VirtualCortexProcessor::updateGridRouting() noexcept {
  for(std::size_t r=0;r<4;++r){current[r]=gridRows[r].load(std::memory_order_acquire);changed|=current[r]!=appliedGridRows[r];}
  const auto lanes=gridLanes.load(std::memory_order_acquire);changed|=lanes!=appliedGridLanes;
  if(!changed)return;
- vc::GridBytes bytes{};bytes[0]='V';bytes[1]=1;
+ vc::GridBytes bytes{};bytes[0]='V';bytes[1]=2;
  for(std::size_t r=0;r<4;++r)for(std::size_t c=0;c<8;++c)bytes[2+r*8+c]=static_cast<std::uint8_t>(current[r]>>(c*8));
  vc::SignalGrid grid;
  if(!vc::decodeGrid(bytes,grid))return;

@@ -2,6 +2,7 @@
 #include "ParallelGrid.h"
 #include "OriginalEffects.h"
 #include "ModulationEffects.h"
+#include "UtilitySpatialEffects.h"
 #include "NeuralAmp.h"
 #include <array>
 #include <cmath>
@@ -107,6 +108,7 @@ public:
   for (auto& lane: *state_) for (auto& slot: lane) for (auto& ch: slot) {
    ch = Channel{};
    ch.delay.assign(std::max<std::size_t>(n,2),0.f);
+   ch.room.prepare((float)rate_);
   }
  }
  // Interleaved audio. Channels 1 or 2, prepared before calling process.
@@ -137,6 +139,10 @@ private:
  struct FIR { std::array<float,maxIrTaps> taps{}; std::size_t count=0; };
  struct CabinetIR { FIR current{}, previous{}; std::size_t fade=0; bool transition=false; };
  struct Channel {
+  GainUtility utility;
+  CutFilters cuts;
+  ToneEQ toneEQ;
+  RoomReverb room;
   SixStagePhaser phaser;
   EnvelopeWah wah;
   BitCrusher crusher;
@@ -147,7 +153,7 @@ private:
   std::size_t previousNeuralIndex=0;
   std::size_t neuralIndex=0;
   std::size_t irPosition=0;
-  float gate=0.f, cab=0.f, eq=0.f, reverb=0.f, phase=0.f;
+  float gate=0.f, cab=0.f, eq=0.f, reverb=0.f, phase=0.f, ringRate=-1.f, ringStep=0.f;
   std::vector<float> delay;
   std::size_t index=0;
  };
@@ -246,6 +252,18 @@ private:
    case BlockType::Phaser:return s.phaser.process(x,p.mix,p.time,p.feedback,p.rate,p.depth,fs);
    case BlockType::Wah:return s.wah.process(x,p.drive,p.mix,p.time,p.feedback,p.rate,p.depth,fs);
    case BlockType::BitCrusher:return s.crusher.process(x,p.drive,p.mix,p.time,p.depth);
+   case BlockType::Vibrato:return modulatedDelay(x,s.delay,s.index,s.phase,p.mix,p.time,0.f,p.rate,p.depth,fs,false);
+   case BlockType::RingModulator:{if(p.rate!=s.ringRate){s.ringRate=p.rate;s.ringStep=2.f*pi*(10.f*std::pow(200.f,p.rate))/fs;}const float wet=x*(1.f-p.depth+p.depth*std::sin(s.phase));s.phase+=s.ringStep;if(s.phase>=2.f*pi)s.phase-=2.f*pi;return (1.f-p.mix)*x+p.mix*wet;}
+   case BlockType::Gain:return s.utility.process(x,p.drive,p.feedback,fs);
+   case BlockType::LowHighCut:return s.cuts.process(x,p.drive,p.time,p.mix,fs);
+   case BlockType::ToneEQ:return s.toneEQ.process(x,p.drive,p.time,p.feedback,p.rate,p.depth,p.mix,fs);
+   case BlockType::RoomReverb:{
+    const auto n=s.delay.size();const float distance=std::clamp(fs*.1f*p.rate,0.f,(float)(n-1));const auto whole=(std::size_t)distance;const float fraction=distance-(float)whole;
+    const auto read=(s.index+n-whole)%n,older=(read+n-1)%n;
+    const float delayed=whole==0?x*(1.f-fraction)+s.delay[older]*fraction:s.delay[read]*(1.f-fraction)+s.delay[older]*fraction;
+    s.delay[s.index]=x;s.index=(s.index+1)%n;
+    return (1.f-p.mix)*x+p.mix*s.room.process(delayed,p.time,p.feedback,p.depth);
+   }
    default: return x;
   }
  }
