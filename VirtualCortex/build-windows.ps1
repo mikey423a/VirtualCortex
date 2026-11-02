@@ -5,7 +5,8 @@ param(
     [Parameter(Mandatory=$true)][string]$JucePath,
     [string]$BuildDir = 'build-windows',
     [switch]$SkipTests,
-    [switch]$EnableAsio
+    [switch]$EnableAsio,
+    [string]$AsioSdkPath = ''
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -68,7 +69,7 @@ function Invoke-LoggedCommand {
 
 $asioOption = if ($EnableAsio) { '-DVC_ENABLE_ASIO=ON' } else { '-DVC_ENABLE_ASIO=OFF' }
 Write-Host "Windows build: $(if ($EnableAsio) { 'ASIO enabled (SDK required)' } else { 'default Windows audio backend' })" 
-Invoke-LoggedCommand -Step 'Configure' -Arguments @('-S', $root, '-B', $build, '-G', 'Visual Studio 17 2022', '-A', 'x64', '-DBUILD_TESTING=ON', "-DVC_JUCE_SOURCE_DIR=$juce", '-DVC_ALLOW_JUCE_FETCH=OFF', $asioOption)
+Invoke-LoggedCommand -Step 'Configure' -Arguments @('-S', $root, '-B', $build, '-G', 'Visual Studio 17 2022', '-A', 'x64', '-DBUILD_TESTING=ON', "-DVC_JUCE_SOURCE_DIR=$juce", '-DVC_ALLOW_JUCE_FETCH=OFF', $asioOption, "-DVC_ASIO_SDK_DIR=$AsioSdkPath")
 Invoke-LoggedCommand -Step 'Build' -Arguments @('--build', $build, '--config', 'Release', '--parallel', '2')
 if (-not $SkipTests) {
     Add-Content -Path $log -Value "`n=== CTest ==="

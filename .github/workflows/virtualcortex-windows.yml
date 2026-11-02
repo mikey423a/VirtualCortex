@@ -1,0 +1,66 @@
+name: Virtual Cortex Windows installer
+on:
+  push:
+    paths:
+      - 'VirtualCortex/**'
+      - '.github/workflows/virtualcortex-windows.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get JUCE 8.0.10
+        uses: actions/checkout@v4
+        with:
+          repository: juce-framework/JUCE
+          ref: 3af3ce009f6a02f6fa651008fffb5b41743a9fab
+          path: dependencies/JUCE
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Get Steinberg ASIO SDK
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Invoke-WebRequest https://www.steinberg.net/asiosdk -OutFile dependencies/asiosdk.zip
+          Expand-Archive dependencies/asiosdk.zip dependencies/asio
+          $header = @(Get-ChildItem dependencies/asio -Recurse -File -Filter iasiodrv.h)
+          if ($header.Count -ne 1) { throw 'Expected one ASIO SDK common/iasiodrv.h' }
+          $sdk = Split-Path (Split-Path $header[0].FullName -Parent) -Parent
+          "VC_ASIO_SDK_DIR=$sdk" >> $env:GITHUB_ENV
+          Get-FileHash dependencies/asiosdk.zip -Algorithm SHA256 | Format-List
+      - name: Configure, compile EXE and VST3, and run regression tests
+        run: |
+          ./VirtualCortex/build-windows.ps1 -JucePath "$env:GITHUB_WORKSPACE/dependencies/JUCE" -EnableAsio -AsioSdkPath "$env:VC_ASIO_SDK_DIR"
+      - name: Validate VST3 and smoke test standalone
+        run: |
+          ./VirtualCortex/ci/verify-windows.ps1
+      - name: Build and test installer
+        run: |
+          ./VirtualCortex/ci/package-windows.ps1
+      - name: Upload installer and VST3
+        uses: actions/upload-artifact@v4
+        with:
+          name: VirtualCortex-Windows-x64
+          path: VirtualCortex/dist/*
+          if-no-files-found: error
+          retention-days: 30
+      - name: Preserve diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: VirtualCortex-build-logs
+          path: |
+            VirtualCortex/build-windows/windows-build.log
+            VirtualCortex/build-windows/windows-build-manifest.txt
+            VirtualCortex/build-windows/Testing/Temporary/LastTest.log
+            VirtualCortex/build-windows/*verification*.txt
+            VirtualCortex/dist/*test*.log
+          if-no-files-found: warn

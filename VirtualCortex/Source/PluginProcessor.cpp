@@ -268,7 +268,8 @@ void VirtualCortexProcessor::commitPendingNeuralModels() noexcept {
 bool VirtualCortexProcessor::loadGridNeuralModel(const juce::File& file,
                                                 std::size_t row,std::size_t col) {
  if(!vc::SignalGrid::valid(row,col) || !file.existsAsFile()) return false;
- const auto slot=getEditableGrid().get(row,col);
+ const auto grid=getEditableGrid();
+ const auto slot=grid.get(row,col);
  if(!slot || !slot->enabled || slot->type!=vc::BlockType::Amp) return false;
  vc::NeuralAmpModel model;
  try { model=vc::loadNeuralAmpModel(file.getFullPathName().toStdString()); }
