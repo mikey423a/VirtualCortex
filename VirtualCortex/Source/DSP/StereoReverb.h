@@ -38,7 +38,9 @@ public:
   if(p.enabled){awake=true;idle=0;}if(!initialized){smooth=p;mix=0;wetGain=wetTarget;initialized=true;updateCoefficients();}
  }
  std::array<float,2> process(float left,float right)noexcept{
-  if(!std::isfinite(left))left=0;if(!std::isfinite(right))right=0;if(!awake||pre[0].data.empty())return {left,right};
+  if(!std::isfinite(left))left=0;
+  if(!std::isfinite(right))right=0;
+  if(!awake||pre[0].data.empty())return {left,right};
   auto move=[&](float& x,float target){float next=(float)(target+coefficient*(x-target));x=(next==x||std::abs(next-target)<1.e-7f)?target:next;};
   move(mix,cfg.enabled?cfg.mix:0);move(wetGain,wetTarget);
   move(smooth.decay,cfg.decay);move(smooth.size,cfg.size);move(smooth.preDelay,cfg.preDelay);move(smooth.diffusion,cfg.diffusion);move(smooth.early,cfg.early);move(smooth.lowDecay,cfg.lowDecay);move(smooth.highDecay,cfg.highDecay);move(smooth.lowFreq,cfg.lowFreq);move(smooth.highFreq,cfg.highFreq);move(smooth.modRate,cfg.modRate);move(smooth.modDepth,cfg.modDepth);move(smooth.width,cfg.width);move(smooth.ducking,cfg.ducking);move(smooth.inputHP,cfg.inputHP);move(smooth.inputLP,cfg.inputLP);
@@ -50,7 +52,8 @@ public:
    // write advances the cursor: +1 aligns the configured predelay with input.
    double pd=smooth.preDelay*.001*fs+1;float x=pre[ch].read(pd);
    const double taps[4]={.0073,.0137,.0239,.0371};for(int j=0;j<4;++j){float tap=pre[ch].read(pd+(taps[j]+ch*.0011)*smooth.size*fs);early[ch]+=tap*(j%2?-.22f:.3f);}
-   for(auto& a:diffusers[ch])x=a.process(x,smooth.diffusion*.72f);diffused[ch]=x;
+   for(auto& a:diffusers[ch])x=a.process(x,smooth.diffusion*.72f);
+   diffused[ch]=x;
   }
   std::array<float,8> feedback{};
   float wetL=0,wetR=0;
@@ -67,7 +70,8 @@ public:
   float mid=(wetL+wetR)*.5f,side=(wetL-wetR)*.5f*smooth.width,duck=1.f/(1.f+8.f*smooth.ducking*(float)envelope);
   const float gain=mix*wetGain*duck;std::array<float,2> out{{left*(1-mix)+(mid+side)*gain,right*(1-mix)+(mid-side)*gain}};
   if(!cfg.enabled){if(++idle>fs*120.)awake=false;}else idle=0;
-  for(auto& x:out)if(!std::isfinite(x))x=0;return out;
+  for(auto& x:out)if(!std::isfinite(x))x=0;
+  return out;
  }
 private:
  void updateCoefficients()noexcept{
