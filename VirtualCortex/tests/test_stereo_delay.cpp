@@ -23,6 +23,11 @@ int main(){
   p.modDepth=10;p.ducking=1;p.feedback=.95f;p.mix=.7f;p.width=1.5f;
   for(int block=0;block<50;++block){p.timeL=block%2?1:16000;p.timeR=block%3?300:12000;p.tape=block%2;p.highCut=block%2?1000:20000;d.configure(p);for(int i=0;i<128;++i){auto y=d.process(.1f*std::sin((block*128+i)*.1),.07f);for(float v:y)assert(std::isfinite(v)&&std::abs(v)<10);}}
  }
+ // A fully wet long delay must not leak the current dry impulse after smoothing.
+ for(double fs:{44100.,48000.,96000.,192000.}){
+  vc::StereoDelay d;d.prepare(fs);vc::StereoDelayParameters p;p.enabled=true;p.mix=1;p.feedback=0;p.timeL=p.timeR=1000;p.filterMix=0;d.configure(p);warm(d,(int)(fs*.5));auto y=d.process(.1f,-.2f);assert(y[0]==0&&y[1]==0);
+  p.mix=0;d.configure(p);warm(d,(int)(fs*.5));y=d.process(.123f,-.234f);assert(y[0]==.123f&&y[1]==-.234f);
+ }
  // Ducking lowers wet energy while loud input is present.
  auto energy=[](float duck){vc::StereoDelay d;d.prepare(48000);vc::StereoDelayParameters p;p.enabled=true;p.timeL=20;p.timeR=30;p.feedback=.4f;p.mix=1;p.ducking=duck;p.filterMix=0;d.configure(p);warm(d);double e=0;for(int i=0;i<48000;++i){auto y=d.process(.3f*std::sin(i*.1f),.3f*std::sin(i*.1f));if(i>24000)e+=y[0]*y[0]+y[1]*y[1];}return e;};assert(energy(1)<energy(0)*.4);
  // Fully disabled module is transparent; malformed controls are sanitized.

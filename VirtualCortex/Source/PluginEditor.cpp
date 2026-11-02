@@ -117,8 +117,8 @@ VirtualCortexEditor::VirtualCortexEditor(VirtualCortexProcessor& p):AudioProcess
   k.value.onTextChange=[this,i]{auto& item=knobs[i];item.slider.setValue(item.slider.getValueFromText(item.value.getText()),juce::sendNotificationSync);};
   k.value.setText(k.slider.getTextFromValue(k.slider.getValue()),juce::dontSendNotification);
  }
- const std::array<const char*,15> switchesIds={"gateOn","ampOn","cabOn","delayOn","reverbOn","tremOn","bypass","eqOn","irOn","gridMode","stereoDelayOn","sdPingPong","sdTape","sdSync","stereoReverbOn"};
- const std::array<const char*,15> switchesLabels={"ENABLED","ENABLED","ENABLED","ENABLED","ENABLED","ENABLED","BYPASS","ENABLED","USE IR","GRID ENGINE","ENABLED","PING PONG","TAPE GLIDE","TEMPO SYNC","ENABLED"};
+ const std::array<const char*,16> switchesIds={"gateOn","ampOn","cabOn","delayOn","reverbOn","tremOn","bypass","eqOn","irOn","gridMode","stereoDelayOn","sdPingPong","sdTape","sdSync","stereoReverbOn","srPreGlide"};
+ const std::array<const char*,16> switchesLabels={"ENABLED","ENABLED","ENABLED","ENABLED","ENABLED","ENABLED","BYPASS","ENABLED","USE IR","GRID ENGINE","ENABLED","PING PONG","TAPE GLIDE","TEMPO SYNC","ENABLED","PRE GLIDE"};
  for(size_t i=0;i<switches.size();++i){auto& s=switches[i];s.button.setButtonText(switchesLabels[i]);addChildComponent(s.button);s.attachment=std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.parameters,switchesIds[i],s.button);}
  presetBox.addItem("Clean ambience",2);presetBox.addItem("Crunch rhythm",3);presetBox.addItem("Lead delay",4);presetBox.setTextWhenNothingSelected("1A Virtual Cortex MAIN");presetBox.onChange=[this]{applyPreset(presetBox.getSelectedId());};addAndMakeVisible(presetBox);
  for(auto* b:{&savePresetButton,&loadPresetButton,&addButton,&removeButton,&loadIRButton,&loadGridIRButton,&loadNeuralButton})addAndMakeVisible(*b);
@@ -224,7 +224,7 @@ void VirtualCortexEditor::updateView(){refreshGridControls();const int type=curr
  repeatFxButton.setVisible(gm&&type==5);
  for(int i=0;i<3;++i){stereoPages[(std::size_t)i].setVisible(type==23);stereoPages[(std::size_t)i].setToggleState(i==stereoPage,juce::dontSendNotification);}
  for(int i=0;i<3;++i){reverbPages[(std::size_t)i].setVisible(type==24);reverbPages[(std::size_t)i].setToggleState(i==reverbPage,juce::dontSendNotification);}
- switches[14].button.setVisible(type==24);
+ switches[14].button.setVisible(type==24);switches[15].button.setVisible(type==24);
  if(type==23)for(int i=10;i<14;++i)switches[(std::size_t)i].button.setVisible(true);
  const auto colour=CortexBlockButton::colourFor(type);
  if(!gm||masterPage){for(int i:visibleKnobs()){knobs[(size_t)i].slider.setVisible(true);knobs[(size_t)i].value.setVisible(true);knobs[(size_t)i].slider.setColour(juce::Slider::rotarySliderFillColourId,colour);knobs[(size_t)i].slider.setEnabled(true);knobs[(size_t)i].value.setEnabled(true);}int enable=-1;switch(type){case 1:enable=0;break;case 2:enable=1;break;case 3:enable=2;break;case 4:enable=7;break;case 5:enable=3;break;case 6:enable=4;break;case 7:enable=5;break;}if(enable>=0)switches[(size_t)enable].button.setVisible(true);switches[8].button.setVisible(type==3&&!gm);}
@@ -257,6 +257,7 @@ void VirtualCortexEditor::resized(){
  switches[10].button.setBounds(1137,318,36,35);for(int i=11;i<14;++i)switches[(std::size_t)i].button.setBounds(650+(i-11)*170,489,165,34);
  for(int i=0;i<3;++i){stereoPages[(std::size_t)i].setBounds(650+i*170,537,165,32);reverbPages[(std::size_t)i].setBounds(650+i*170,537,165,32);}
  switches[14].button.setComponentID("power");switches[14].button.setBounds(1138,318,34,34);
+ switches[15].button.setBounds(650,489,165,34);switches[15].button.setComponentID("reverb-pre-glide");switches[15].button.setTooltip("Off: clean 20 ms pre-delay crossfade. On: pitch-changing glide. Size and modulation retain their moving reads.");
  switches[8].button.setBounds(309,489,150,34);removeButton.setBounds(302,318,35,35);
  for(auto* b:{&loadIRButton,&loadGridIRButton,&loadNeuralButton})b->setBounds(838,492,245,32);
  for(auto* l:{&irName,&gridIRName,&neuralName})l->setBounds(838,530,245,25);
@@ -295,7 +296,7 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
 
  g.setColour(panel);g.fillRect(302,598,172,232);g.setColour(juce::Colour(0xff070707));g.drawRect(302,598,172,36,1);drawCaption(g,"Gig view",{343,599,125,33},20.f,juce::Colours::white,juce::Justification::centredLeft,true);drawCaption(g,"Parameter Editor",{310,796,156,32},14.f,muted);
  }
- drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.10.1",{1006,837,170,22},11.f,juce::Colour(0xff676767));
+ drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.11.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
 }
 void VirtualCortexEditor::applyPreset(int index){auto set=[this](const char* id,float value){if(auto* p=processor.parameters.getParameter(id))p->setValueNotifyingHost(p->convertTo0to1(value));};if(index<2)return;set("gridMode",0.f);
  if(index==2){set("drive",.12f);set("tone",.7f);set("level",.65f);set("delayMix",.12f);set("reverbMix",.25f);set("ampBias",0.f);set("delayOn",1.f);set("reverbOn",1.f);}
@@ -338,7 +339,7 @@ void VirtualCortexEditor::applyDeviceVariant(int index){
  const auto names=deviceNames();if(index<0||index>=names.size())return;variant=index;
  auto set=[this](const char* id,float v){if(auto* p=processor.parameters.getParameter(id))p->setValueNotifyingHost(p->convertTo0to1(v));};
  if(browserType==24){
-  const float decays[]={2.5f,.7f,6.f,3.5f,3.f};set("stereoReverbOn",1);set("srDecay",decays[index]);set("srSize",index==1?.65f:(index==2?1.5f:1.f));set("srHighDecay",index==3?.25f:.5f);set("srLowDecay",1);set("srPreDelay",index==1?5.f:20.f);set("srDucking",index==4?.75f:0.f);set("srMix",.2f);set("srDiffusion",.7f);set("srEarly",.2f);set("srWidth",1);set("srModDepth",.3f);set("srModRate",.35f);reverbPage=0;masterPage=true;lastView=-1;updateView();statusLabel.setText("Stereo Reverb enabled after Stereo Delay and the main chain",juce::dontSendNotification);return;
+  const float decays[]={2.5f,.7f,6.f,3.5f,3.f};set("stereoReverbOn",1);set("srPreGlide",0);set("srDecay",decays[index]);set("srSize",index==1?.65f:(index==2?1.5f:1.f));set("srHighDecay",index==3?.25f:.5f);set("srLowDecay",1);set("srPreDelay",index==1?5.f:20.f);set("srDucking",index==4?.75f:0.f);set("srMix",.2f);set("srDiffusion",.7f);set("srEarly",.2f);set("srWidth",1);set("srModDepth",.3f);set("srModRate",.35f);reverbPage=0;masterPage=true;lastView=-1;updateView();statusLabel.setText("Stereo Reverb enabled after Stereo Delay and the main chain",juce::dontSendNotification);return;
  }
  if(browserType==23){
   set("stereoDelayOn",1);set("sdPingPong",index==1?1.f:0.f);set("sdTape",0);set("sdSync",index==4?1.f:0.f);set("sdTimeL",index==2?90.f:320.f);set("sdTimeR",index==2?120.f:480.f);set("sdFeedback",index==2?.15f:.35f);set("sdCross",index==3?.4f:0.f);set("sdMix",.2f);set("sdWidth",index==3?1.4f:1.f);set("sdModDepth",index==3?1.f:0.f);set("sdModRate",.5f);set("sdBpm",120);set("sdBeatsL",1);set("sdBeatsR",1.5f);stereoPage=0;masterPage=true;lastView=-1;updateView();statusLabel.setText("Stereo Delay enabled after the main chain",juce::dontSendNotification);return;

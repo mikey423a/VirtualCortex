@@ -19,6 +19,22 @@ int main(){
   p.width=0;auto mono=impulse(fs,p,.5);for(auto x:mono)assert(x[0]==x[1]);
   p.preDelay=100;p.diffusion=0;p.early=1;auto early=impulse(fs,p,.3);assert(energy(early,0,(std::size_t)(fs*.106))<1.e-15);assert(energy(early,(std::size_t)(fs*.107),(std::size_t)(fs*.15))>1.e-5);
  }
+ // Clean pre-delay transitions equal a 20 ms blend of two fixed read heads.
+ // Checking actual audio against independent reference engines catches moving-head
+ // pitch sweeps, wrong endpoints, unequal early-tap timing and channel mistakes.
+ for(double fs:{44100.,48000.,96000.,192000.}){
+  vc::StereoReverb moving,oldHead,newHead;for(auto* e:{&moving,&oldHead,&newHead})e->prepare(fs);
+  Params p;p.enabled=true;p.mix=1;p.early=1;p.modDepth=0;p.preGlide=false;p.preDelay=20;
+  moving.configure(p);oldHead.configure(p);p.preDelay=180;newHead.configure(p);
+  const int warmCount=(int)(fs*.6),fade=(int)(fs*.02);
+  for(int i=0;i<warmCount;++i){float l=.1f*std::sin(i*.17),r=.07f*std::cos(i*.23);moving.process(l,r);oldHead.process(l,r);newHead.process(l,r);}
+  moving.configure(p);
+  for(int i=0;i<fade+100;++i){if(i==fade/2){p.preGlide=true;moving.configure(p);}int n=i+warmCount;float l=.1f*std::sin(n*.17),r=.07f*std::cos(n*.23);auto a=oldHead.process(l,r),b=newHead.process(l,r),y=moving.process(l,r);float w=std::min(1.f,(float)(i+1)/fade);for(int ch=0;ch<2;++ch)assert(std::abs(y[ch]-(a[ch]*(1-w)+b[ch]*w))<2.e-6f);}
+  // A completed transition stays at the new head; repeated changes and mid-fade
+  // mode switches must remain finite and bounded. The reference comparison above
+  // also checks switching to glide halfway through a clean transition.
+  for(int i=0;i<4000;++i){if(i%128==0){p.preDelay=i%256?500:0;p.preGlide=i%512==0;moving.configure(p);}auto y=moving.process(.05f,.05f);for(float v:y)assert(std::isfinite(v)&&std::abs(v)<1);}
+ }
  // High-frequency decay control reduces late high-frequency burst energy.
  auto burst=[](float ratio){vc::StereoReverb r;r.prepare(48000);Params p;p.enabled=true;p.mix=1;p.decay=2;p.lowDecay=1;p.highDecay=ratio;p.highFreq=2000;p.modDepth=0;p.early=0;r.configure(p);warm(r,48000);double e=0;for(int i=0;i<144000;++i){float x=i<4800?.1f*std::sin(i*6.2831853f*8000/48000):0;auto y=r.process(x,x);if(i>48000)for(float v:y)e+=v*v;}return e;};assert(burst(.2f)<burst(1)*.05);
  auto sustained=[](float duck){vc::StereoReverb r;r.prepare(48000);Params p;p.enabled=true;p.mix=1;p.ducking=duck;r.configure(p);double e=0;for(int i=0;i<96000;++i){auto y=r.process(.3f*std::sin(i*.13f),.3f*std::sin(i*.13f));if(i>48000)for(float v:y)e+=v*v;}return e;};assert(sustained(1)<sustained(0)*.4);

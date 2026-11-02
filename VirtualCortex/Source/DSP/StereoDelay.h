@@ -32,7 +32,7 @@ public:
   if(dormant_||buffer_[0].empty())return {left,right};
   const std::array<float,2> dry{{left,right}};
   if(!initialized_){smooth_=cfg_;smooth_.mix=0;smooth_.feedback=cfg_.enabled?cfg_.feedback:0;wetGain_=wetTarget_;heads_[0].current=cfg_.timeL*fs_*.001;heads_[1].current=cfg_.timeR*fs_*.001;initialized_=true;counter_=0;}
-  auto move=[&](float& x,float target){x=target+(float)coefficient_*(x-target);};
+  auto move=[&](float& x,float target){const float next=(float)(target+coefficient_*(x-target));x=(next==x||std::abs(next-target)<1.e-7f)?target:next;};
   move(smooth_.mix,cfg_.enabled?cfg_.mix:0);move(smooth_.feedback,cfg_.enabled?cfg_.feedback:0);move(smooth_.cross,cfg_.pingPong?1.f:cfg_.cross);move(smooth_.lowCut,cfg_.lowCut);move(smooth_.highCut,cfg_.highCut);
   move(smooth_.modRate,cfg_.modRate);move(smooth_.modDepth,cfg_.modDepth);move(smooth_.ducking,cfg_.ducking);move(smooth_.width,cfg_.width);move(smooth_.filterMix,cfg_.filterMix);move(wetGain_,wetTarget_);
   if(counter_++%16==0)for(int ch=0;ch<2;++ch){high_[(std::size_t)ch].cut((float)fs_,smooth_.lowCut,true);low_[(std::size_t)ch].cut((float)fs_,smooth_.highCut,false);}

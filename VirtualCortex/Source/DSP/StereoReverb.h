@@ -7,7 +7,7 @@ namespace vc {
 inline constexpr std::array<const char*,18> stereoReverbIDs{{"srDecay","srSize","srPreDelay","srDiffusion","srEarly","srMix","srLowDecay","srHighDecay","srLowFreq","srHighFreq","srModRate","srModDepth","srWidth","srDucking","srRelease","srWetLevel","srInputHP","srInputLP"}};
 struct StereoReverbParameters {
  float decay=2.5f,size=1,preDelay=20,diffusion=.7f,early=.2f,mix=.2f,lowDecay=1,highDecay=.5f,lowFreq=250,highFreq=4000,modRate=.35f,modDepth=.3f,width=1,ducking=0,release=300,wetLevel=0,inputHP=40,inputLP=16000;
- bool enabled=false;
+ bool enabled=false,preGlide=true;
 };
 // Original 8-line FDN. Orthogonal normalized Hadamard feedback; contractive
 // low/high shelves. Linear interpolation is a convex read, including modulation.
@@ -26,6 +26,7 @@ public:
   for(auto& d:tank)d.prepare((std::size_t)std::ceil(fs*.18)+8);
   for(auto& d:pre)d.prepare((std::size_t)std::ceil(fs*.7)+8);
   for(std::size_t ch=0;ch<2;++ch)for(std::size_t j=0;j<4;++j){auto& a=diffusers[ch][j];a.length=fs*(.0031+.0017*j+.00037*ch);a.delay.prepare((std::size_t)std::ceil(a.length)+4);}
+  preCurrent=preTarget=1;preFade=0;preFading=false;preBlend=0;
   lowState={};highState={};inputLow={};inputHigh={};phase=0;envelope=0;idle=0;counter=0;awake=false;initialized=false;cfg={};smooth={};mix=0;wetGain=1;coefficient=std::exp(-1./(fs*.02));
  }
  bool active()const noexcept{return awake;}
@@ -35,7 +36,7 @@ public:
   p.lowDecay=safe(p.lowDecay,.25f,2,1);p.highDecay=safe(p.highDecay,.1f,1,.5f);p.lowFreq=safe(p.lowFreq,80,1000,250);p.highFreq=safe(p.highFreq,1500,16000,4000);p.modRate=safe(p.modRate,.05f,4,.35f);p.modDepth=safe(p.modDepth,0,2,.3f);
   p.width=safe(p.width,0,1.5f,1);p.ducking=safe(p.ducking,0,1,0);p.release=safe(p.release,20,2000,300);p.wetLevel=safe(p.wetLevel,-24,12,0);p.inputHP=safe(p.inputHP,20,1000,40);p.inputLP=safe(p.inputLP,1000,20000,16000);
   cfg=p;attack=std::exp(-1./(fs*.005));release=std::exp(-1./(fs*.001*p.release));wetTarget=std::pow(10.f,p.wetLevel/20.f);
-  if(p.enabled){awake=true;idle=0;}if(!initialized){smooth=p;mix=0;wetGain=wetTarget;initialized=true;updateCoefficients();}
+  if(p.enabled){awake=true;idle=0;}if(!initialized){smooth=p;mix=0;wetGain=wetTarget;preCurrent=preTarget=p.preDelay*.001*fs+1;initialized=true;updateCoefficients();}
  }
  std::array<float,2> process(float left,float right)noexcept{
   if(!std::isfinite(left))left=0;
@@ -46,15 +47,24 @@ public:
   move(smooth.decay,cfg.decay);move(smooth.size,cfg.size);move(smooth.preDelay,cfg.preDelay);move(smooth.diffusion,cfg.diffusion);move(smooth.early,cfg.early);move(smooth.lowDecay,cfg.lowDecay);move(smooth.highDecay,cfg.highDecay);move(smooth.lowFreq,cfg.lowFreq);move(smooth.highFreq,cfg.highFreq);move(smooth.modRate,cfg.modRate);move(smooth.modDepth,cfg.modDepth);move(smooth.width,cfg.width);move(smooth.ducking,cfg.ducking);move(smooth.inputHP,cfg.inputHP);move(smooth.inputLP,cfg.inputLP);
   if(counter++%32==0)updateCoefficients();
   float magnitude=std::max(std::abs(left),std::abs(right));double envC=magnitude>envelope?attack:release;envelope=magnitude+envC*(envelope-magnitude);
+  // Complete an in-flight crossfade before honoring a mode change or new target.
+  // Rapid automation queues the latest target; neither read head moves mid-fade.
+  const auto fadeLength=std::max<std::size_t>(1,(std::size_t)(fs*.02));
+  if(!preFading){
+   if(cfg.preGlide)preCurrent=smooth.preDelay*.001*fs+1;
+   else {const double wanted=cfg.preDelay*.001*fs+1;if(std::abs(wanted-preCurrent)>.05){preTarget=wanted;preFade=0;preFading=true;}}
+  }
+  preBlend=preFading?(float)(preFade+1)/(float)fadeLength:0.f;
   std::array<float,2> input{{cfg.enabled?left:0.f,cfg.enabled?right:0.f}},early{},diffused{};
   for(std::size_t ch=0;ch<2;++ch){
    inputHigh[ch]=(1-inputHPC)*input[ch]+inputHPC*inputHigh[ch];float hp=input[ch]-inputHigh[ch];inputLow[ch]=(1-inputLPC)*hp+inputLPC*inputLow[ch];pre[ch].write(inputLow[ch]);
    // write advances the cursor: +1 aligns the configured predelay with input.
-   double pd=smooth.preDelay*.001*fs+1;float x=pre[ch].read(pd);
-   const double taps[4]={.0073,.0137,.0239,.0371};for(int j=0;j<4;++j){float tap=pre[ch].read(pd+(taps[j]+ch*.0011)*smooth.size*fs);early[ch]+=tap*(j%2?-.22f:.3f);}
+   float x=readPre(ch,0);
+   const double taps[4]={.0073,.0137,.0239,.0371};for(int j=0;j<4;++j){float tap=readPre(ch,(taps[j]+ch*.0011)*smooth.size*fs);early[ch]+=tap*(j%2?-.22f:.3f);}
    for(auto& a:diffusers[ch])x=a.process(x,smooth.diffusion*.72f);
    diffused[ch]=x;
   }
+  if(preFading&&++preFade>=fadeLength){preCurrent=preTarget;preFading=false;smooth.preDelay=(float)((preCurrent-1)*1000./fs);}
   std::array<float,8> feedback{};
   float wetL=0,wetR=0;
   for(std::size_t i=0;i<8;++i){double length=times[i]*smooth.size*fs+std::sin(phase+i*.897597901)*smooth.modDepth*.001*fs;float d=tank[i].read(length);
@@ -74,6 +84,10 @@ public:
   return out;
  }
 private:
+ float readPre(std::size_t channel,double offset)const noexcept{
+  const float a=pre[channel].read(preCurrent+offset);
+  return preFading?a*(1-preBlend)+pre[channel].read(preTarget+offset)*preBlend:a;
+ }
  void updateCoefficients()noexcept{
   auto pole=[&](float hz){return (float)std::exp(-6.283185307179586*std::min((double)hz,fs*.45)/fs);};
   lowC=pole(smooth.lowFreq);highC=pole(smooth.highFreq);inputHPC=pole(smooth.inputHP);inputLPC=pole(smooth.inputLP);
@@ -83,6 +97,7 @@ private:
  std::array<Delay,8> tank;std::array<Delay,2> pre;std::array<std::array<Allpass,4>,2> diffusers;
  std::array<float,8> lowState{},highState{},gMid{},gLow{},highRatio{};std::array<float,2> inputHigh{},inputLow{};
  StereoReverbParameters cfg{},smooth{};double fs=48000,phase=0,envelope=0,coefficient=0,attack=0,release=0,idle=0;std::size_t counter=0;
+ double preCurrent=1,preTarget=1;std::size_t preFade=0;float preBlend=0;bool preFading=false;
  float mix=0,wetGain=1,wetTarget=1,lowC=0,highC=0,inputHPC=0,inputLPC=0;bool awake=false,initialized=false;
 };
 }

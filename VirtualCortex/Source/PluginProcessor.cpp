@@ -41,6 +41,7 @@ VirtualCortexProcessor::VirtualCortexProcessor()
  for(std::size_t i=0;i<stereoFlags.size();++i)stereoFlags[i]=parameters.getRawParameterValue(vc::stereoDelayFlagIDs[i]);
  for(std::size_t i=0;i<reverbParameters.size();++i)reverbParameters[i]=parameters.getRawParameterValue(vc::stereoReverbIDs[i]);
  reverbEnabled=parameters.getRawParameterValue("stereoReverbOn");
+ reverbPreGlide=parameters.getRawParameterValue("srPreGlide");
 
  vc::SignalGrid grid;
  grid.set(0,0,{vc::BlockType::Gate,true});grid.set(0,1,{vc::BlockType::Amp,true});
@@ -175,6 +176,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VirtualCortexProcessor::make
  addFloat("srInputHP","Stereo reverb Input high-pass (Hz)",20.0f,1000.0f,40.0f);
  addFloat("srInputLP","Stereo reverb Input low-pass (Hz)",1000.0f,20000.0f,16000.0f);
  addBool("stereoReverbOn","Post-chain stereo reverb",false);
+ addBool("srPreGlide","Reverb pre-delay pitch glide",true);
  return p;
 }
 
@@ -359,7 +361,7 @@ void VirtualCortexProcessor::processStereoDelay(juce::AudioBuffer<float>& b){
   tempo=std::isfinite(tempo)?juce::jlimit(20.,300.,tempo):120.;stereoTempo.store(tempo,std::memory_order_relaxed);p.timeL=(float)(60000./tempo*value(15));p.timeR=(float)(60000./tempo*value(16));
  }
  auto rv=[this](std::size_t i){return reverbParameters[i]->load(std::memory_order_relaxed);};
- vc::StereoReverbParameters rp;rp.decay=rv(0);rp.size=rv(1);rp.preDelay=rv(2);rp.diffusion=rv(3);rp.early=rv(4);rp.mix=rv(5);rp.lowDecay=rv(6);rp.highDecay=rv(7);rp.lowFreq=rv(8);rp.highFreq=rv(9);rp.modRate=rv(10);rp.modDepth=rv(11);rp.width=rv(12);rp.ducking=rv(13);rp.release=rv(14);rp.wetLevel=rv(15);rp.inputHP=rv(16);rp.inputLP=rv(17);rp.enabled=reverbEnabled->load(std::memory_order_relaxed)>.5f;stereoReverb.configure(rp);
+ vc::StereoReverbParameters rp;rp.decay=rv(0);rp.size=rv(1);rp.preDelay=rv(2);rp.diffusion=rv(3);rp.early=rv(4);rp.mix=rv(5);rp.lowDecay=rv(6);rp.highDecay=rv(7);rp.lowFreq=rv(8);rp.highFreq=rv(9);rp.modRate=rv(10);rp.modDepth=rv(11);rp.width=rv(12);rp.ducking=rv(13);rp.release=rv(14);rp.wetLevel=rv(15);rp.inputHP=rv(16);rp.inputLP=rv(17);rp.enabled=reverbEnabled->load(std::memory_order_relaxed)>.5f;rp.preGlide=reverbPreGlide->load(std::memory_order_relaxed)>.5f;stereoReverb.configure(rp);
  stereoDelay.configure(p);const int count=juce::jmin(2,b.getNumChannels());const float trim=cached.outputTrim->load(std::memory_order_relaxed);
  for(int i=0;i<b.getNumSamples();++i){const float l=b.getSample(0,i),r=count>1?b.getSample(1,i):l;const auto delayed=stereoDelay.process(l,r);const auto frame=stereoReverb.process(delayed[0],delayed[1]);
   for(int ch=0;ch<count;++ch){const float x=count==1?(frame[0]+frame[1])*.5f:frame[(std::size_t)ch];b.setSample(ch,i,juce::jlimit(-1.f,1.f,x*channels[(std::size_t)ch].outputSmoother.process(trim)));}
@@ -500,7 +502,7 @@ void VirtualCortexProcessor::setStateInformation(const void* data,int size){
   const auto current=parameters.copyState();
   auto addDefault=[&](const char* id){if(restored.getChildWithProperty("id",id).isValid())return;auto node=current.getChildWithProperty("id",id).createCopy();if(node.isValid())if(auto* parameter=parameters.getParameter(id)){node.setProperty("value",parameter->convertFrom0to1(parameter->getDefaultValue()),nullptr);restored.addChild(node,-1,nullptr);}};
   for(const auto* id:vc::stereoDelayIDs)addDefault(id);for(const auto* id:vc::stereoDelayFlagIDs)addDefault(id);
-  for(const auto* id:vc::stereoReverbIDs)addDefault(id);addDefault("stereoReverbOn");
+  for(const auto* id:vc::stereoReverbIDs)addDefault(id);addDefault("stereoReverbOn");addDefault("srPreGlide");
   parameters.replaceState(restored);
   if(path.isEmpty() || !loadCabinetIR(juce::File(path))){
    std::lock_guard<std::mutex> guard(assetMutex);
