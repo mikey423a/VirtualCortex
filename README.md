@@ -1,19 +1,27 @@
-# Virtual Cortex 6.12
+# Virtual Cortex 6.13
 
 Windows x64 standalone guitar amplifier/effects application and VST3, built with JUCE 8.0.10 and ASIO enabled.
 
 ## Verified build
 
-[6.12 Windows build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/41519716711)
+[6.13 Windows build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/41528022183)
 
 - EXE and VST3 compiled using MSVC on Windows Server 2022.
-- All 28 CTest checks passed, including the real JUCE processor, editor renders, four-row routing and the new effects.
+- All 32 CTest checks passed, including the real JUCE processor, editor renders, four-row routing and the new effects.
 - VST3 passed pluginval 1.0.4 at strictness level 5.
 - Standalone stayed running for the 10-second startup test.
 - Inno Setup installer passed install/uninstall and installed-binary checks.
 - Windows 11 interactive use and Anubis ASIO input/output still need user testing. Installer is unsigned.
 
 Download the VirtualCortex-Windows-x64 artifact for Setup EXE, standalone EXE, VST3 ZIP, hashes and installer logs. Native screenshots and test logs are in VirtualCortex-build-logs.
+
+## Catalog inventory in 6.13
+
+CATALOG opens the complete factual inventory from the official [device list](https://neuraldsp.com/device-list), retrieved November 2, 2026: **689 source rows in 23 sections**, including 632 released-list rows and 57 announced rows. Search supports device names, based-on gear, aliases and required plugins; trademark marks are optional in search and words may be entered in any order. Section and availability filters combine.
+
+**This completes the reference inventory, not the playable Neural DSP device catalog.** All 689 official entries are reference-only, with insertion disabled. The app's playable catalog remains 23 original processors: 21 Grid block types plus the Stereo Delay and Stereo Reverb post-chain processors. Factory models, captures, IRs and proprietary algorithms are not bundled. Capture-family rows are not counts of individual capture variations.
+
+The browser retains based-on gear, CorOS versions, previous names, replacement information and required plugins. Same-named plugin devices retain separate identities. Working originals have an explicit insert/open action. The existing preset directory, four-row GUI, 1440p/fullscreen support and DSP remain available. [Validation scope](validation/CATALOG-6.13.md).
 
 ## Experimental NAM backend
 
