@@ -1,13 +1,13 @@
-# Virtual Cortex 6.9
+# Virtual Cortex 6.10
 
 Windows x64 standalone guitar amplifier/effects application and VST3, built with JUCE 8.0.10 and ASIO enabled.
 
 ## Verified build
 
-[Successful 6.9 build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/41438893229)
+[Successful 6.10 build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/41447139700)
 
 - EXE and VST3 compiled using MSVC on Windows Server 2022.
-- All 27 CTest checks passed, including the real JUCE processor, editor renders, four-row routing and the new effects.
+- All 28 CTest checks passed, including the real JUCE processor, editor renders, four-row routing and the new effects.
 - VST3 passed pluginval 1.0.4 at strictness level 5.
 - Standalone stayed running for the 10-second startup test.
 - Inno Setup installer passed install/uninstall and installed-binary checks.
@@ -23,7 +23,7 @@ In Grid mode, each enabled row receives the same input and enabled outputs are a
 
 ## Sound-quality priority
 
-The current effects are original functional implementations. Passing the software checks does not establish studio-quality sound or parity with commercial effects. Development now prioritizes stereo reverb/delay quality, deeper controls and audio evaluation ahead of catalog count. See [STUDIO-EFFECTS-PLAN.md](STUDIO-EFFECTS-PLAN.md) for the researched architecture, repeat-feedback path and Cortex-style advanced editor requirements. The full stereo/FDN redesign remains planned. The first repeat-filter step is included in 6.8.
+The current effects are original functional implementations. Passing the software checks does not establish studio-quality sound or parity with commercial effects. Development now prioritizes stereo reverb/delay quality, deeper controls and audio evaluation ahead of catalog count. See [STUDIO-EFFECTS-PLAN.md](STUDIO-EFFECTS-PLAN.md) for the researched architecture, repeat-feedback path and Cortex-style advanced editor requirements. The stereo delay arrived in 6.9; an original eight-line stereo FDN reverb is included in 6.10. Further quality gates and convolution remain planned.
 
 ## New in 6.8: editable repeat return
 
@@ -92,3 +92,15 @@ Verified Windows build: https://github.com/mikey423a/VirtualCortex/actions/runs/
 A new optional Stereo Delay runs after the main serial/grid chain and before output trim. It provides independent L/R times up to 16 seconds, feedback/cross-feedback, ping-pong, repeat-loop high/low-pass filtering and blend, modulation rate/depth, wet ducking with editable release, width, wet level, time glide, and host/manual tempo with numeric beat multipliers. Its 18 continuous controls and four switches occupy Main, Tone/Mod and Dynamics/Tempo pages in the existing editor style. Tape Glide describes pitch-changing time transitions, not a tape circuit emulation. Duck attack is fixed at 5 ms. Manual times and cross-feedback are disabled when overridden by sync and ping-pong respectively.
 
 Original 28 host parameter IDs retain their order; 22 new parameters are appended (50 total). Older presets default the master effect off. Tests cover stereo isolation, ping-pong timing, ducking, fractional interpolation, malformed controls, automation allocation checks, tempo, recall and global output mute. This is one post-chain master module, not an insertable Grid block or arbitrary feedback-effects chain. The 21 existing Grid processing types remain. FDN reverb, convolution room modes and the full factory catalog remain unfinished. Studio-quality listening evaluation, reference-device matching, Windows 11 audio behavior and Anubis hardware I/O are not certified by these tests. Installer unsigned.
+
+## 6.10 stereo FDN reverb milestone
+
+Verified Windows build: https://github.com/mikey423a/VirtualCortex/actions/runs/41447139700. Source 5cb1525a24e40bd73b6547367e86d1aaf03cda56. The EXE/VST3 compiled on Windows Server 2022; all 28 CTests, pluginval strictness 5, standalone startup and installer install/uninstall checks passed.
+
+Stereo Reverb is a new optional post-chain master module, following Stereo Delay and preceding global output trim. It is not a Grid insert and does not replace the old reverb blocks. Select Stereo Reverb from the category dropdown, choose a starting preset and use SHOW EDITORS. Space / Tone-Mod / Output-Dynamics pages expose 18 parameters: nominal decay (0.2–20 s), size (0.5–2), predelay (0–500 ms), diffusion, early/late balance, mix, low decay ratio (0.25–2), high decay ratio (0.1–1), low/high crossover frequencies, modulation rate/depth, width, wet ducking, duck release, wet level and input high/low cuts. Duck attack is fixed at 5 ms. Size/predelay automation uses smoothed moving reads, so changes can shift pitch. Power fades the wet mix down rather than providing a spillover/freeze mode.
+
+The original algorithm uses eight unequal feedback delays, normalized orthogonal Hadamard mixing, four input allpasses per channel, separate early taps, linear fractional reads and two frequency-dependent feedback shelves. Linear interpolation colors the high-frequency decay; the nominal decay and ratios are design targets rather than exact measured band RT60 guarantees. Filters have bounded gain at fixed settings; buffer guards remain for malformed/extreme inputs. This is not a factory model or a copied proprietary algorithm.
+
+There are now 69 host parameters: all previous 50 IDs and their order are retained, with 18 reverb controls and one enable appended. Old presets default the new master off. Portable tests verify broadband decay, stereo decorrelation, zero wet width, early timing, damping, ducking, extreme automation, malformed controls, bypass fade and prepare/reset. A nominal 1.2 s unmodulated broadband tail measured approximately 1.10–1.13 s at 44.1/48/96/192 kHz using a -5 to -25 dB Schroeder slope. These measurements cover the tested configuration only. Native tests verify state migration, allocation-free tested automation, output mute and all editor pages.
+
+Further work includes octave-band characterization across the control range, aliasing/discontinuity/CPU measurements, level-matched musical listening, convolution/hybrid modes and additional genuine device implementations. This release does not certify studio-quality sound, full Neural DSP catalog parity, Windows 11 audio behavior or Anubis hardware I/O. Installer unsigned.
