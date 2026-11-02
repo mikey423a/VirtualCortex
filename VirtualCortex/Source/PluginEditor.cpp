@@ -3,7 +3,7 @@
 
 namespace {
 const juce::Colour background(0xff090a0b), panel(0xff1c1d1f), muted(0xff8a8e93), mint(0xff53e3c2);
-void text(juce::Graphics& g,const juce::String& s,juce::Rectangle<int> r,float size,juce::Colour c=juce::Colours::white,int align=juce::Justification::centredLeft){
+void drawCaption(juce::Graphics& g,const juce::String& s,juce::Rectangle<int> r,float size,juce::Colour c=juce::Colours::white,int align=juce::Justification::centredLeft){
  g.setColour(c);g.setFont(juce::Font(juce::FontOptions(size)));g.drawFittedText(s,r,align,1);
 }
 }
@@ -67,16 +67,16 @@ void CortexBlockButton::paintButton(juce::Graphics& g,bool over,bool){
  if(stomp){
   g.setColour(blockEnabled&&type?colour.withAlpha(.13f):juce::Colour(0xff191b1d));g.fillRoundedRectangle(bounds.reduced(1),5.f);
   g.setColour(selected?colour:juce::Colour(0xff303338));g.drawRoundedRectangle(bounds.reduced(1),5.f,selected?2.f:1.f);
-  text(g,caption,getLocalBounds().withTrimmedLeft(9).removeFromTop(22),12.f,colour);
+  drawCaption(g,caption,getLocalBounds().withTrimmedLeft(9).removeFromTop(22),12.f,colour);
   drawIcon(g,{bounds.getCentreX()-10,25.f,20.f,20.f},type,blockEnabled?juce::Colours::white:muted);
-  text(g,nameFor(type),getLocalBounds().withTrimmedTop(47),11.f,blockEnabled?juce::Colours::white:muted,juce::Justification::centred);return;
+  drawCaption(g,nameFor(type),getLocalBounds().withTrimmedTop(47),11.f,blockEnabled?juce::Colours::white:muted,juce::Justification::centred);return;
  }
  const float side=juce::jmin(bounds.getWidth()-4.f,bounds.getHeight()-15.f);
  auto box=juce::Rectangle<float>(side,side).withCentre({bounds.getCentreX(),bounds.getCentreY()-5.f});
  g.setColour(selected?colour.withAlpha(.16f):juce::Colour(over?0xff242628:0xff101213));g.fillRoundedRectangle(box,10.f);
  g.setColour(blockEnabled?colour:colour.withAlpha(.3f));g.drawRoundedRectangle(box,10.f,selected?3.f:1.4f);
  drawIcon(g,box.reduced(side*.24f),type,blockEnabled?juce::Colours::white:muted.withAlpha(.5f));
- text(g,nameFor(type),{0,(int)box.getBottom()+2,getWidth(),12},10.f,selected?colour:muted,juce::Justification::centred);
+ drawCaption(g,nameFor(type),{0,(int)box.getBottom()+2,getWidth(),10},10.f,selected?colour:muted,juce::Justification::centred);
 }
 VirtualCortexEditor::VirtualCortexEditor(VirtualCortexProcessor& p):AudioProcessorEditor(&p),processor(p){
  setLookAndFeel(&look);
@@ -153,19 +153,19 @@ void VirtualCortexEditor::resized(){const int w=getWidth(),h=getHeight();const i
  const int sw=(mainWidth-100)/8;for(int c=0;c<8;++c)stomps[(size_t)c].setBounds(left+100+c*sw,stompArea.getY(),sw-4,stompArea.getHeight());statusLabel.setBounds(left,h-26,mainWidth-8,22);
 }
 void VirtualCortexEditor::paint(juce::Graphics& g){g.fillAll(background);const int w=getWidth(),h=getHeight();
- text(g,"VIRTUAL CORTEX",{18,10,260,28},19.f);text(g,"6.1  /  GRID WORKSPACE",{282,15,290,20},11.f,muted);g.setColour(juce::Colour(0xff292b2e));g.drawHorizontalLine(43,12.f,(float)w-12.f);
- text(g,"DEVICE BROWSER",{22,102,166,22},12.f);text(g,"Select a type, then add to slot",{22,123,166,16},10.f,muted);
- g.setColour(panel);g.fillRoundedRectangle(browserArea.toFloat(),6.f);text(g,"DEVICE BROWSER",{22,102,166,22},12.f);text(g,"Original effects",{22,124,166,15},10.f,muted);
- text(g,"SERIAL PRESET",{18,51,180,18},10.f,muted);text(g,"Amp / effects / cabinet IR",{18,70,180,18},11.f);
+ drawCaption(g,"VIRTUAL CORTEX",{18,10,260,28},19.f);drawCaption(g,"6.1  /  GRID WORKSPACE",{282,15,290,20},11.f,muted);g.setColour(juce::Colour(0xff292b2e));g.drawHorizontalLine(43,12.f,(float)w-12.f);
+ drawCaption(g,"DEVICE BROWSER",{22,102,166,22},12.f);drawCaption(g,"Select a type, then add to slot",{22,123,166,16},10.f,muted);
+ g.setColour(panel);g.fillRoundedRectangle(browserArea.toFloat(),6.f);drawCaption(g,"DEVICE BROWSER",{22,102,166,22},12.f);drawCaption(g,"Original effects",{22,124,166,15},10.f,muted);
+ drawCaption(g,"SERIAL PRESET",{18,51,180,18},10.f,muted);drawCaption(g,"Amp / effects / cabinet IR",{18,70,180,18},11.f);
  const auto grid=processor.getEditableGrid();const float rowHeight=gridArea.getHeight()/4.f;
- for(int r=0;r<4;++r){const float yy=gridArea.getY()+r*rowHeight+rowHeight*.5f-5.f;g.setColour(juce::Colour(processor.isGridLaneEnabled((size_t)r)?0xff656a70:0xff282c30));g.drawLine((float)gridArea.getX()+43,yy,(float)gridArea.getRight()-40,yy,1.f);text(g,"OUT",{gridArea.getRight()-36,(int)yy-12,34,18},9.f,muted,juce::Justification::centred);text(g,"1/2",{gridArea.getRight()-36,(int)yy+2,34,16},9.f,muted,juce::Justification::centred);}
+ for(int r=0;r<4;++r){const float yy=gridArea.getY()+r*rowHeight+rowHeight*.5f-5.f;g.setColour(juce::Colour(processor.isGridLaneEnabled((size_t)r)?0xff656a70:0xff282c30));g.drawLine((float)gridArea.getX()+43,yy,(float)gridArea.getRight()-40,yy,1.f);drawCaption(g,"OUT",{gridArea.getRight()-36,(int)yy-12,34,18},9.f,muted,juce::Justification::centred);drawCaption(g,"1/2",{gridArea.getRight()-36,(int)yy+2,34,16},9.f,muted,juce::Justification::centred);}
  const auto p=parameterArea;g.setColour(panel);g.fillRoundedRectangle(p.toFloat(),6.f);g.setColour(juce::Colour(0xff303338));g.drawHorizontalLine(p.getY()+33,(float)p.getX(),(float)p.getRight());const auto colour=CortexBlockButton::colourFor(currentType());
- juce::String title=masterPage?"Output":CortexBlockButton::nameFor(currentType());const juce::String context=gridMode()?"  /  ROW "+juce::String(selectedRow+1)+"  SLOT "+juce::String(selectedColumn+1):"  /  SERIAL ENGINE";text(g,title+context,{p.getX()+14,p.getY()+4,p.getWidth()-160,26},14.f,colour);
- const auto indices=gridMode()&&!masterPage?visibleSlotControls():visibleKnobs();for(int i:indices){const auto b=gridMode()&&!masterPage?slotSliders[(size_t)i].getBounds():knobs[(size_t)i].slider.getBounds();text(g,gridMode()&&!masterPage?slotLabels[(size_t)i]:knobs[(size_t)i].label,{b.getX(),p.getY()+36,b.getWidth(),16},10.f,juce::Colours::white,juce::Justification::centred);}
- if(indices.empty()){juce::String help=currentType()==0?"Choose a device in the browser and add it to this slot.":currentType()==3?"Load a WAV impulse response for this cabinet slot.":"This grid effect uses fixed settings in the current DSP engine.";text(g,help,{p.getX()+20,p.getY()+51,p.getWidth()-200,p.getHeight()-64},12.f,muted);}
- if(masterPage&&gridMode())text(g,"Trim applies to Serial engine",{p.getX()+150,p.getY()+65,260,28},11.f,muted);
- text(g,"STOMP",{stompArea.getX()+7,stompArea.getY()+10,90,20},12.f);text(g,"ROW "+juce::String(selectedRow+1),{stompArea.getX()+7,stompArea.getY()+32,90,18},11.f,muted);
- text(g,gridMode()?"GRID ACTIVE":"SERIAL ACTIVE",{18,h-25,182,20},10.f,gridMode()?mint:muted);if(statusLabel.getText().isEmpty())text(g,"Click a block to edit  /  A-H toggle slots in the selected row",{gridArea.getX(),h-25,gridArea.getWidth(),20},10.f,muted);
+ juce::String title=masterPage?"Output":CortexBlockButton::nameFor(currentType());const juce::String context=gridMode()?"  /  ROW "+juce::String(selectedRow+1)+"  SLOT "+juce::String(selectedColumn+1):"  /  SERIAL ENGINE";drawCaption(g,title+context,{p.getX()+14,p.getY()+4,p.getWidth()-160,26},14.f,colour);
+ const auto indices=gridMode()&&!masterPage?visibleSlotControls():visibleKnobs();for(int i:indices){const auto b=gridMode()&&!masterPage?slotSliders[(size_t)i].getBounds():knobs[(size_t)i].slider.getBounds();drawCaption(g,gridMode()&&!masterPage?slotLabels[(size_t)i]:knobs[(size_t)i].label,{b.getX(),p.getY()+36,b.getWidth(),16},10.f,juce::Colours::white,juce::Justification::centred);}
+ if(indices.empty()){juce::String help=currentType()==0?"Choose a device in the browser and add it to this slot.":currentType()==3?"Load a WAV impulse response for this cabinet slot.":"This grid effect uses fixed settings in the current DSP engine.";drawCaption(g,help,{p.getX()+20,p.getY()+51,p.getWidth()-200,p.getHeight()-64},12.f,muted);}
+ if(masterPage&&gridMode())drawCaption(g,"Trim applies to Serial engine",{p.getX()+150,p.getY()+65,260,28},11.f,muted);
+ drawCaption(g,"STOMP",{stompArea.getX()+7,stompArea.getY()+10,90,20},12.f);drawCaption(g,"ROW "+juce::String(selectedRow+1),{stompArea.getX()+7,stompArea.getY()+32,90,18},11.f,muted);
+ drawCaption(g,gridMode()?"GRID ACTIVE":"SERIAL ACTIVE",{18,h-25,182,20},10.f,gridMode()?mint:muted);if(statusLabel.getText().isEmpty())drawCaption(g,"Click a block to edit  /  A-H toggle slots in the selected row",{gridArea.getX(),h-25,gridArea.getWidth(),20},10.f,muted);
 }
 void VirtualCortexEditor::applyPreset(int index){auto set=[this](const char* id,float value){if(auto* p=processor.parameters.getParameter(id))p->setValueNotifyingHost(p->convertTo0to1(value));};if(index<2)return;set("gridMode",0.f);
  if(index==2){set("drive",.12f);set("tone",.7f);set("level",.65f);set("delayMix",.12f);set("reverbMix",.25f);set("ampBias",0.f);set("delayOn",1.f);set("reverbOn",1.f);}
