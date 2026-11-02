@@ -13,7 +13,7 @@ int main(int argc,char** argv){
   require(dir.createDirectory().wasOk(),"Cannot create screenshot directory");
   auto capture=[&](const char* name,int w,int h){
    editor->setSize(w,h);
-   for(int i=0;i<editor->getNumChildComponents();++i){auto* child=editor->getChildComponent(i);if(child->isVisible())require(editor->getLocalBounds().contains(child->getBounds()),"A visible control is clipped by the window");}
+   for(int i=0;i<editor->getNumChildComponents();++i){auto* child=editor->getChildComponent(i);if(child->isVisible())require(editor->getLocalBounds().contains(child->getBoundsInParent()),"A visible control is clipped by the window");}
    const auto image=editor->createComponentSnapshot(editor->getLocalBounds());
    require(image.isValid(),"Editor snapshot failed");
    auto out=dir.getChildFile(name).createOutputStream();require(out!=nullptr,"PNG output failed");
@@ -21,14 +21,18 @@ int main(int argc,char** argv){
   };
   auto* tone=dynamic_cast<juce::Slider*>(editor->findChildWithID("tone"));
   require(tone!=nullptr,"Tone control missing");
-  bool formatted=false;
-  for(int i=0;i<tone->getNumChildComponents();++i)if(auto* label=dynamic_cast<juce::Label*>(tone->getChildComponent(i)))formatted|=label->getText()=="60.0 %";
-  require(formatted,"Initial tone value was not formatted before interaction");
+  auto* toneValue=dynamic_cast<juce::Label*>(editor->findChildWithID("toneValue"));
+  require(toneValue!=nullptr&&toneValue->getText()=="60.0 %","Initial tone value was not formatted before interaction");
   auto* drive=dynamic_cast<juce::Slider*>(editor->findChildWithID("drive"));require(drive!=nullptr,"Drive control missing");
   drive->setValue(.73,juce::sendNotificationSync);
   require(std::abs(processor->parameters.getRawParameterValue("drive")->load()-.73f)<.001f,"Drive control did not update processor");
+  auto* driveValue=dynamic_cast<juce::Label*>(editor->findChildWithID("driveValue"));require(driveValue!=nullptr,"Editable drive readout missing");
+  driveValue->setText("61.0 %",juce::sendNotificationSync);
+  require(std::abs(processor->parameters.getRawParameterValue("drive")->load()-.61f)<.001f,"Editable value did not update processor");
   drive->setValue(.35,juce::sendNotificationSync);
+  capture("reference-1184x864.png",1184,864);
   capture("serial-1120x660.png",1120,660);
+  capture("compact-822x600.png",822,600);
   capture("compact-900x560.png",900,560);
   capture("large-1600x900.png",1600,900);
   editor->selectSlot(0,4);require(editor->insertBlock(6),"Block insertion failed");
@@ -41,6 +45,8 @@ int main(int argc,char** argv){
   capture("grid-reverb-1120x660.png",1120,660);
   editor->selectSlot(0,1);
   capture("grid-amp-1120x660.png",1120,660);
+  editor->selectSlot(3,2);
+  capture("bank-II-1184x864.png",1184,864);
   editor.reset();processor->releaseResources();
   std::cout<<"PASS: native editor snapshots at three sizes, control binding, insertion and bypass\n";
   return 0;

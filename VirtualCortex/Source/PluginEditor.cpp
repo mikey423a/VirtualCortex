@@ -20,12 +20,25 @@ CortexLookAndFeel::CortexLookAndFeel(){
  setColour(juce::Slider::textBoxTextColourId,juce::Colours::white);
  setColour(juce::Slider::textBoxBackgroundColourId,juce::Colours::transparentBlack);
 }
-void CortexLookAndFeel::drawButtonBackground(juce::Graphics& g,juce::Button& b,const juce::Colour&,bool over,bool down){
- auto r=b.getLocalBounds().toFloat().reduced(1.f);
- g.setColour(b.getToggleState()?juce::Colour(0xff25473e):juce::Colour(over?0xff303337:0xff222426));
- g.fillRoundedRectangle(r,5.f);
- g.setColour(b.getToggleState()?mint:juce::Colour(down?0xff7c858c:0xff34373b));
- g.drawRoundedRectangle(r,5.f,1.f);
+void CortexLookAndFeel::drawButtonBackground(juce::Graphics& g,juce::Button& b,const juce::Colour&,bool over,bool){
+ const auto id=b.getComponentID();auto r=b.getLocalBounds().toFloat();
+ if(id=="directory"){return;}
+ if(id.startsWith("device-")){if(b.getToggleState()||over){g.setColour(juce::Colour(0xff111212));g.fillRoundedRectangle(r,6.f);}return;}
+ g.setColour(juce::Colour(b.getToggleState()&&id.startsWith("quick-")?0xffffd545:(over?0xff292929:0xff1d1d1d)));g.fillRoundedRectangle(r.reduced(.5f),id=="lane"?16.f:5.f);
+}
+void CortexLookAndFeel::drawButtonText(juce::Graphics& g,juce::TextButton& b,bool,bool){
+ const auto id=b.getComponentID();auto r=b.getLocalBounds();
+ if(id=="save"){g.setColour(muted);auto box=r.toFloat().reduced(9.f);g.drawRect(box,1.5f);g.drawRect(box.reduced(4.f,0).withHeight(7.f),1.f);g.drawRect(box.reduced(4.f,0).withY(box.getBottom()-8).withHeight(8.f),1.f);return;}
+ if(id=="open"){drawCaption(g,"...",r,21.f,muted,juce::Justification::centred);return;}
+ const auto c=b.getToggleState()&&id.startsWith("quick-")?juce::Colours::black:(id.startsWith("device-")&&b.getToggleState()?juce::Colour(0xff8bf879):(id=="directory"?muted:juce::Colours::white));
+ drawCaption(g,b.getButtonText(),id.startsWith("device-")?r.reduced(9,0):r,id.startsWith("device-")?14.f:12.f,c,id.startsWith("device-")?juce::Justification::centredLeft:juce::Justification::centred);
+}
+void CortexLookAndFeel::drawToggleButton(juce::Graphics& g,juce::ToggleButton& b,bool over,bool){
+ if(b.getComponentID()=="power"||b.getComponentID()=="bypass"){
+  const auto r=b.getLocalBounds().toFloat().reduced(8.f);const auto c=b.getToggleState()?mint:muted;
+  g.setColour(c);juce::Path arc;arc.addCentredArc(r.getCentreX(),r.getCentreY(),r.getWidth()*.4f,r.getWidth()*.4f,0,.55f,5.73f,true);g.strokePath(arc,juce::PathStrokeType(1.4f));g.drawLine(r.getCentreX(),r.getY()+1,r.getCentreX(),r.getCentreY(),1.4f);return;
+ }
+ juce::LookAndFeel_V4::drawToggleButton(g,b,over,false);
 }
 void CortexLookAndFeel::drawRotarySlider(juce::Graphics& g,int x,int y,int w,int h,float pos,float start,float end,juce::Slider& s){
  const float size=juce::jmin((float)w,(float)h)-10.f;
@@ -56,7 +69,7 @@ void CortexBlockButton::drawIcon(juce::Graphics& g,juce::Rectangle<float> r,int 
  if(type==2){g.drawRoundedRectangle(r.reduced(2*u,5*u),1.f,1.4f);g.drawLine(r.getX()+5*u,cy,r.getRight()-5*u,cy,1.2f);return;}
  if(type==3){g.drawEllipse(cx-8*u,cy-8*u,16*u,16*u,1.4f);g.drawEllipse(cx-3*u,cy-3*u,6*u,6*u,1.2f);return;}
  if(type==4){for(int i=0;i<3;++i){auto xx=cx+(i-1)*7*u;auto yy=cy+(i==1?3.f:-3.f)*u;g.drawLine(xx,cy-9*u,xx,cy+9*u,1.2f);g.fillRoundedRectangle(xx-2*u,yy-2*u,4*u,4*u,1.f);}return;}
- if(type==5){for(int i=0;i<4;++i){const auto a=(8-2*i)*u;g.drawLine(cx+(i*5-8)*u,cy-a,cx+(i*5-8)*u,cy+a,1.5f);}return;}
+ if(type==5){for(int wave=0;wave<3;++wave){juce::Path line;for(int i=0;i<=40;++i){float t=i/40.f;float xx=cx-9*u+6*u*t+wave*6*u;float yy=cy+std::sin(t*6.2831853f)*10*u;if(i==0)line.startNewSubPath(xx,yy);else line.lineTo(xx,yy);}g.strokePath(line,juce::PathStrokeType(1.f));}return;}
  if(type==6){p.startNewSubPath(cx-8*u,cy-4*u);p.lineTo(cx+2*u,cy-4*u);p.lineTo(cx+2*u,cy+7*u);p.lineTo(cx-8*u,cy+7*u);p.closeSubPath();p.startNewSubPath(cx-8*u,cy-4*u);p.lineTo(cx-2*u,cy-10*u);p.lineTo(cx+8*u,cy-10*u);p.lineTo(cx+8*u,cy+1*u);p.lineTo(cx+2*u,cy+7*u);p.startNewSubPath(cx+2*u,cy-4*u);p.lineTo(cx+8*u,cy-10*u);g.strokePath(p,juce::PathStrokeType(1.2f));return;}
  p.startNewSubPath(r.getX(),cy);
  for(int i=1;i<=40;++i){float t=i/40.f;float yy=type==1?(t<.45f?-.55f:.55f):std::sin(t*6.2831853f*(type==7?1.f:2.f))*.7f;p.lineTo(r.getX()+t*r.getWidth(),cy+yy*r.getHeight()*.45f);}
@@ -64,50 +77,70 @@ void CortexBlockButton::drawIcon(juce::Graphics& g,juce::Rectangle<float> r,int 
 }
 void CortexBlockButton::paintButton(juce::Graphics& g,bool over,bool){
  const auto bounds=getLocalBounds().toFloat();const auto colour=colourFor(type);
- if(stomp){
-  g.setColour(blockEnabled&&type?colour.withAlpha(.13f):juce::Colour(0xff191b1d));g.fillRoundedRectangle(bounds.reduced(1),5.f);
-  g.setColour(selected?colour:juce::Colour(0xff303338));g.drawRoundedRectangle(bounds.reduced(1),5.f,selected?2.f:1.f);
-  drawCaption(g,caption,getLocalBounds().withTrimmedLeft(9).removeFromTop(22),12.f,colour);
-  drawIcon(g,{bounds.getCentreX()-10,25.f,20.f,20.f},type,blockEnabled?juce::Colours::white:muted);
-  drawCaption(g,nameFor(type),getLocalBounds().withTrimmedTop(47),11.f,blockEnabled?juce::Colours::white:muted,juce::Justification::centred);return;
+ if(rail){
+  if(selected){g.setColour(mint);g.fillRect(0,12,2,getHeight()-24);}
+  drawIcon(g,{bounds.getCentreX()-12,bounds.getCentreY()-12,24,24},type,selected?juce::Colours::white:juce::Colour(0xff66696b));return;
  }
- const float side=juce::jmin(bounds.getWidth()-4.f,bounds.getHeight()-15.f);
- auto box=juce::Rectangle<float>(side,side).withCentre({bounds.getCentreX(),bounds.getCentreY()-5.f});
- g.setColour(selected?colour.withAlpha(.16f):juce::Colour(over?0xff242628:0xff101213));g.fillRoundedRectangle(box,10.f);
- g.setColour(blockEnabled?colour:colour.withAlpha(.3f));g.drawRoundedRectangle(box,10.f,selected?3.f:1.4f);
- drawIcon(g,box.reduced(side*.24f),type,blockEnabled?juce::Colours::white:muted.withAlpha(.5f));
- drawCaption(g,nameFor(type),{0,(int)box.getBottom()+2,getWidth(),10},10.f,selected?colour:muted,juce::Justification::centred);
+ if(stomp){
+  g.setColour(selected?mint:(type?colour.withAlpha(.085f):juce::Colour(0xff242424)));g.fillRect(bounds);
+  g.setColour(juce::Colour(0xff050505));g.drawRect(bounds,1.f);
+  const auto ink=selected?juce::Colours::black:juce::Colours::white;
+  drawCaption(g,caption,{getWidth()-27,6,23,25},20.f,selected?juce::Colour(0xff316f63):muted,juce::Justification::centred);
+  auto box=juce::Rectangle<float>(48,48).withCentre({bounds.getCentreX(),43.f});g.setColour(selected?juce::Colour(0xff073d34):colour);g.drawRoundedRectangle(box,12.f,selected?3.f:1.5f);drawIcon(g,box.reduced(10),type,ink);
+  drawCaption(g,type?nameFor(type):"Empty slot",{8,75,getWidth()-16,31},16.f,ink,juce::Justification::centred);return;
+ }
+ if(type==0&&!selected&&!over)return;
+ const float side=62.f;auto box=juce::Rectangle<float>(side,side).withCentre({bounds.getCentreX(),bounds.getCentreY()});
+ g.setColour(selected?colour.withAlpha(.13f):juce::Colour(0xff101111));g.fillRoundedRectangle(box,16.f);
+ g.setColour(blockEnabled?colour:colour.withAlpha(.3f));g.drawRoundedRectangle(box,16.f,selected?5.f:1.7f);
+ drawIcon(g,box.reduced(15.f),type,blockEnabled?juce::Colours::white:muted.withAlpha(.55f));
+ if(type){const auto badge=juce::Rectangle<float>(24,24).withCentre({box.getX()-1,box.getY()-1});g.setColour(juce::Colours::white);g.fillEllipse(badge);drawCaption(g,caption,badge.toNearestInt(),15.f,juce::Colours::black,juce::Justification::centred);}
 }
 VirtualCortexEditor::VirtualCortexEditor(VirtualCortexProcessor& p):AudioProcessorEditor(&p),processor(p){
  setLookAndFeel(&look);
  const std::array<const char*,18> ids={"gate","drive","tone","level","cab","delayTime","delayFeedback","delayMix","reverbMix","ampBias","inputHP","cabCut","tremRate","tremDepth","outputTrim","eqLow","eqMid","eqHigh"};
  const std::array<const char*,18> labels={"THRESHOLD","DRIVE","TONE","LEVEL","CAB MIX","TIME","FEEDBACK","MIX","MIX","BIAS","INPUT HIGH PASS","LOW PASS","RATE","DEPTH","OUTPUT TRIM","BASS","MID","TREBLE"};
- for(size_t i=0;i<knobs.size();++i){auto& k=knobs[i];k.label=labels[i];k.slider.setComponentID(ids[i]);k.slider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);k.slider.setTextBoxStyle(juce::Slider::TextBoxBelow,false,96,20);addChildComponent(k.slider);k.attachment=std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(p.parameters,ids[i],k.slider);
+ for(size_t i=0;i<knobs.size();++i){auto& k=knobs[i];k.label=labels[i];k.slider.setComponentID(ids[i]);k.slider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);k.slider.setTextBoxStyle(juce::Slider::NoTextBox,false,0,0);addChildComponent(k.slider);k.attachment=std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(p.parameters,ids[i],k.slider);
   k.slider.valueFromTextFunction=[i](const juce::String& text){double v=text.getDoubleValue();return (i==0||i>=15||i==5||i==10||i==11||i==12||i==9)?v:v/100.;};
   k.slider.textFromValueFunction=[i](double v){if(i==0||i>=15)return juce::String(v,1)+" dB";if(i==5)return juce::String(v,0)+" ms";if(i==10||i==11)return juce::String(v,0)+" Hz";if(i==12)return juce::String(v,2)+" Hz";if(i==9)return juce::String(v,2);return juce::String(v*100,1)+" %";};
-  k.slider.updateText();
+  k.value.setComponentID(juce::String(ids[i])+"Value");k.value.setFont(juce::Font(juce::FontOptions(14.f)));k.value.setColour(juce::Label::textColourId,juce::Colours::white);k.value.setEditable(false,true,false);addChildComponent(k.value);
+  k.slider.onValueChange=[this,i]{auto& item=knobs[i];if(!item.value.isBeingEdited())item.value.setText(item.slider.getTextFromValue(item.slider.getValue()),juce::dontSendNotification);};
+  k.value.onTextChange=[this,i]{auto& item=knobs[i];item.slider.setValue(item.slider.getValueFromText(item.value.getText()),juce::sendNotificationSync);};
+  k.value.setText(k.slider.getTextFromValue(k.slider.getValue()),juce::dontSendNotification);
  }
  const std::array<const char*,10> switchesIds={"gateOn","ampOn","cabOn","delayOn","reverbOn","tremOn","bypass","eqOn","irOn","gridMode"};
  const std::array<const char*,10> switchesLabels={"ENABLED","ENABLED","ENABLED","ENABLED","ENABLED","ENABLED","BYPASS","ENABLED","USE IR","GRID ENGINE"};
  for(size_t i=0;i<switches.size();++i){auto& s=switches[i];s.button.setButtonText(switchesLabels[i]);addChildComponent(s.button);s.attachment=std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.parameters,switchesIds[i],s.button);}
- presetBox.addItem("Clean ambience",2);presetBox.addItem("Crunch rhythm",3);presetBox.addItem("Lead delay",4);presetBox.setTextWhenNothingSelected("01  Virtual Cortex / User preset");presetBox.onChange=[this]{applyPreset(presetBox.getSelectedId());};addAndMakeVisible(presetBox);
+ presetBox.addItem("Clean ambience",2);presetBox.addItem("Crunch rhythm",3);presetBox.addItem("Lead delay",4);presetBox.setTextWhenNothingSelected("1A Virtual Cortex MAIN");presetBox.onChange=[this]{applyPreset(presetBox.getSelectedId());};addAndMakeVisible(presetBox);
  for(auto* b:{&savePresetButton,&loadPresetButton,&addButton,&removeButton,&loadIRButton,&loadGridIRButton,&loadNeuralButton})addAndMakeVisible(*b);
  for(auto* l:{&irName,&gridIRName,&neuralName,&statusLabel}){l->setColour(juce::Label::textColourId,muted);l->setFont(juce::Font(juce::FontOptions(11.f)));addAndMakeVisible(*l);}
- for(int i=0;i<8;++i){auto& b=browserButtons[(size_t)i];b.setButtonText(CortexBlockButton::nameFor(i+1));b.onClick=[this,i]{browserType=i+1;masterPage=(i==7);lastView=-1;updateView();};addAndMakeVisible(b);}
+ for(int i=0;i<8;++i){auto& b=browserButtons[(size_t)i];b.rail=true;b.type=i+1;b.setTooltip(CortexBlockButton::nameFor(i+1));b.onClick=[this,i]{browserType=i+1;variant=0;masterPage=(i==7);lastView=-1;updateView();};addAndMakeVisible(b);}
  addButton.onClick=[this]{insertBlock(browserType);};removeButton.onClick=[this]{insertBlock(0);};
  slotEnabled.onClick=[this]{toggleSelectedSlot();};addAndMakeVisible(slotEnabled);
- for(int r=0;r<4;++r){auto& lane=laneButtons[(size_t)r];lane.setButtonText(juce::String(r+1));lane.onClick=[this,r]{processor.setGridLaneEnabled((size_t)r,laneButtons[(size_t)r].getToggleState());refreshGridControls();};addAndMakeVisible(lane);
+ for(int r=0;r<4;++r){auto& lane=laneButtons[(size_t)r];lane.setButtonText("ROW "+juce::String(r+1));lane.setComponentID("lane");lane.setClickingTogglesState(true);lane.onClick=[this,r]{processor.setGridLaneEnabled((size_t)r,laneButtons[(size_t)r].getToggleState());refreshGridControls();};addAndMakeVisible(lane);
   for(int c=0;c<8;++c){auto& b=gridCells[(size_t)r][(size_t)c];b.onClick=[this,r,c]{selectSlot(r,c);};addAndMakeVisible(b);}
  }
  for(int c=0;c<8;++c){auto& b=stomps[(size_t)c];b.stomp=true;b.caption=juce::String::charToString((juce::juce_wchar)('A'+c));b.onClick=[this,c]{selectSlot(selectedRow,c);toggleSelectedSlot();};addAndMakeVisible(b);}
- for(int i=0;i<6;++i){auto& s=slotSliders[(size_t)i];s.setRange(0.,1.,.001);s.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);s.setTextBoxStyle(juce::Slider::TextBoxBelow,false,96,20);s.valueFromTextFunction=[i](const juce::String& text){double v=text.getDoubleValue();if(i==2)return (v-20.)/480.;if(i==4)return (v-.1)/9.9;return v/(i==3?90.:100.);};s.textFromValueFunction=[i](double v){if(i==2)return juce::String(20.+480.*v,0)+" ms";if(i==4)return juce::String(.1+9.9*v,2)+" Hz";return juce::String(v*(i==3?90.:100.),1)+" %";};s.onValueChange=[this]{commitSlotControls();};addChildComponent(s);}
+ for(int i=0;i<6;++i){auto& s=slotSliders[(size_t)i];s.setRange(0.,1.,.001);s.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);s.setTextBoxStyle(juce::Slider::NoTextBox,false,0,0);s.valueFromTextFunction=[i](const juce::String& text){double v=text.getDoubleValue();if(i==2)return (v-20.)/480.;if(i==4)return (v-.1)/9.9;return v/(i==3?90.:100.);};s.textFromValueFunction=[i](double v){if(i==2)return juce::String(20.+480.*v,0)+" ms";if(i==4)return juce::String(.1+9.9*v,2)+" Hz";return juce::String(v*(i==3?90.:100.),1)+" %";};s.onValueChange=[this]{commitSlotControls();};addChildComponent(s);
+  auto& value=slotValues[(size_t)i];value.setFont(juce::Font(juce::FontOptions(14.f)));value.setColour(juce::Label::textColourId,juce::Colours::white);value.setEditable(false,true,false);value.onTextChange=[this,i]{slotSliders[(size_t)i].setValue(slotSliders[(size_t)i].getValueFromText(slotValues[(size_t)i].getText()),juce::sendNotificationSync);};addChildComponent(value);}
  loadIRButton.onClick=[this]{irChooser=std::make_unique<juce::FileChooser>("Load cabinet IR",juce::File{},"*.wav;*.aiff;*.aif");auto safe=juce::Component::SafePointer<VirtualCortexEditor>(this);irChooser->launchAsync(juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles,[safe](const juce::FileChooser& c){if(safe&&c.getResult().existsAsFile()){safe->statusLabel.setText(safe->processor.loadCabinetIR(c.getResult())?"Cabinet IR loaded":"Could not load IR",juce::dontSendNotification);safe->refreshSlotControls();}});};
  loadGridIRButton.onClick=[this]{const auto r=selectedRow,c=selectedColumn;irChooser=std::make_unique<juce::FileChooser>("Load selected cabinet WAV IR",juce::File{},"*.wav");auto safe=juce::Component::SafePointer<VirtualCortexEditor>(this);irChooser->launchAsync(juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles,[safe,r,c](const juce::FileChooser& chooser){if(safe&&chooser.getResult().existsAsFile()){bool ok=safe->processor.loadGridCabinetIR(chooser.getResult(),(size_t)r,(size_t)c);safe->statusLabel.setText(ok?"Slot IR loaded":"IR rejected: WAV, max 4096 taps",juce::dontSendNotification);safe->refreshSlotControls();}});};
  loadNeuralButton.onClick=[this]{const auto r=selectedRow,c=selectedColumn;neuralChooser=std::make_unique<juce::FileChooser>("Load VCMLP1 amplifier model",juce::File{},"*.vcmlp;*.txt");auto safe=juce::Component::SafePointer<VirtualCortexEditor>(this);neuralChooser->launchAsync(juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles,[safe,r,c](const juce::FileChooser& chooser){if(safe&&chooser.getResult().existsAsFile()){bool ok=safe->processor.loadGridNeuralModel(chooser.getResult(),(size_t)r,(size_t)c);safe->statusLabel.setText(ok?"Model loaded":"Choose an enabled Amp slot and VCMLP1 model",juce::dontSendNotification);safe->refreshSlotControls();}});};
  savePresetButton.onClick=[this]{presetChooser=std::make_unique<juce::FileChooser>("Save preset",juce::File{},"*.vcpreset");auto safe=juce::Component::SafePointer<VirtualCortexEditor>(this);presetChooser->launchAsync(juce::FileBrowserComponent::saveMode|juce::FileBrowserComponent::canSelectFiles|juce::FileBrowserComponent::warnAboutOverwriting,[safe](const juce::FileChooser& c){if(!safe||c.getResult()==juce::File{})return;juce::MemoryBlock data;safe->processor.getStateInformation(data);bool ok=c.getResult().withFileExtension(".vcpreset").replaceWithData(data.getData(),data.getSize());safe->statusLabel.setText(ok?"Preset saved":"Preset save failed",juce::dontSendNotification);});};
  loadPresetButton.onClick=[this]{presetChooser=std::make_unique<juce::FileChooser>("Open preset",juce::File{},"*.vcpreset");auto safe=juce::Component::SafePointer<VirtualCortexEditor>(this);presetChooser->launchAsync(juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles,[safe](const juce::FileChooser& c){if(!safe||!c.getResult().existsAsFile()||c.getResult().getSize()>1024*1024)return;juce::MemoryBlock data;if(c.getResult().loadFileAsData(data)){safe->processor.setStateInformation(data.getData(),(int)data.getSize());safe->refreshSlotControls();safe->lastView=-1;safe->updateView();safe->statusLabel.setText("Preset loaded",juce::dontSendNotification);}});};
- setResizable(true,true);setResizeLimits(900,560,1800,1100);
- int width=1120,height=660;if(auto* display=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay()){width=juce::jlimit(900,1120,display->userArea.getWidth()-80);height=juce::jlimit(560,660,display->userArea.getHeight()-130);}
+ savePresetButton.setComponentID("save");loadPresetButton.setComponentID("open");directoryButton.setComponentID("directory");
+ for(size_t i=0;i<switches.size();++i)if(i!=8&&i!=9){switches[i].button.setComponentID(i==6?"bypass":"power");switches[i].button.setTooltip(i==6?"Global bypass":"Enable selected effect");}
+ slotEnabled.setComponentID("power");
+ for(int i=0;i<8;++i){auto& b=deviceEntries[(size_t)i];b.setComponentID("device-"+juce::String(i));b.onClick=[this,i]{applyDeviceVariant(i);};addChildComponent(b);
+  auto& q=quickSelectors[(size_t)i];q.setComponentID("quick-"+juce::String(i));q.setButtonText(juce::String::charToString((juce::juce_wchar)('A'+i)));q.setTooltip("Select slot "+juce::String(i+1));q.onClick=[this,i]{selectSlot(selectedRow,i);};addAndMakeVisible(q);}
+ for(int i=0;i<2;++i){auto& b=bankButtons[(size_t)i];b.setButtonText(i==0?"I":"II");b.onClick=[this,i]{rowBank=i;selectSlot(i*2,selectedColumn);};addAndMakeVisible(b);}
+ previousPreset.onClick=[this]{int id=presetBox.getSelectedId();presetBox.setSelectedId(id<=2?4:id-1);};nextPreset.onClick=[this]{int id=presetBox.getSelectedId();presetBox.setSelectedId(id>=4?2:juce::jmax(2,id+1));};
+ directoryButton.onClick=[this]{loadPresetButton.triggerClick();};presetMenuButton.onClick=[this]{presetBox.showPopup();};stompModeButton.onClick=[this]{processor.parameters.getParameter("gridMode")->setValueNotifyingHost(1.f);lastView=-1;updateView();};
+ ioButton.onClick=[this]{statusLabel.setText("I/O: "+juce::String(processor.getTotalNumInputChannels())+" inputs / "+juce::String(processor.getTotalNumOutputChannels())+" outputs. Standalone driver settings are in the application's Audio Settings menu.",juce::dontSendNotification);};
+ for(auto* b:{&previousPreset,&nextPreset,&directoryButton,&ioButton,&presetMenuButton,&stompModeButton})addAndMakeVisible(*b);
+ for(int r=0;r<4;++r)rowSelector.addItem("ROW "+juce::String(r+1),r+1);rowSelector.setSelectedId(1,juce::dontSendNotification);rowSelector.onChange=[this]{selectSlot(rowSelector.getSelectedId()-1,selectedColumn);};addAndMakeVisible(rowSelector);
+ setResizable(true,true);setResizeLimits(800,584,1776,1296);getConstrainer()->setFixedAspectRatio(1184.0/864.0);
+ int width=1184,height=864;if(auto* display=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay()){height=juce::jlimit(584,864,display->userArea.getHeight()-100);width=(int)std::round(height*1184./864.);if(width>display->userArea.getWidth()-60){width=juce::jmax(800,display->userArea.getWidth()-60);height=(int)std::round(width*864./1184.);}}
  setSize(width,height);refreshSlotControls();updateView();startTimerHz(12);
 }
 VirtualCortexEditor::~VirtualCortexEditor(){stopTimer();setLookAndFeel(nullptr);}
@@ -119,57 +152,114 @@ std::vector<int> VirtualCortexEditor::visibleKnobs() const{
 std::vector<int> VirtualCortexEditor::visibleSlotControls() const{
  switch(currentType()){case 2:return {0};case 5:return {1,2,3};case 6:return {1};case 7:return {4,5};default:return {};}
 }
-void VirtualCortexEditor::selectSlot(int row,int col){if(!vc::SignalGrid::valid((size_t)row,(size_t)col))return;selectedRow=row;selectedColumn=col;masterPage=false;const auto grid=processor.getEditableGrid();const int type=(int)grid.get((size_t)row,(size_t)col)->type;if(type)browserType=type;lastView=-1;refreshSlotControls();updateView();}
+void VirtualCortexEditor::selectSlot(int row,int col){if(!vc::SignalGrid::valid((size_t)row,(size_t)col))return;selectedRow=row;selectedColumn=col;rowBank=row/2;rowSelector.setSelectedId(row+1,juce::dontSendNotification);masterPage=false;const auto grid=processor.getEditableGrid();const int type=(int)grid.get((size_t)row,(size_t)col)->type;if(type)browserType=type;lastView=-1;refreshSlotControls();updateView();}
 bool VirtualCortexEditor::insertBlock(int type){if(type<0||type>7)return false;bool ok=processor.setGridBlock((size_t)selectedRow,(size_t)selectedColumn,{(vc::BlockType)type,true});masterPage=false;lastView=-1;updateView();statusLabel.setText(gridMode()?"Block updated":"Block updated. Enable GRID ENGINE to hear the grid.",juce::dontSendNotification);return ok;}
 bool VirtualCortexEditor::toggleSelectedSlot(){const auto grid=processor.getEditableGrid();const auto slot=*grid.get((size_t)selectedRow,(size_t)selectedColumn);if(slot.type==vc::BlockType::Empty)return false;bool ok=processor.setGridBlock((size_t)selectedRow,(size_t)selectedColumn,{slot.type,!slot.enabled});refreshGridControls();return ok;}
-void VirtualCortexEditor::refreshGridControls(){const auto grid=processor.getEditableGrid();for(int r=0;r<4;++r){laneButtons[(size_t)r].setToggleState(processor.isGridLaneEnabled((size_t)r),juce::dontSendNotification);for(int c=0;c<8;++c){const auto slot=*grid.get((size_t)r,(size_t)c);auto& b=gridCells[(size_t)r][(size_t)c];b.type=(int)slot.type;b.blockEnabled=slot.enabled&&processor.isGridLaneEnabled((size_t)r);b.selected=r==selectedRow&&c==selectedColumn;b.repaint();}}
+void VirtualCortexEditor::refreshGridControls(){const auto grid=processor.getEditableGrid();for(int r=0;r<4;++r){laneButtons[(size_t)r].setToggleState(processor.isGridLaneEnabled((size_t)r),juce::dontSendNotification);for(int c=0;c<8;++c){const auto slot=*grid.get((size_t)r,(size_t)c);auto& b=gridCells[(size_t)r][(size_t)c];b.type=(int)slot.type;b.blockEnabled=slot.enabled&&processor.isGridLaneEnabled((size_t)r);b.selected=r==selectedRow&&c==selectedColumn;b.caption=juce::String::charToString((juce::juce_wchar)('A'+c));b.repaint();}}
  for(int c=0;c<8;++c){const auto slot=*grid.get((size_t)selectedRow,(size_t)c);auto& b=stomps[(size_t)c];b.type=(int)slot.type;b.blockEnabled=slot.enabled;b.selected=c==selectedColumn;b.repaint();}
+ for(int c=0;c<8;++c)quickSelectors[(size_t)c].setToggleState(c==selectedColumn,juce::dontSendNotification);
  slotEnabled.setToggleState(grid.get((size_t)selectedRow,(size_t)selectedColumn)->enabled,juce::dontSendNotification);
 }
-void VirtualCortexEditor::refreshSlotControls(){const auto p=processor.getGridSlotParameters((size_t)selectedRow,(size_t)selectedColumn);const float values[]={p.drive,p.mix,p.time,p.feedback,p.rate,p.depth};for(int i=0;i<6;++i)if(!slotSliders[(size_t)i].isMouseButtonDown())slotSliders[(size_t)i].setValue(values[i],juce::dontSendNotification);irName.setText(processor.getCabinetIRName(),juce::dontSendNotification);gridIRName.setText(processor.getGridCabinetIRName((size_t)selectedRow,(size_t)selectedColumn),juce::dontSendNotification);neuralName.setText(processor.getGridNeuralModelName((size_t)selectedRow,(size_t)selectedColumn),juce::dontSendNotification);}
+void VirtualCortexEditor::refreshSlotControls(){const auto p=processor.getGridSlotParameters((size_t)selectedRow,(size_t)selectedColumn);const float values[]={p.drive,p.mix,p.time,p.feedback,p.rate,p.depth};for(int i=0;i<6;++i)if(!slotSliders[(size_t)i].isMouseButtonDown())slotSliders[(size_t)i].setValue(values[i],juce::dontSendNotification);irName.setText(processor.getCabinetIRName(),juce::dontSendNotification);gridIRName.setText(processor.getGridCabinetIRName((size_t)selectedRow,(size_t)selectedColumn),juce::dontSendNotification);neuralName.setText(processor.getGridNeuralModelName((size_t)selectedRow,(size_t)selectedColumn),juce::dontSendNotification);
+ for(auto& k:knobs)if(!k.value.isBeingEdited())k.value.setText(k.slider.getTextFromValue(k.slider.getValue()),juce::dontSendNotification);
+ for(size_t i=0;i<6;++i)if(!slotValues[i].isBeingEdited())slotValues[i].setText(slotSliders[i].getTextFromValue(slotSliders[i].getValue()),juce::dontSendNotification);
+}
 void VirtualCortexEditor::commitSlotControls(){vc::SlotParameters p;p.drive=(float)slotSliders[0].getValue();p.mix=(float)slotSliders[1].getValue();p.time=(float)slotSliders[2].getValue();p.feedback=(float)slotSliders[3].getValue();p.rate=(float)slotSliders[4].getValue();p.depth=(float)slotSliders[5].getValue();processor.setGridSlotParameters((size_t)selectedRow,(size_t)selectedColumn,p);}
 void VirtualCortexEditor::timerCallback(){updateView();refreshSlotControls();}
-void VirtualCortexEditor::updateView(){refreshGridControls();const int type=currentType();const bool gm=gridMode();if(type==lastView&&gm==lastGridMode)return;if(gm!=lastGridMode)statusLabel.setText({},juce::dontSendNotification);lastView=type;lastGridMode=gm;for(auto& k:knobs)k.slider.setVisible(false);for(auto& s:slotSliders)s.setVisible(false);for(auto& s:switches)s.button.setVisible(false);
+void VirtualCortexEditor::updateView(){refreshGridControls();const int type=currentType();const bool gm=gridMode();if(type==lastView&&gm==lastGridMode)return;if(gm!=lastGridMode)statusLabel.setText({},juce::dontSendNotification);lastView=type;lastGridMode=gm;for(auto& k:knobs){k.slider.setVisible(false);k.value.setVisible(false);}for(auto& s:slotSliders)s.setVisible(false);for(auto& value:slotValues)value.setVisible(false);for(auto& s:switches)s.button.setVisible(false);
  switches[6].button.setVisible(true);switches[9].button.setVisible(true);
  const auto colour=CortexBlockButton::colourFor(type);
- if(!gm||masterPage){for(int i:visibleKnobs()){knobs[(size_t)i].slider.setVisible(true);knobs[(size_t)i].slider.setColour(juce::Slider::rotarySliderFillColourId,colour);knobs[(size_t)i].slider.setEnabled(!(gm&&masterPage));}int enable=-1;switch(type){case 1:enable=0;break;case 2:enable=1;break;case 3:enable=2;break;case 4:enable=7;break;case 5:enable=3;break;case 6:enable=4;break;case 7:enable=5;break;}if(enable>=0)switches[(size_t)enable].button.setVisible(true);switches[8].button.setVisible(type==3&&!gm);}
- else for(int i:visibleSlotControls()){slotSliders[(size_t)i].setVisible(true);slotSliders[(size_t)i].setColour(juce::Slider::rotarySliderFillColourId,colour);}
+ if(!gm||masterPage){for(int i:visibleKnobs()){knobs[(size_t)i].slider.setVisible(true);knobs[(size_t)i].value.setVisible(true);knobs[(size_t)i].slider.setColour(juce::Slider::rotarySliderFillColourId,colour);knobs[(size_t)i].slider.setEnabled(!(gm&&masterPage));knobs[(size_t)i].value.setEnabled(!(gm&&masterPage));}int enable=-1;switch(type){case 1:enable=0;break;case 2:enable=1;break;case 3:enable=2;break;case 4:enable=7;break;case 5:enable=3;break;case 6:enable=4;break;case 7:enable=5;break;}if(enable>=0)switches[(size_t)enable].button.setVisible(true);switches[8].button.setVisible(type==3&&!gm);}
+ else for(int i:visibleSlotControls()){slotSliders[(size_t)i].setVisible(true);slotValues[(size_t)i].setVisible(true);slotSliders[(size_t)i].setColour(juce::Slider::rotarySliderFillColourId,colour);}
  slotEnabled.setVisible(gm&&!masterPage&&type!=0);loadIRButton.setVisible(!gm&&type==3);irName.setVisible(!gm&&type==3);loadGridIRButton.setVisible(gm&&type==3);gridIRName.setVisible(gm&&type==3);loadNeuralButton.setVisible(gm&&type==2);neuralName.setVisible(gm&&type==2);addButton.setEnabled(browserType<8);removeButton.setEnabled(!masterPage);
- for(int i=0;i<8;++i)browserButtons[(size_t)i].setToggleState(i+1==browserType,juce::dontSendNotification);
+ for(int i=0;i<8;++i){browserButtons[(size_t)i].selected=i+1==browserType;browserButtons[(size_t)i].repaint();}refreshDeviceList();
  resized();repaint();
 }
-void VirtualCortexEditor::resized(){const int w=getWidth(),h=getHeight();const int left=210,mainWidth=w-left-16;
- browserArea={12,96,186,h-124};gridArea={left,98,mainWidth,juce::jlimit(180,240,(int)(h*.31f))};stompArea={left,h-108,mainWidth,78};parameterArea={left,gridArea.getBottom()+12,mainWidth,stompArea.getY()-gridArea.getBottom()-22};
- presetBox.setBounds(left,52,mainWidth-296,32);savePresetButton.setBounds(w-296,52,66,32);loadPresetButton.setBounds(w-222,52,66,32);switches[6].button.setBounds(w-145,52,120,32);switches[9].button.setBounds(w-168,9,150,32);
- for(int i=0;i<8;++i)browserButtons[(size_t)i].setBounds(22,142+i*37,166,31);addButton.setBounds(22,h-74,166,30);
- const float rowHeight=gridArea.getHeight()/4.f,cellWidth=(mainWidth-100)/8.f;
- for(int r=0;r<4;++r){const int yy=gridArea.getY()+(int)(r*rowHeight);laneButtons[(size_t)r].setBounds(left+2,yy+8,43,28);for(int c=0;c<8;++c)gridCells[(size_t)r][(size_t)c].setBounds(left+48+(int)(c*cellWidth),yy, (int)cellWidth,(int)rowHeight-2);}
- const auto p=parameterArea;const int controlsW=p.getWidth()-174,availableH=juce::jmax(66,p.getHeight()-56);
- const auto indices=gridMode()&&!masterPage?visibleSlotControls():visibleKnobs();const int count=juce::jmax(1,(int)indices.size());const int cw=controlsW/count;
- for(int j=0;j<(int)indices.size();++j){const int i=indices[(size_t)j];auto bounds=juce::Rectangle<int>(p.getX()+j*cw+8,p.getY()+49,cw-16,availableH-8);if(gridMode()&&!masterPage)slotSliders[(size_t)i].setBounds(bounds);else knobs[(size_t)i].slider.setBounds(bounds);}
- for(auto& s:switches)if(&s!=&switches[6]&&&s!=&switches[9])s.button.setBounds(p.getRight()-130,p.getY()+4,120,28);
- switches[8].button.setBounds(p.getRight()-150,p.getY()+35,140,25);slotEnabled.setBounds(p.getRight()-130,p.getY()+4,120,28);removeButton.setBounds(p.getRight()-158,p.getBottom()-35,145,26);
- for(auto* b:{&loadIRButton,&loadGridIRButton,&loadNeuralButton})b->setBounds(p.getRight()-158,p.getY()+65,145,29);
- for(auto* l:{&irName,&gridIRName,&neuralName})l->setBounds(p.getRight()-160,p.getY()+96,150,24);
- const int sw=(mainWidth-100)/8;for(int c=0;c<8;++c)stomps[(size_t)c].setBounds(left+100+c*sw,stompArea.getY(),sw-4,stompArea.getHeight());statusLabel.setBounds(left,h-26,mainWidth-8,22);
+void VirtualCortexEditor::resized(){
+ designScale=juce::jmin(getWidth()/1184.f,getHeight()/864.f);designOffsetX=(getWidth()-1184.f*designScale)*.5f;designOffsetY=(getHeight()-864.f*designScale)*.5f;
+ browserArea={53,78,240,752};gridArea={302,132,872,184};parameterArea={302,318,872,272};stompArea={474,598,700,232};
+ previousPreset.setBounds(302,78,35,36);nextPreset.setBounds(339,78,35,36);presetBox.setBounds(376,78,340,36);savePresetButton.setBounds(718,78,35,36);loadPresetButton.setBounds(755,78,34,36);
+ for(int i=0;i<8;++i)quickSelectors[(size_t)i].setBounds(798+i*38,78,35,36);
+ bankButtons[0].setBounds(224,37,25,27);bankButtons[1].setBounds(253,37,25,27);directoryButton.setBounds(638,30,142,44);ioButton.setBounds(1046,35,32,32);switches[6].button.setBounds(976,35,32,32);switches[9].button.setBounds(354,837,120,24);
+ for(int i=0;i<8;++i)browserButtons[(size_t)i].setBounds(9,78+i*94,43,94);
+ for(int i=0;i<8;++i)deviceEntries[(size_t)i].setBounds(62,119+i*38,224,36);
+ addButton.setBounds(62,789,224,31);
+ for(int r=0;r<4;++r){const bool show=r/2==rowBank;laneButtons[(size_t)r].setVisible(show);laneButtons[(size_t)r].setBounds(302,137+(r%2)*104,49,r%2?75:84);for(int c=0;c<8;++c){auto& cell=gridCells[(size_t)r][(size_t)c];cell.setVisible(show);cell.setBounds(363+c*93,132+(r%2)*104,94,92);}}
+ const auto indices=gridMode()&&!masterPage?visibleSlotControls():visibleKnobs();
+ for(int j=0;j<(int)indices.size();++j){const int i=indices[(size_t)j];const int x=302+(j%5)*174,y=354+(j/5)*118;
+  const auto knob=juce::Rectangle<int>(x+96,y+42,76,76),value=juce::Rectangle<int>(x+6,y+85,92,28);
+  if(gridMode()&&!masterPage){slotSliders[(size_t)i].setBounds(knob);slotValues[(size_t)i].setBounds(value);}else{knobs[(size_t)i].slider.setBounds(knob);knobs[(size_t)i].value.setBounds(value);}}
+ for(auto& sw:switches)if(&sw!=&switches[6]&&&sw!=&switches[9])sw.button.setBounds(1137,318,36,35);slotEnabled.setBounds(1137,318,36,35);
+ switches[8].button.setBounds(309,489,150,34);removeButton.setBounds(1018,551,146,31);
+ for(auto* b:{&loadIRButton,&loadGridIRButton,&loadNeuralButton})b->setBounds(838,492,245,32);
+ for(auto* l:{&irName,&gridIRName,&neuralName})l->setBounds(838,530,245,25);
+ presetMenuButton.setBounds(302,635,172,52);rowSelector.setBounds(302,688,172,52);stompModeButton.setBounds(302,741,172,52);
+ for(int c=0;c<8;++c)stomps[(size_t)c].setBounds(474+(c%4)*175,598+(c/4)*116,175,116);
+ statusLabel.setBounds(482,836,690,24);
+ const auto transform=juce::AffineTransform::scale(designScale).translated(designOffsetX,designOffsetY);
+ for(int i=0;i<getNumChildComponents();++i){auto* child=getChildComponent(i);if(dynamic_cast<juce::ResizableCornerComponent*>(child)==nullptr)child->setTransform(transform);}
 }
-void VirtualCortexEditor::paint(juce::Graphics& g){g.fillAll(background);const int w=getWidth(),h=getHeight();
- drawCaption(g,"VIRTUAL CORTEX",{18,10,260,28},19.f);drawCaption(g,"6.1  /  GRID WORKSPACE",{282,15,290,20},11.f,muted);g.setColour(juce::Colour(0xff292b2e));g.drawHorizontalLine(43,12.f,(float)w-12.f);
- drawCaption(g,"DEVICE BROWSER",{22,102,166,22},12.f);drawCaption(g,"Select a type, then add to slot",{22,123,166,16},10.f,muted);
- g.setColour(panel);g.fillRoundedRectangle(browserArea.toFloat(),6.f);drawCaption(g,"DEVICE BROWSER",{22,102,166,22},12.f);drawCaption(g,"Original effects",{22,124,166,15},10.f,muted);
- drawCaption(g,"SERIAL PRESET",{18,51,180,18},10.f,muted);drawCaption(g,"Amp / effects / cabinet IR",{18,70,180,18},11.f);
- const auto grid=processor.getEditableGrid();const float rowHeight=gridArea.getHeight()/4.f;
- for(int r=0;r<4;++r){const float yy=gridArea.getY()+r*rowHeight+rowHeight*.5f-5.f;g.setColour(juce::Colour(processor.isGridLaneEnabled((size_t)r)?0xff656a70:0xff282c30));g.drawLine((float)gridArea.getX()+43,yy,(float)gridArea.getRight()-40,yy,1.f);drawCaption(g,"OUT",{gridArea.getRight()-36,(int)yy-12,34,18},9.f,muted,juce::Justification::centred);drawCaption(g,"1/2",{gridArea.getRight()-36,(int)yy+2,34,16},9.f,muted,juce::Justification::centred);}
- const auto p=parameterArea;g.setColour(panel);g.fillRoundedRectangle(p.toFloat(),6.f);g.setColour(juce::Colour(0xff303338));g.drawHorizontalLine(p.getY()+33,(float)p.getX(),(float)p.getRight());const auto colour=CortexBlockButton::colourFor(currentType());
- juce::String title=masterPage?"Output":CortexBlockButton::nameFor(currentType());const juce::String context=gridMode()?"  /  ROW "+juce::String(selectedRow+1)+"  SLOT "+juce::String(selectedColumn+1):"  /  SERIAL ENGINE";drawCaption(g,title+context,{p.getX()+14,p.getY()+4,p.getWidth()-160,26},14.f,colour);
- const auto indices=gridMode()&&!masterPage?visibleSlotControls():visibleKnobs();for(int i:indices){const auto b=gridMode()&&!masterPage?slotSliders[(size_t)i].getBounds():knobs[(size_t)i].slider.getBounds();drawCaption(g,gridMode()&&!masterPage?slotLabels[(size_t)i]:knobs[(size_t)i].label,{b.getX(),p.getY()+36,b.getWidth(),16},10.f,juce::Colours::white,juce::Justification::centred);}
- if(indices.empty()){juce::String help=currentType()==0?"Choose a device in the browser and add it to this slot.":currentType()==3?"Load a WAV impulse response for this cabinet slot.":"This grid effect uses fixed settings in the current DSP engine.";drawCaption(g,help,{p.getX()+20,p.getY()+51,p.getWidth()-200,p.getHeight()-64},12.f,muted);}
- if(masterPage&&gridMode())drawCaption(g,"Trim applies to Serial engine",{p.getX()+150,p.getY()+65,260,28},11.f,muted);
- drawCaption(g,"STOMP",{stompArea.getX()+7,stompArea.getY()+10,90,20},12.f);drawCaption(g,"ROW "+juce::String(selectedRow+1),{stompArea.getX()+7,stompArea.getY()+32,90,18},11.f,muted);
- drawCaption(g,gridMode()?"GRID ACTIVE":"SERIAL ACTIVE",{18,h-25,182,20},10.f,gridMode()?mint:muted);if(statusLabel.getText().isEmpty())drawCaption(g,"Click a block to edit  /  A-H toggle slots in the selected row",{gridArea.getX(),h-25,gridArea.getWidth(),20},10.f,muted);
+void VirtualCortexEditor::paint(juce::Graphics& g){
+ g.fillAll(juce::Colours::black);g.addTransform(juce::AffineTransform::scale(designScale).translated(designOffsetX,designOffsetY));
+ g.setColour(juce::Colour(0xff303030));g.fillRect(0,0,1184,26);drawCaption(g,"Virtual Cortex",{440,1,300,23},12.f,juce::Colour(0xffa5a5a5),juce::Justification::centred);
+ g.setColour(juce::Colour(0xff5845ff));g.fillRoundedRectangle(10,2,65,18,9);drawCaption(g,"VC",{10,2,65,18},10.f,juce::Colours::white,juce::Justification::centred);
+ CortexBlockButton::drawIcon(g,{14,38,24,27},7,juce::Colours::white);drawCaption(g,"Virtual Cortex",{55,36,160,32},14.f,juce::Colour(0xff777777));
+ drawCaption(g,"GRID",{438,30,66,45},14.f,juce::Colours::white,juce::Justification::centred);g.setColour(juce::Colour(0xff85f87d));g.fillRect(438,26,66,2);
+ g.setColour(juce::Colour(0xff111111));g.fillRoundedRectangle(9,78,43,752,6);g.setColour(panel);g.fillRoundedRectangle(browserArea.toFloat(),6.f);
+ drawCaption(g,CortexBlockButton::nameFor(browserType).toUpperCase(),{68,87,216,26},13.f);
+ const float lineY[2]={179.f,283.f};for(int row=0;row<2;++row){g.setColour(juce::Colour(processor.isGridLaneEnabled((size_t)(rowBank*2+row))?0xffa3a3a3:0xff383838));g.drawLine(352,lineY[row],1124,lineY[row],1.f);g.setColour(juce::Colour(0xff111212));g.fillRoundedRectangle(1124.f,137.f+row*104.f,49,row?75.f:84.f,16);drawCaption(g,"Main",{1125,152+row*104,47,25},12.f,juce::Colours::white,juce::Justification::centred);drawCaption(g,"Out",{1125,179+row*104,47,25},12.f,juce::Colours::white,juce::Justification::centred);}
+ g.setColour(juce::Colour(0xff111111));g.fillRoundedRectangle(parameterArea.toFloat(),5);g.setColour(panel);g.fillRect(302,354,872,236);
+ for(int i=0;i<3;++i){g.setColour(muted);g.fillEllipse(318.f,325.f+i*7.f,2.f,2.f);g.fillEllipse(318.f,605.f+i*7.f,2.f,2.f);}
+ drawCaption(g,CortexBlockButton::nameFor(currentType()),{347,319,135,33},18.f,muted);drawCaption(g,currentType()==2?"Original amplifier":currentType()==3?"Cabinet IR":"Original",{485,319,600,33},18.f,CortexBlockButton::colourFor(currentType()));
+ const auto indices=gridMode()&&!masterPage?visibleSlotControls():visibleKnobs();for(int j=0;j<10;++j){int x=302+(j%5)*174,y=354+(j/5)*118;g.setColour(juce::Colour(0xff070707));g.drawLine((float)x+174,(float)y+8,(float)x+174,(float)y+118,1.f);g.drawLine((float)x,(float)y+118,(float)x+174,(float)y+118,1.f);if(j<(int)indices.size()){int i=indices[(size_t)j];drawCaption(g,gridMode()&&!masterPage?slotLabels[(size_t)i]:knobs[(size_t)i].label,{x+9,y+8,156,23},14.f);}}
+ if(indices.empty())drawCaption(g,currentType()==0?"Select a slot, then choose a device from the directory.":currentType()==3?"Load a cabinet impulse response.":"Fixed settings in the current grid engine.",{320,381,730,44},14.f,muted);
+ if(masterPage&&gridMode())drawCaption(g,"Output trim applies to the Serial engine.",{500,477,390,30},13.f,muted);
+ g.setColour(panel);g.fillRect(302,598,172,232);g.setColour(juce::Colour(0xff070707));g.drawRect(302,598,172,36,1);drawCaption(g,"Gig view",{343,599,125,33},18.f);drawCaption(g,"Parameter Editor",{310,796,156,32},14.f,muted);
+ drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.2.0",{613,837,230,22},11.f,juce::Colour(0xff676767));
 }
 void VirtualCortexEditor::applyPreset(int index){auto set=[this](const char* id,float value){if(auto* p=processor.parameters.getParameter(id))p->setValueNotifyingHost(p->convertTo0to1(value));};if(index<2)return;set("gridMode",0.f);
  if(index==2){set("drive",.12f);set("tone",.7f);set("level",.65f);set("delayMix",.12f);set("reverbMix",.25f);set("ampBias",0.f);set("delayOn",1.f);set("reverbOn",1.f);}
  if(index==3){set("drive",.48f);set("tone",.56f);set("level",.48f);set("delayMix",0.f);set("reverbMix",.04f);set("ampBias",.08f);set("delayOn",0.f);set("reverbOn",0.f);}
  if(index==4){set("drive",.73f);set("tone",.62f);set("level",.38f);set("delayTime",390.f);set("delayFeedback",.32f);set("delayMix",.22f);set("reverbMix",.15f);set("delayOn",1.f);set("reverbOn",1.f);}lastView=-1;updateView();}
 juce::AudioProcessorEditor* VirtualCortexProcessor::createEditor(){return new VirtualCortexEditor(*this);}
+
+juce::StringArray VirtualCortexEditor::deviceNames() const{
+ if(gridMode()&&(browserType==1||browserType==4))return {"Original "+CortexBlockButton::nameFor(browserType)};
+ switch(browserType){
+ case 1:return {"Gentle","Balanced","Tight","Hard gate"};
+ case 2:return {"Original amplifier","Clean","Edge of breakup","Crunch","High gain","Load VCMLP1 model..."};
+ case 3:return {"Built-in cabinet","Load cabinet IR..."};
+ case 4:return {"Flat","Warm","Bright","Mid boost","Mid cut"};
+ case 5:return {"Slapback","Short echo","Medium echo","Long echo","Ambient echo"};
+ case 6:return {"Dry","Light","Medium","Deep","Full"};
+ case 7:return {"Slow","Gentle","Classic","Fast","Maximum"};
+ case 8:return {"Unity","-6 dB","-12 dB","Mute"};
+ default:return {};
+ }
+}
+void VirtualCortexEditor::refreshDeviceList(){const auto names=deviceNames();for(int i=0;i<8;++i){auto& b=deviceEntries[(size_t)i];b.setVisible(i<names.size());if(i<names.size()){b.setButtonText(names[i]);b.setToggleState(i==variant,juce::dontSendNotification);}}}
+void VirtualCortexEditor::applyDeviceVariant(int index){
+ const auto names=deviceNames();if(index<0||index>=names.size())return;variant=index;
+ auto set=[this](const char* id,float v){if(auto* p=processor.parameters.getParameter(id))p->setValueNotifyingHost(p->convertTo0to1(v));};
+ if(browserType==8){const float levels[]={1.f,.501187f,.251189f,0.f};set("outputTrim",levels[index]);statusLabel.setText(gridMode()?"Output trim applies to the Serial engine.":"Output level updated",juce::dontSendNotification);refreshDeviceList();return;}
+ if(gridMode())insertBlock(browserType);
+ if(browserType==2&&index==5){if(!gridMode()){set("gridMode",1.f);insertBlock(2);}lastView=-1;updateView();loadNeuralButton.triggerClick();return;}
+ if(browserType==3&&index==1){lastView=-1;updateView();if(gridMode())loadGridIRButton.triggerClick();else loadIRButton.triggerClick();return;}
+ if(gridMode()){
+  auto p=processor.getGridSlotParameters((size_t)selectedRow,(size_t)selectedColumn);
+  if(browserType==2){const float drives[]={.5f,.08f,.2f,.45f,.8f};p.drive=drives[index];}
+  if(browserType==5){const float ms[]={90,180,320,480,450};p.time=(ms[index]-20.f)/480.f;p.feedback=.15f+.15f*index;p.mix=.15f+.08f*index;}
+  if(browserType==6){const float mixes[]={0,.15f,.3f,.55f,1.f};p.mix=mixes[index];}
+  if(browserType==7){const float rates[]={.05f,.2f,.4f,.75f,1.f};p.rate=rates[index];p.depth=.5f;}
+  processor.setGridSlotParameters((size_t)selectedRow,(size_t)selectedColumn,p);
+ }else{
+  if(browserType==1){const float values[]={-74,-62,-50,-36};set("gate",values[index]);}
+  if(browserType==2){const float drives[]={.35f,.08f,.2f,.45f,.8f};set("drive",drives[index]);set("level",index>=3?.45f:.65f);}
+  if(browserType==3){set("cabOn",1);set("irOn",0);set("cab",1);}
+  if(browserType==4){const float values[5][3]={{0,0,0},{3,0,-2},{-1,0,4},{0,4,0},{0,-4,0}};set("eqLow",values[index][0]);set("eqMid",values[index][1]);set("eqHigh",values[index][2]);}
+  if(browserType==5){const float ms[]={90,180,320,480,650};set("delayTime",ms[index]);set("delayFeedback",.15f+.12f*index);set("delayMix",.15f+.08f*index);set("delayOn",1);}
+  if(browserType==6){const float values[]={0,.1f,.2f,.35f,.55f};set("reverbMix",values[index]);set("reverbOn",1);}
+  if(browserType==7){const float rates[]={.5f,2,4,8,12};set("tremRate",rates[index]);set("tremDepth",.5f);set("tremOn",1);}
+ }
+ lastView=-1;refreshSlotControls();updateView();statusLabel.setText(names[index]+" selected",juce::dontSendNotification);
+}
