@@ -87,6 +87,11 @@ int main(int argc,char** argv){
    const auto name=juce::String("expanded-effect-")+juce::String(type)+".png";capture(name.toRawUTF8(),1184,864);
   }
   editor->setEditorsVisible(false);capture("four-row-expanded-catalog.png",1184,864);
+  editor->selectSlot(0,5);require(editor->insertBlock(5),"Delay insertion failed");editor->setEditorsVisible(true);
+  auto* repeat=dynamic_cast<juce::ToggleButton*>(editor->findChildWithID("repeat-fx"));require(repeat&&repeat->isVisible(),"Repeat FX control missing");repeat->setToggleState(true,juce::dontSendNotification);repeat->onClick();
+  require(processor->getGridSlotParameters(0,5).repeatFx,"Repeat FX enable was not applied");
+  auto* cutoff=dynamic_cast<juce::Slider*>(editor->findChildWithID("slot-param-5"));require(cutoff&&cutoff->isVisible(),"Loop cutoff control missing");cutoff->setValue(.4,juce::sendNotificationSync);require(processor->getGridSlotParameters(0,5).repeatFx,"Editing a knob cleared Repeat FX");
+  capture("delay-repeat-fx.png",1184,864);editor->setEditorsVisible(false);require(!repeat->isVisible(),"Repeat FX control remains over hidden editor");capture("delay-grid-only.png",1184,864);
   editor.reset();processor->releaseResources();
   std::cout<<"PASS: native editor snapshots at three sizes, control binding, insertion and bypass\n";
   return 0;

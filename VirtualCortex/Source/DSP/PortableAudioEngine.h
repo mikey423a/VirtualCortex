@@ -3,6 +3,7 @@
 #include "OriginalEffects.h"
 #include "ModulationEffects.h"
 #include "UtilitySpatialEffects.h"
+#include "RepeatFeedback.h"
 #include "NeuralAmp.h"
 #include <array>
 #include <cmath>
@@ -19,6 +20,7 @@ namespace vc {
 // thread; never mutate them concurrently with process().
 struct SlotParameters {
  float drive=0.5f, mix=0.2f, time=0.5f, feedback=0.35f, rate=0.5f, depth=0.5f;
+ bool repeatFx=false;
  static bool valid(const SlotParameters& p) noexcept {
   const float values[]={p.drive,p.mix,p.time,p.feedback,p.rate,p.depth};
   for (float v:values) if (!std::isfinite(v) || v<0.f || v>1.f) return false;
@@ -139,6 +141,7 @@ private:
  struct FIR { std::array<float,maxIrTaps> taps{}; std::size_t count=0; };
  struct CabinetIR { FIR current{}, previous{}; std::size_t fade=0; bool transition=false; };
  struct Channel {
+  RepeatFeedback repeatLoop;
   GainUtility utility;
   CutFilters cuts;
   ToneEQ toneEQ;
@@ -226,6 +229,7 @@ private:
     return 0.8f*x+0.2f*s.eq;
    }
    case BlockType::Delay: {
+    if(p.repeatFx)return s.repeatLoop.process(x,s.delay,s.index,p.time,p.feedback,p.drive,p.depth,p.rate,p.mix,fs);
     const std::size_t n=s.delay.size();
     const std::size_t distance=std::min(n-1,std::max<std::size_t>(1,static_cast<std::size_t>(fs*(0.02f+0.48f*p.time))));
     const std::size_t read=(s.index+n-distance)%n;

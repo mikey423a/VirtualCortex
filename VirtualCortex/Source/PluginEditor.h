@@ -54,7 +54,7 @@ private:
  std::array<juce::Slider,6> slotSliders;
  std::array<juce::String,6> slotLabels{{"DRIVE","MIX","TIME","FEEDBACK","RATE","DEPTH"}};
  juce::TextButton addButton{"ADD TO SLOT"},removeButton{"REMOVE"};
- juce::ToggleButton slotEnabled{"ENABLED"};
+ juce::ToggleButton slotEnabled{"ENABLED"},repeatFxButton{"REPEAT FX"};
  juce::TextButton loadGridIRButton{"LOAD SLOT IR"},loadNeuralButton{"LOAD AMP MODEL"};
  juce::TextButton loadIRButton{"LOAD CAB IR"},savePresetButton{"SAVE"},loadPresetButton{"OPEN"};
  std::unique_ptr<juce::FileChooser> irChooser,neuralChooser,presetChooser;

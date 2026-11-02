@@ -113,6 +113,13 @@ int runProcessorAudioTests(){
    juce::AudioBuffer<float> b(2,128);juce::MidiBuffer midi;
    for(int step=0;step<8;++step){controls.drive=step/8.f;p->setGridSlotParameters(0,0,controls);for(int ch=0;ch<2;++ch)for(int i=0;i<128;++i)b.setSample(ch,i,.1f*std::sin((i+step*128)*.1f));allocationProbe::count=0;allocationProbe::enabled=true;p->processBlock(b,midi);allocationProbe::enabled=false;check(allocationProbe::count==0,"New effect automation allocated in callback");for(int ch=0;ch<2;++ch)for(int i=0;i<128;++i)check(std::isfinite(b.getSample(ch,i)),"New effect produced non-finite samples");}
   }
+  {
+   auto p=std::make_unique<VirtualCortexProcessor>();grid(*p,vc::BlockType::Delay);prepare(*p);vc::SlotParameters controls;controls.repeatFx=true;controls.mix=.5f;p->setGridSlotParameters(0,0,controls);settle(*p,.1f);
+   auto recalled=std::make_unique<VirtualCortexProcessor>();prepare(*recalled);restore(*recalled,state(*p));check(recalled->getGridSlotParameters(0,0).repeatFx,"Repeat FX was lost on recall");
+   auto oldPreset=state(*recalled);auto xml=juce::AudioProcessor::getXmlFromBinary(oldPreset.getData(),(int)oldPreset.getSize());check(xml!=nullptr,"Preset XML missing");xml->removeAttribute("slot_0_0_repeatFx");juce::MemoryBlock legacy;juce::AudioProcessor::copyXmlToBinary(*xml,legacy);restore(*recalled,legacy);check(!recalled->getGridSlotParameters(0,0).repeatFx,"Legacy preset did not disable Repeat FX");
+   juce::AudioBuffer<float> b(2,128);juce::MidiBuffer midi;
+   for(int step=0;step<10;++step){controls.time=step/10.f;controls.depth=1.f-step/10.f;p->setGridSlotParameters(0,0,controls);b.clear();allocationProbe::count=0;allocationProbe::enabled=true;p->processBlock(b,midi);allocationProbe::enabled=false;check(allocationProbe::count==0,"Repeat FX allocated in the audio callback");}
+  }
   // Exercise actual JUCE processor buffers at the common Anubis rate/buffer range.
   for(double rate:{44100.,48000.,96000.,192000.})for(int size:{32,64,128,256,512}){
    auto p=std::make_unique<VirtualCortexProcessor>();prepare(*p,rate,size);juce::AudioBuffer<float> b(2,size);juce::MidiBuffer midi;

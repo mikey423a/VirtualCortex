@@ -96,8 +96,9 @@ private:
  // Per-field updates are eventually consistent, never a data race.
  struct AtomicSlotParameters {
   std::atomic<float> drive{0.5f}, mix{0.2f}, time{0.5f}, feedback{0.35f}, rate{0.5f}, depth{0.5f};
-  vc::SlotParameters load() const noexcept { return {drive.load(),mix.load(),time.load(),feedback.load(),rate.load(),depth.load()}; }
-  void store(const vc::SlotParameters& p) noexcept {drive.store(p.drive);mix.store(p.mix);time.store(p.time);feedback.store(p.feedback);rate.store(p.rate);depth.store(p.depth);}
+  std::atomic<bool> repeatFx{false};
+  vc::SlotParameters load() const noexcept { return {drive.load(),mix.load(),time.load(),feedback.load(),rate.load(),depth.load(),repeatFx.load()}; }
+  void store(const vc::SlotParameters& p) noexcept {drive.store(p.drive);mix.store(p.mix);time.store(p.time);feedback.store(p.feedback);rate.store(p.rate);depth.store(p.depth);repeatFx.store(p.repeatFx);}
  };
  std::array<std::array<AtomicSlotParameters,8>,4> slotControls{};
  vc::PendingIRQueue<vc::PortableAudioEngine::maxIrTaps> pendingGridIRs;

@@ -375,6 +375,7 @@ void VirtualCortexProcessor::getStateInformation(juce::MemoryBlock& dest){
   state.setProperty(key+"drive",p.drive,nullptr);state.setProperty(key+"mix",p.mix,nullptr);
   state.setProperty(key+"time",p.time,nullptr);state.setProperty(key+"feedback",p.feedback,nullptr);
   state.setProperty(key+"rate",p.rate,nullptr);state.setProperty(key+"depth",p.depth,nullptr);
+  state.setProperty(key+"repeatFx",p.repeatFx,nullptr);
   state.setProperty(key+"irPath",gridIRPaths[row][col],nullptr);
   state.setProperty(key+"neuralPath",gridNeuralPaths[row][col],nullptr);
  }
@@ -408,6 +409,7 @@ void VirtualCortexProcessor::setStateInformation(const void* data,int size){
    if(restored.hasProperty(key+"feedback"))p.feedback=static_cast<float>(restored.getProperty(key+"feedback"));
    if(restored.hasProperty(key+"rate"))p.rate=static_cast<float>(restored.getProperty(key+"rate"));
    if(restored.hasProperty(key+"depth"))p.depth=static_cast<float>(restored.getProperty(key+"depth"));
+   p.repeatFx=static_cast<bool>(restored.getProperty(key+"repeatFx",false));
    setGridSlotParameters(row,col,p);
    const auto neuralPath=restored.getProperty(key+"neuralPath").toString();
    if(neuralPath.isEmpty() || !loadGridNeuralModel(juce::File(neuralPath),row,col)){

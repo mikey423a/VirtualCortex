@@ -43,6 +43,7 @@ inline BlockType parseBlockName(const std::string& name) {
 }
 // Text format: lane <0-3> <on|off>; slot <row> <column> <effect> <on|off>;
 // param <row> <column> <drive|mix|time|feedback|rate|depth> <0..1>.
+// repeatFx is an optional param accepting 0 or 1.
 // Comments start with '#'. Parsing is strict and transactional.
 inline OfflineGridConfig loadOfflineGridConfig(const std::string& path) {
  std::ifstream in(path);
@@ -82,6 +83,7 @@ inline OfflineGridConfig loadOfflineGridConfig(const std::string& path) {
    else if(arg=="feedback") p.feedback=value;
    else if(arg=="rate") p.rate=value;
    else if(arg=="depth") p.depth=value;
+   else if(arg=="repeatFx" && (value==0.f||value==1.f)) p.repeatFx=value==1.f;
    else fail("unknown parameter: "+arg);
   } else fail("unknown command: "+command);
  }
