@@ -225,7 +225,7 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
  drawCaption(g,CortexBlockButton::nameFor(browserType).toUpperCase(),{68,87,216,26},14.f,juce::Colours::white,juce::Justification::centredLeft,true);
  const int rowStep=editorsVisible?46:160,rowTop=editorsVisible?132:153;
  for(int row=0;row<4;++row){const int y=rowTop+row*rowStep;const bool active=processor.isGridLaneEnabled((size_t)row);g.setColour(juce::Colour(active?0xffa3a3a3:0xff383838));const float cy=(float)y+(editorsVisible?22.f:47.f);g.drawLine(352,cy,1124,cy,1.f);g.setColour(juce::Colour(0xff111212));g.fillRoundedRectangle(1124.f,(float)y+5,49.f,editorsVisible?39.f:84.f,16);drawCaption(g,"Mix",{1125,y+(editorsVisible?9:30),47,25},12.f,juce::Colours::white,juce::Justification::centred);}
- if(!editorsVisible)drawCaption(g,"PARALLEL ROWS  /  Same input to enabled rows • averaged main output",{363,768,760,35},14.f,muted);
+ if(!editorsVisible)drawCaption(g,"PARALLEL ROWS  /  Same input to enabled rows / averaged main output",{363,768,760,35},14.f,muted);
  if(editorsVisible){
  g.setColour(juce::Colour(0xff111111));g.fillRoundedRectangle(parameterArea.toFloat(),5);g.setColour(panel);g.fillRect(302,354,872,236);
  for(int i=0;i<3;++i){g.setColour(muted);g.fillEllipse(318.f,325.f+i*7.f,2.f,2.f);g.fillEllipse(318.f,605.f+i*7.f,2.f,2.f);}
