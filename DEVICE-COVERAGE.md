@@ -10,10 +10,10 @@ Virtual Cortex is an original, limited effects application. It does not include 
 | --- | --- | --- |
 | Guitar and bass amps | Generic amp and custom VCMLP1 loader | Individual models, controls, reference measurements and validation; no dedicated bass library |
 | Guitar and bass cabinets | Basic filter and user IR loading | Measured cabinet/microphone library and multi-mic controls |
-| Guitar and bass overdrive | No dedicated pedal blocks | Original pedal DSP and validation |
+| Guitar and bass overdrive | Original soft-clipping overdrive and hard-clipping distortion in Grid mode (6.5) | Individual pedal models, dedicated bass variants and reference validation |
 | Delay | Basic variable delay | Distinct algorithms and stereo behavior |
 | Reverb | Basic reverb | Distinct algorithms and spatial validation |
-| Compressor | Absent | Dynamics algorithms and metering |
+| Compressor | Original feed-forward peak compressor in Grid mode (6.5) | Additional topologies, metering, sidechain/stereo linking and reference validation |
 | Pitch | Absent | Pitch tracking/shifting and latency handling |
 | Modulation | Tremolo only | Additional algorithms |
 | Morph | Absent | Additional algorithms |
