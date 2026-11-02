@@ -1,0 +1,5 @@
+# Use with: virtualcortex_render input.wav output.wav --grid examples/neural-grid.txt
+lane 0 on
+slot 0 0 Amp on
+neural 0 0 example.vcmlp
+param 0 0 drive 0.5

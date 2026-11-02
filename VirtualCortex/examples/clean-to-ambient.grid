@@ -1,0 +1,15 @@
+# Editable offline processing grid (rows 0..3, columns 0..7)
+lane 0 on
+lane 1 on
+slot 0 0 Gate on
+slot 0 1 Amp on
+slot 0 2 Cabinet on
+slot 0 3 EQ on
+slot 1 0 Amp on
+slot 1 1 Delay on
+slot 1 2 Reverb on
+param 0 1 drive 0.20
+param 1 0 drive 0.75
+param 1 1 mix 0.35
+param 1 1 feedback 0.55
+param 1 2 mix 0.40
