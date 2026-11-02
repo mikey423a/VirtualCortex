@@ -11,7 +11,7 @@ Virtual Cortex is an original, limited effects application. It does not include 
 | Guitar and bass amps | Generic amp and custom VCMLP1 loader | Individual models, controls, reference measurements and validation; no dedicated bass library |
 | Guitar and bass cabinets | Basic filter and user IR loading | Measured cabinet/microphone library and multi-mic controls |
 | Guitar and bass overdrive | Original soft-clipping overdrive and hard-clipping distortion in Grid mode (6.5) | Individual pedal models, dedicated bass variants and reference validation |
-| Delay | Basic variable delay plus opt-in filtered repeat return (6.8) | Distinct algorithms and stereo behavior |
+| Delay | Grid Delay with filtered repeats; 6.9 post-chain Stereo Delay with cross-feedback, modulation, ducking and tempo | Further algorithms, insertable loop chain and listening validation |
 | Reverb | Basic reverb plus original room delay network | Distinct algorithms and spatial validation |
 | Compressor | Original feed-forward peak compressor in Grid mode (6.5) | Additional topologies, metering, sidechain/stereo linking and reference validation |
 | Pitch | Absent | Pitch tracking/shifting and latency handling |
@@ -51,3 +51,11 @@ The current Delay already feeds delayed samples back into its buffer through its
 ## 6.8 repeat-path milestone
 
 Verified build: https://github.com/mikey423a/VirtualCortex/actions/runs/41434583472. All 26 CTests, pluginval level 5, standalone startup and installer checks passed. Repeat FX adds high-pass, low-pass and filter-blend controls inside Grid Delay regeneration while preserving the dry input and first repeat. Presets without the new flag use the legacy delay path. An arbitrary insert chain and the researched stereo studio-effects redesign remain unimplemented. Software validation does not establish studio-quality sound.
+
+## 6.9 stereo delay milestone
+
+Verified Windows build: https://github.com/mikey423a/VirtualCortex/actions/runs/41438893229 (source c9632c4f16addf3507606bc251df3d6c663626be). All 27 CTests, pluginval level 5, standalone startup and installer install/uninstall checks passed. Editor screenshots were inspected across all three pages and the four-row view.
+
+A new optional Stereo Delay runs after the main serial/grid chain and before output trim. It provides independent L/R times up to 16 seconds, feedback/cross-feedback, ping-pong, repeat-loop high/low-pass filtering and blend, modulation rate/depth, wet ducking with editable release, width, wet level, time glide, and host/manual tempo with numeric beat multipliers. Its 18 continuous controls and four switches occupy Main, Tone/Mod and Dynamics/Tempo pages in the existing editor style. Tape Glide describes pitch-changing time transitions, not a tape circuit emulation. Duck attack is fixed at 5 ms. Manual times and cross-feedback are disabled when overridden by sync and ping-pong respectively.
+
+Original 28 host parameter IDs retain their order; 22 new parameters are appended (50 total). Older presets default the master effect off. Tests cover stereo isolation, ping-pong timing, ducking, fractional interpolation, malformed controls, automation allocation checks, tempo, recall and global output mute. This is one post-chain master module, not an insertable Grid block or arbitrary feedback-effects chain. The 21 existing Grid processing types remain. FDN reverb, convolution room modes and the full factory catalog remain unfinished. Studio-quality listening evaluation, reference-device matching, Windows 11 audio behavior and Anubis hardware I/O are not certified by these tests. Installer unsigned.

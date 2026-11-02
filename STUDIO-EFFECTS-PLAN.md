@@ -1,8 +1,8 @@
 # Studio effects: quality-first implementation plan
 
-Status: researched design and acceptance requirements, not implemented studio engines.
+Status: researched design and acceptance requirements; first stereo-delay milestone implemented in 6.9.
 This supersedes catalog-count growth as the immediate priority.
-Current 6.8 remains a functional milestone: its 26 passing software checks do not certify sonic quality.
+Current 6.9 passes 27 software checks; these do not certify sonic quality.
 
 ## User requirements
 
@@ -97,3 +97,11 @@ No studio-quality certification, commercial-plugin parity, or full factory-catal
 ## Completed first step: 6.8
 
 REPEAT FX is an opt-in, saved per-slot Grid Delay setting. It exposes loop high-pass, low-pass and filter-blend controls in the existing Cortex-style block editor. Regenerated repeats traverse those filters; dry input and the first repeat do not. Time and cutoff changes are smoothed, and the optional path uses third-order Lagrange delay reading. This is not the full proposed studio delay. The legacy path remains when Repeat FX is disabled, and old presets default to that path. Next priorities remain true stereo-frame routing, deeper typed parameters, long-delay modes and the quality/listening gates above.
+
+## 6.9 stereo delay milestone
+
+Verified Windows build: https://github.com/mikey423a/VirtualCortex/actions/runs/41438893229 (source c9632c4f16addf3507606bc251df3d6c663626be). All 27 CTests, pluginval level 5, standalone startup and installer install/uninstall checks passed. Editor screenshots were inspected across all three pages and the four-row view.
+
+A new optional Stereo Delay runs after the main serial/grid chain and before output trim. It provides independent L/R times up to 16 seconds, feedback/cross-feedback, ping-pong, repeat-loop high/low-pass filtering and blend, modulation rate/depth, wet ducking with editable release, width, wet level, time glide, and host/manual tempo with numeric beat multipliers. Its 18 continuous controls and four switches occupy Main, Tone/Mod and Dynamics/Tempo pages in the existing editor style. Tape Glide describes pitch-changing time transitions, not a tape circuit emulation. Duck attack is fixed at 5 ms. Manual times and cross-feedback are disabled when overridden by sync and ping-pong respectively.
+
+Original 28 host parameter IDs retain their order; 22 new parameters are appended (50 total). Older presets default the master effect off. Tests cover stereo isolation, ping-pong timing, ducking, fractional interpolation, malformed controls, automation allocation checks, tempo, recall and global output mute. This is one post-chain master module, not an insertable Grid block or arbitrary feedback-effects chain. The 21 existing Grid processing types remain. FDN reverb, convolution room modes and the full factory catalog remain unfinished. Studio-quality listening evaluation, reference-device matching, Windows 11 audio behavior and Anubis hardware I/O are not certified by these tests. Installer unsigned.

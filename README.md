@@ -1,13 +1,13 @@
-# Virtual Cortex 6.8
+# Virtual Cortex 6.9
 
 Windows x64 standalone guitar amplifier/effects application and VST3, built with JUCE 8.0.10 and ASIO enabled.
 
 ## Verified build
 
-[Successful 6.8 build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/41434583472)
+[Successful 6.9 build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/41438893229)
 
 - EXE and VST3 compiled using MSVC on Windows Server 2022.
-- All 26 CTest checks passed, including the real JUCE processor, editor renders, four-row routing and the new effects.
+- All 27 CTest checks passed, including the real JUCE processor, editor renders, four-row routing and the new effects.
 - VST3 passed pluginval 1.0.4 at strictness level 5.
 - Standalone stayed running for the 10-second startup test.
 - Inno Setup installer passed install/uninstall and installed-binary checks.
@@ -84,3 +84,11 @@ Choose a row/slot, then select a category in the left rail and an entry in the b
 Grid gate/EQ retain fixed settings. The project has no NAM or Quad Cortex capture-format compatibility. Visual similarity does not establish sonic equivalence.
 
 Source: VirtualCortex/. Workflow: .github/workflows/virtualcortex-windows.yml.
+
+## 6.9 stereo delay milestone
+
+Verified Windows build: https://github.com/mikey423a/VirtualCortex/actions/runs/41438893229 (source c9632c4f16addf3507606bc251df3d6c663626be). All 27 CTests, pluginval level 5, standalone startup and installer install/uninstall checks passed. Editor screenshots were inspected across all three pages and the four-row view.
+
+A new optional Stereo Delay runs after the main serial/grid chain and before output trim. It provides independent L/R times up to 16 seconds, feedback/cross-feedback, ping-pong, repeat-loop high/low-pass filtering and blend, modulation rate/depth, wet ducking with editable release, width, wet level, time glide, and host/manual tempo with numeric beat multipliers. Its 18 continuous controls and four switches occupy Main, Tone/Mod and Dynamics/Tempo pages in the existing editor style. Tape Glide describes pitch-changing time transitions, not a tape circuit emulation. Duck attack is fixed at 5 ms. Manual times and cross-feedback are disabled when overridden by sync and ping-pong respectively.
+
+Original 28 host parameter IDs retain their order; 22 new parameters are appended (50 total). Older presets default the master effect off. Tests cover stereo isolation, ping-pong timing, ducking, fractional interpolation, malformed controls, automation allocation checks, tempo, recall and global output mute. This is one post-chain master module, not an insertable Grid block or arbitrary feedback-effects chain. The 21 existing Grid processing types remain. FDN reverb, convolution room modes and the full factory catalog remain unfinished. Studio-quality listening evaluation, reference-device matching, Windows 11 audio behavior and Anubis hardware I/O are not certified by these tests. Installer unsigned.
