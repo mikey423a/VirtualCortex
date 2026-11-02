@@ -106,6 +106,13 @@ int runProcessorAudioTests(){
    check(p->loadGridCabinetIR(ir,0,0),"IR reload failed");settle(*p,.2f);const auto withIR=state(*p);ir.replaceWithText("invalid WAV");restore(*p,withIR);check(p->getGridCabinetIRName(0,0)=="No grid IR","Corrupt IR was reported loaded");check(std::abs(settle(*p,.2f)-.2f)<1.e-4f,"Corrupt IR kept stale audio");
    check(!p->loadCabinetIR(ir),"Serial cabinet accepted invalid WAV");
   }
+  // The new blocks must survive JUCE state recall and stay allocation-free while automated.
+  for(auto type:{vc::BlockType::Compressor,vc::BlockType::Overdrive,vc::BlockType::Distortion}){
+   auto p=std::make_unique<VirtualCortexProcessor>();grid(*p,type);prepare(*p);vc::SlotParameters controls;controls.mix=1.f;controls.time=0.f;controls.depth=.3f;p->setGridSlotParameters(0,0,controls);settle(*p,.1f);
+   auto recalled=std::make_unique<VirtualCortexProcessor>();prepare(*recalled);restore(*recalled,state(*p));check(recalled->getEditableGrid().get(0,0)->type==type,"New block type lost on state recall");check(std::abs(recalled->getGridSlotParameters(0,0).depth-.3f)<1.e-6f,"New block controls lost on state recall");
+   juce::AudioBuffer<float> b(2,128);juce::MidiBuffer midi;
+   for(int step=0;step<8;++step){controls.drive=step/8.f;p->setGridSlotParameters(0,0,controls);for(int ch=0;ch<2;++ch)for(int i=0;i<128;++i)b.setSample(ch,i,.1f*std::sin((i+step*128)*.1f));allocationProbe::count=0;allocationProbe::enabled=true;p->processBlock(b,midi);allocationProbe::enabled=false;check(allocationProbe::count==0,"New effect automation allocated in callback");for(int ch=0;ch<2;++ch)for(int i=0;i<128;++i)check(std::isfinite(b.getSample(ch,i)),"New effect produced non-finite samples");}
+  }
   // Exercise actual JUCE processor buffers at the common Anubis rate/buffer range.
   for(double rate:{44100.,48000.,96000.,192000.})for(int size:{32,64,128,256,512}){
    auto p=std::make_unique<VirtualCortexProcessor>();prepare(*p,rate,size);juce::AudioBuffer<float> b(2,size);juce::MidiBuffer midi;

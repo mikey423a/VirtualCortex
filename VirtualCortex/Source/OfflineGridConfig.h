@@ -24,6 +24,9 @@ inline BlockType parseBlockName(const std::string& name) {
  if(name=="Delay") return BlockType::Delay;
  if(name=="Reverb") return BlockType::Reverb;
  if(name=="Tremolo") return BlockType::Tremolo;
+ if(name=="Compressor") return BlockType::Compressor;
+ if(name=="Overdrive") return BlockType::Overdrive;
+ if(name=="Distortion") return BlockType::Distortion;
  if(name=="Empty") return BlockType::Empty;
  throw std::runtime_error("Unknown effect: "+name);
 }

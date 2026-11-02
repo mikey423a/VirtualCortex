@@ -61,10 +61,16 @@ int main(int argc,char** argv){
   capture("four-row-delay-1184x864.png",1184,864);
   editor->setEditorsVisible(true);
   bool openedOutput=false;
-  for(int i=0;i<editor->getNumChildComponents();++i)if(auto* button=dynamic_cast<CortexBlockButton*>(editor->getChildComponent(i)))if(button->rail&&button->type==8){button->onClick();openedOutput=true;break;}
+  for(int i=0;i<editor->getNumChildComponents();++i)if(auto* button=dynamic_cast<CortexBlockButton*>(editor->getChildComponent(i)))if(button->rail&&button->type==11){button->onClick();openedOutput=true;break;}
   auto* trim=dynamic_cast<juce::Slider*>(editor->findChildWithID("outputTrim"));
   require(openedOutput&&trim&&trim->isVisible()&&trim->isEnabled(),"Grid output trim UI is disabled");
   capture("grid-output-1184x864.png",1184,864);
+  for(int type:{8,9,10}){
+   editor->selectSlot(2,type-8);require(editor->insertBlock(type),"New effect insertion failed");
+   auto* control=editor->findChildWithID("slot-param-0");require(control&&control->isVisible(),"New effect control missing");
+   const auto filename=juce::String("original-effect-")+juce::String(type)+".png";capture(filename.toRawUTF8(),1184,864);
+  }
+  editor->setEditorsVisible(false);capture("four-row-new-effects.png",1184,864);
   editor.reset();processor->releaseResources();
   std::cout<<"PASS: native editor snapshots at three sizes, control binding, insertion and bypass\n";
   return 0;

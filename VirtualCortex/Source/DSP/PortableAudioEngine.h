@@ -1,5 +1,6 @@
 #pragma once
 #include "ParallelGrid.h"
+#include "OriginalEffects.h"
 #include "NeuralAmp.h"
 #include <array>
 #include <cmath>
@@ -135,6 +136,8 @@ private:
  struct FIR { std::array<float,maxIrTaps> taps{}; std::size_t count=0; };
  struct CabinetIR { FIR current{}, previous{}; std::size_t fade=0; bool transition=false; };
  struct Channel {
+  PeakCompressor compressor;
+  ClippingDrive clippingDrive;
   std::array<float,maxIrTaps> irHistory{};
   std::array<float,NeuralAmpModel::inputs> neuralHistory{}, previousNeuralHistory{};
   std::size_t previousNeuralIndex=0;
@@ -233,6 +236,8 @@ private:
     if(s.phase>=2.f*pi)s.phase-=2.f*pi;
     return x*gain;
    }
+   case BlockType::Compressor:return s.compressor.process(x,p.drive,p.feedback,p.rate,p.depth,p.time,p.mix,fs);
+   case BlockType::Overdrive:case BlockType::Distortion:return s.clippingDrive.process(x,p.drive,p.rate,p.depth,p.mix,fs,b==BlockType::Distortion);
    default: return x;
   }
  }
