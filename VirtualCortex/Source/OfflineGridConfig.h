@@ -27,6 +27,11 @@ inline BlockType parseBlockName(const std::string& name) {
  if(name=="Compressor") return BlockType::Compressor;
  if(name=="Overdrive") return BlockType::Overdrive;
  if(name=="Distortion") return BlockType::Distortion;
+ if(name=="Chorus") return BlockType::Chorus;
+ if(name=="Flanger") return BlockType::Flanger;
+ if(name=="Phaser") return BlockType::Phaser;
+ if(name=="Wah") return BlockType::Wah;
+ if(name=="BitCrusher") return BlockType::BitCrusher;
  if(name=="Empty") return BlockType::Empty;
  throw std::runtime_error("Unknown effect: "+name);
 }

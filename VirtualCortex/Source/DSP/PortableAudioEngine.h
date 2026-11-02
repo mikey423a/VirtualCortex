@@ -1,6 +1,7 @@
 #pragma once
 #include "ParallelGrid.h"
 #include "OriginalEffects.h"
+#include "ModulationEffects.h"
 #include "NeuralAmp.h"
 #include <array>
 #include <cmath>
@@ -136,6 +137,9 @@ private:
  struct FIR { std::array<float,maxIrTaps> taps{}; std::size_t count=0; };
  struct CabinetIR { FIR current{}, previous{}; std::size_t fade=0; bool transition=false; };
  struct Channel {
+  SixStagePhaser phaser;
+  EnvelopeWah wah;
+  BitCrusher crusher;
   PeakCompressor compressor;
   ClippingDrive clippingDrive;
   std::array<float,maxIrTaps> irHistory{};
@@ -238,6 +242,10 @@ private:
    }
    case BlockType::Compressor:return s.compressor.process(x,p.drive,p.feedback,p.rate,p.depth,p.time,p.mix,fs);
    case BlockType::Overdrive:case BlockType::Distortion:return s.clippingDrive.process(x,p.drive,p.rate,p.depth,p.mix,fs,b==BlockType::Distortion);
+   case BlockType::Chorus:case BlockType::Flanger:return modulatedDelay(x,s.delay,s.index,s.phase,p.mix,p.time,p.feedback,p.rate,p.depth,fs,b==BlockType::Flanger);
+   case BlockType::Phaser:return s.phaser.process(x,p.mix,p.time,p.feedback,p.rate,p.depth,fs);
+   case BlockType::Wah:return s.wah.process(x,p.drive,p.mix,p.time,p.feedback,p.rate,p.depth,fs);
+   case BlockType::BitCrusher:return s.crusher.process(x,p.drive,p.mix,p.time,p.depth);
    default: return x;
   }
  }

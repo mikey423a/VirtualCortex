@@ -107,7 +107,7 @@ int runProcessorAudioTests(){
    check(!p->loadCabinetIR(ir),"Serial cabinet accepted invalid WAV");
   }
   // The new blocks must survive JUCE state recall and stay allocation-free while automated.
-  for(auto type:{vc::BlockType::Compressor,vc::BlockType::Overdrive,vc::BlockType::Distortion}){
+  for(auto type:{vc::BlockType::Compressor,vc::BlockType::Overdrive,vc::BlockType::Distortion,vc::BlockType::Chorus,vc::BlockType::Flanger,vc::BlockType::Phaser,vc::BlockType::Wah,vc::BlockType::BitCrusher}){
    auto p=std::make_unique<VirtualCortexProcessor>();grid(*p,type);prepare(*p);vc::SlotParameters controls;controls.mix=1.f;controls.time=0.f;controls.depth=.3f;p->setGridSlotParameters(0,0,controls);settle(*p,.1f);
    auto recalled=std::make_unique<VirtualCortexProcessor>();prepare(*recalled);restore(*recalled,state(*p));check(recalled->getEditableGrid().get(0,0)->type==type,"New block type lost on state recall");check(std::abs(recalled->getGridSlotParameters(0,0).depth-.3f)<1.e-6f,"New block controls lost on state recall");
    juce::AudioBuffer<float> b(2,128);juce::MidiBuffer midi;

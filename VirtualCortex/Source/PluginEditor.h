@@ -44,7 +44,7 @@ private:
  std::array<std::array<CortexBlockButton,8>,4> gridCells;
  std::array<juce::TextButton,4> laneButtons;
  std::array<CortexBlockButton,8> stomps;
- std::array<CortexBlockButton,11> browserButtons;
+ std::array<CortexBlockButton,16> browserButtons;
  std::array<juce::TextButton,8> deviceEntries,quickSelectors;
  std::array<juce::TextButton,2> bankButtons;
  std::array<juce::Label,6> slotValues;
