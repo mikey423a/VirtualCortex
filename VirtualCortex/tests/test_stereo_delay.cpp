@@ -9,6 +9,25 @@
 #include <vector>
 void warm(vc::StereoDelay& d,int samples=24000){for(int i=0;i<samples;++i)d.process(0,0);}
 int main(){
+ // Feedback diffusion preserves first-repeat timing, disperses later repeats,
+ // stays stereo-isolated without crossfeed, and resets on device restart.
+ for(double fs:{44100.,48000.,96000.,192000.}){
+  vc::StereoDelay clean,diffuse;clean.prepare(fs);diffuse.prepare(fs);
+  vc::StereoDelayParameters p;p.enabled=true;p.mix=1;p.timeL=p.timeR=100;p.filterMix=0;p.feedback=.7f;
+  clean.configure(p);p.diffusion=1;diffuse.configure(p);warm(clean,(int)fs);warm(diffuse,(int)fs);
+  int cleanCount=0,diffuseCount=0;double diffuseEnergy=0;
+  for(int i=0;i<(int)fs;++i){auto a=clean.process(i==0?.1f:0.f,0),b=diffuse.process(i==0?.1f:0.f,0);
+   if(i<(int)(fs*.2))assert(a==b);
+   assert(b[1]==0);assert(std::isfinite(b[0]));diffuseEnergy+=b[0]*b[0];
+   if(i>(int)(fs*.2)){cleanCount+=std::abs(a[0])>1e-5;diffuseCount+=std::abs(b[0])>1e-5;}
+  }
+  assert(diffuseCount>cleanCount+100);assert(diffuseEnergy>.01&&diffuseEnergy<.1);
+  diffuse.prepare(fs);vc::StereoDelay fresh;fresh.prepare(fs);diffuse.configure(p);fresh.configure(p);
+  for(int i=0;i<4096;++i)assert(diffuse.process(.01f,0)==fresh.process(.01f,0));
+  p.diffusion=std::numeric_limits<float>::quiet_NaN();diffuse.configure(p);
+  for(int i=0;i<1000;++i)assert(std::isfinite(diffuse.process(0,0)[0]));
+ }
+
  for(double fs:{44100.,48000.,96000.,192000.}){
   vc::StereoDelay d;d.prepare(fs);vc::StereoDelayParameters p;p.enabled=true;p.timeL=100;p.timeR=150;p.feedback=0;p.mix=1;p.filterMix=0;d.configure(p);warm(d,(int)(fs*.5));
   // Independent channels, no accidental stereo crosstalk; wet impulse timing.

@@ -177,6 +177,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VirtualCortexProcessor::make
  addFloat("srInputLP","Stereo reverb Input low-pass (Hz)",1000.0f,20000.0f,16000.0f);
  addBool("stereoReverbOn","Post-chain stereo reverb",false);
  addBool("srPreGlide","Reverb pre-delay pitch glide",true);
+ addFloat("sdDiffusion","Delay loop diffusion",0.0f,1.0f,0.0f);
  return p;
 }
 
@@ -348,13 +349,14 @@ double VirtualCortexProcessor::getTailLengthSeconds() const {
  double ms=juce::jmax(stereoParameters[0]->load(),stereoParameters[1]->load());
  if(stereoFlags[3]->load()>.5f)ms=60000./juce::jlimit(20.,300.,stereoTempo.load())*juce::jmax(stereoParameters[15]->load(),stereoParameters[16]->load());
  if(!std::isfinite(ms)||ms<0)ms=480.;
+ if(stereoParameters[18]->load()>0)ms+=1000.; // conservative allowance for feedback allpass tails
  const double rawFeedback=stereoParameters[2]->load();
  const double feedback=std::isfinite(rawFeedback)?juce::jlimit(0.,.95,rawFeedback):0.;
  return juce::jlimit(3.,3600.,reverbTail+ms*.001*(feedback>1.e-6?1.+std::log(.001)/std::log(feedback):1.));
 }
 void VirtualCortexProcessor::processStereoDelay(juce::AudioBuffer<float>& b){
  auto value=[this](std::size_t i){return stereoParameters[i]->load(std::memory_order_relaxed);};
- vc::StereoDelayParameters p;p.timeL=value(0);p.timeR=value(1);p.feedback=value(2);p.cross=value(3);p.lowCut=value(4);p.highCut=value(5);p.mix=value(6);p.modRate=value(7);p.modDepth=value(8);p.ducking=value(9);p.duckRelease=value(10);p.width=value(11);p.wetLevel=value(12);p.glide=value(13);p.filterMix=value(17);
+ vc::StereoDelayParameters p;p.timeL=value(0);p.timeR=value(1);p.feedback=value(2);p.cross=value(3);p.lowCut=value(4);p.highCut=value(5);p.mix=value(6);p.modRate=value(7);p.modDepth=value(8);p.ducking=value(9);p.duckRelease=value(10);p.width=value(11);p.wetLevel=value(12);p.glide=value(13);p.filterMix=value(17);p.diffusion=value(18);
  p.enabled=stereoFlags[0]->load(std::memory_order_relaxed)>.5f;p.pingPong=stereoFlags[1]->load(std::memory_order_relaxed)>.5f;p.tape=stereoFlags[2]->load(std::memory_order_relaxed)>.5f;
  if(stereoFlags[3]->load(std::memory_order_relaxed)>.5f){
   double tempo=value(14);if(auto* playhead=getPlayHead())if(auto position=playhead->getPosition())if(auto bpm=position->getBpm())if(std::isfinite(*bpm)&&*bpm>0)tempo=*bpm;

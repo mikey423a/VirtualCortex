@@ -30,6 +30,8 @@ assert legacy <= set(declared), "An existing automation parameter was removed"
 expected = ["gate","drive","ampBias","inputHP","tone","level","cab","cabCut","delayTime","delayFeedback","delayMix","reverbMix","tremRate","tremDepth","outputTrim","eqLow","eqMid","eqHigh","gateOn","ampOn","cabOn","delayOn","reverbOn","tremOn","eqOn","bypass","irOn","gridMode","sdTimeL","sdTimeR","sdFeedback","sdCross","sdLowCut","sdHighCut","sdMix","sdModRate","sdModDepth","sdDucking","sdDuckRelease","sdWidth","sdWetLevel","sdGlide","sdBpm","sdBeatsL","sdBeatsR","sdFilterMix","stereoDelayOn","sdPingPong","sdTape","sdSync"]
 assert declared[:50] == expected, "Existing host parameter order changed"
 
-assert len(declared) == 70, "Unexpected automation parameter count"
+assert len(declared) == 71, "Unexpected automation parameter count"
 assert declared[50:69] == ["srDecay","srSize","srPreDelay","srDiffusion","srEarly","srMix","srLowDecay","srHighDecay","srLowFreq","srHighFreq","srModRate","srModDepth","srWidth","srDucking","srRelease","srWetLevel","srInputHP","srInputLP","stereoReverbOn"], "Existing reverb parameter order changed"
 assert declared[69] == "srPreGlide", "Pre-delay mode must append to the existing host order"
+
+assert declared[70] == "sdDiffusion", "Diffusion must append without reordering automation"

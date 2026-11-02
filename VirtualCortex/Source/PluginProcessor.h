@@ -49,7 +49,7 @@ public:
 private:
  static juce::AudioProcessorValueTreeState::ParameterLayout makeLayout();
  void processStereoDelay(juce::AudioBuffer<float>&);
- std::array<std::atomic<float>*,18> stereoParameters{};
+ std::array<std::atomic<float>*,19> stereoParameters{};
  std::array<std::atomic<float>*,4> stereoFlags{};
  vc::StereoDelay stereoDelay;
  vc::StereoReverb stereoReverb;

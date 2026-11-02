@@ -145,6 +145,18 @@ int runProcessorAudioTests(){
    juce::AudioBuffer<float> b(2,128);juce::MidiBuffer midi;for(int step=0;step<20;++step){set(*p,"srPreGlide",step%3?0:1);set(*p,"srPreDelay",step%2?0:500);set(*p,"srSize",step%2?.5f:2);set(*p,"srDecay",.2f+step);b.clear();allocationProbe::count=0;allocationProbe::enabled=true;p->processBlock(b,midi);allocationProbe::enabled=false;check(allocationProbe::count==0,"Reverb automation allocated in callback");for(int ch=0;ch<2;++ch)for(int i=0;i<128;++i)check(std::isfinite(b.getSample(ch,i)),"Reverb non-finite output");}
    for(int mode=0;mode<2;++mode){if(mode)grid(*p,vc::BlockType::Empty);else{set(*p,"gridMode",0);serialDry(*p);}set(*p,"outputTrim",1);settle(*p,.1f,100);set(*p,"outputTrim",0);check(std::abs(settle(*p,.1f,200))<1.e-6f,"Output trim did not mute reverb");}
   }
+  {
+   auto p=std::make_unique<VirtualCortexProcessor>();grid(*p,vc::BlockType::Empty);prepare(*p);
+   set(*p,"stereoDelayOn",1);set(*p,"sdDiffusion",.8f);set(*p,"sdFeedback",.8f);
+   const auto saved=state(*p);auto restored=std::make_unique<VirtualCortexProcessor>();prepare(*restored);restore(*restored,saved);
+   check(std::abs(restored->parameters.getRawParameterValue("sdDiffusion")->load()-.8f)<.001f,"Diffusion lost on recall");
+   auto xml=juce::AudioProcessor::getXmlFromBinary(saved.getData(),(int)saved.getSize());auto tree=juce::ValueTree::fromXml(*xml);
+   tree.removeChild(tree.getChildWithProperty("id","sdDiffusion"),nullptr);auto oldXml=tree.createXml();juce::MemoryBlock oldState;juce::AudioProcessor::copyXmlToBinary(*oldXml,oldState);restore(*restored,oldState);
+   check(restored->parameters.getRawParameterValue("sdDiffusion")->load()==0.f,"Legacy preset retained diffusion");
+   juce::AudioBuffer<float> b(2,128);juce::MidiBuffer midi;
+   for(int step=0;step<100;++step){set(*p,"sdDiffusion",step%2?0:1);b.clear();b.setSample(0,0,.1f);allocationProbe::count=0;allocationProbe::enabled=true;p->processBlock(b,midi);allocationProbe::enabled=false;
+    check(allocationProbe::count==0,"Diffusion automation allocated in callback");for(int i=0;i<128;++i)check(std::isfinite(b.getSample(0,i)),"Non-finite diffusion output");}
+  }
   std::cout<<"PASS: mono/stereo, trim, callback allocations, UTF-8 assets, preset clearing, and rate/buffer matrix\n";return 0;
  }catch(const std::exception& e){allocationProbe::enabled=false;std::cerr<<e.what()<<'\n';return 1;}
 }
