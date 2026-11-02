@@ -67,7 +67,7 @@ private:
  juce::StringArray deviceNames() const;
  void refreshDeviceList();
  void applyDeviceVariant(int);
- bool lastGridMode=false,masterPage=false,editorsVisible=false;
+ bool lastGridMode=false,masterPage=false,editorsVisible=false,lastStereoSync=false,lastStereoPing=false;
  juce::Rectangle<int> browserArea,gridArea,parameterArea,stompArea;
  bool gridMode() const;
  int currentType() const;
