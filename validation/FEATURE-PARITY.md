@@ -27,6 +27,8 @@ the device list. Independent NAM playback is not Neural Capture compatibility.
 - Deliberately out of scope: user amp profiling/capture creation. Existing code is
   preserved; no new capture-creation workflow is planned.
 
+Reference for the feature audit: [Quad Cortex manual, CorOS 4.1.1](https://neuraldsp.com/manual/quad-cortex), checked November 2, 2026. Its documented performance modes, MIDI, expression, tuner, looper and routing workflows remain implementation targets.
+
 This is a development gap list, not an exhaustive verified hardware specification.
 Hardware/cloud account management functions need a separate compatibility decision.
 
@@ -45,3 +47,10 @@ shutdown cleanup and 100,000 concurrent ordered switches, with audio-thread
 allocation/deletion assertions. LeakSanitizer cannot scan threads in this runtime;
 object counts independently reach zero. Local CMake is unavailable. Windows CI
 is the authoritative full-project build; no new release version is declared here.
+
+Windows checkpoint verified: commit `90645a0d50a84728a473f2235243d88b79467ef9`,
+[Actions run 41533997943](https://github.com/mikey423a/VirtualCortex/actions/runs/41533997943).
+All 33 CTest tests passed, including realtime_model_ownership (100,000 switches).
+MSVC compiled the standalone and VST3; pluginval strictness 5, standalone startup,
+and installer installation/uninstallation checks passed. This transport is still
+not wired into the audio processor; app feature count and version remain 6.13.
