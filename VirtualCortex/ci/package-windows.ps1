@@ -40,4 +40,19 @@ if ($p.ExitCode -ne 0) { throw "Uninstall failed: $($p.ExitCode)" }
 if ((Test-Path $installed) -or (Test-Path $vstInstalled)) { throw 'Uninstall left application binaries installed' }
 Compress-Archive -Path "$build/VirtualCortex_artefacts/Release/VST3/Virtual Cortex.vst3" -DestinationPath "$dist/VirtualCortex-6.12.0-VST3-x64.zip" -Force
 Copy-Item $original "$dist/Virtual Cortex.exe"
+# Optional offline engine prototype: separate from the GUI EXE and VST3.
+$namExe = Join-Path $build 'Release/virtualcortex_nam_render.exe'
+if (Test-Path $namExe) {
+    $namSrc = Join-Path $env:GITHUB_WORKSPACE 'dependencies/NAM'
+    $namPackage = Join-Path $build 'nam-backend-package'
+    New-Item -ItemType Directory -Force $namPackage | Out-Null
+    Copy-Item $namExe $namPackage
+    Copy-Item "$root/NAM-BACKEND.md" "$namPackage/README.md"
+    Copy-Item "$namSrc/LICENSE" "$namPackage/NAM-MIT-LICENSE.txt"
+    Copy-Item "$namSrc/Dependencies/eigen/COPYING.MPL2" "$namPackage/EIGEN-MPL2-LICENSE.txt"
+    Copy-Item "$namSrc/Dependencies/eigen/COPYING.BSD" "$namPackage/EIGEN-BSD-LICENSE.txt"
+    # The bundled single-header source retains the complete nlohmann license notices.
+    Copy-Item "$namSrc/Dependencies/nlohmann/json.hpp" "$namPackage/nlohmann-json.hpp"
+    Compress-Archive -Path "$namPackage/*" -DestinationPath "$dist/VirtualCortex-NAM-Backend-Experimental-Windows-x64.zip" -Force
+}
 Get-ChildItem $dist -File | Where-Object Extension -in '.exe','.zip' | Get-FileHash -Algorithm SHA256 | Format-Table -AutoSize | Out-String -Width 4096 | Set-Content "$dist/SHA256SUMS.txt"

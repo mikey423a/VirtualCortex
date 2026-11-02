@@ -23,6 +23,14 @@ jobs:
           ref: 3af3ce009f6a02f6fa651008fffb5b41743a9fab
           path: dependencies/JUCE
           persist-credentials: false
+      - name: Get pinned NAM core and dependencies
+        uses: actions/checkout@v4
+        with:
+          repository: sdatkinson/NeuralAmpModelerCore
+          ref: 1f42f88535884450104b8711d7595019afa0495b
+          path: dependencies/NAM
+          submodules: recursive
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -40,7 +48,7 @@ jobs:
           Get-FileHash dependencies/asiosdk.zip -Algorithm SHA256 | Format-List
       - name: Configure, compile EXE and VST3, and run regression tests
         run: |
-          ./VirtualCortex/build-windows.ps1 -JucePath "$env:GITHUB_WORKSPACE/dependencies/JUCE" -EnableAsio -AsioSdkPath "$env:VC_ASIO_SDK_DIR"
+          ./VirtualCortex/build-windows.ps1 -JucePath "$env:GITHUB_WORKSPACE/dependencies/JUCE" -EnableAsio -AsioSdkPath "$env:VC_ASIO_SDK_DIR" -NamPath "$env:GITHUB_WORKSPACE/dependencies/NAM"
       - name: Validate VST3 and smoke test standalone
         run: |
           ./VirtualCortex/ci/verify-windows.ps1
@@ -67,3 +75,4 @@ jobs:
             VirtualCortex/build-windows/ui-review/*.png
             VirtualCortex/dist/*test*.log
           if-no-files-found: warn
+
