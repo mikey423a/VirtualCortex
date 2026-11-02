@@ -19,6 +19,11 @@ int main(int argc,char** argv){
    auto out=dir.getChildFile(name).createOutputStream();require(out!=nullptr,"PNG output failed");
    juce::PNGImageFormat png;require(png.writeImageToStream(image,*out),"PNG encoder failed");
   };
+  auto* tone=dynamic_cast<juce::Slider*>(editor->findChildWithID("tone"));
+  require(tone!=nullptr,"Tone control missing");
+  bool formatted=false;
+  for(int i=0;i<tone->getNumChildComponents();++i)if(auto* label=dynamic_cast<juce::Label*>(tone->getChildComponent(i)))formatted|=label->getText()=="60.0 %";
+  require(formatted,"Initial tone value was not formatted before interaction");
   auto* drive=dynamic_cast<juce::Slider*>(editor->findChildWithID("drive"));require(drive!=nullptr,"Drive control missing");
   drive->setValue(.73,juce::sendNotificationSync);
   require(std::abs(processor->parameters.getRawParameterValue("drive")->load()-.73f)<.001f,"Drive control did not update processor");
