@@ -289,8 +289,6 @@ void VirtualCortexEditor::applyDeviceVariant(int index){
   processor.setGridSlotParameters((size_t)selectedRow,(size_t)selectedColumn,p);
  }else{
   if(browserType==1){const float values[]={-74,-62,-50,-36};set("gate",values[index]);}
-  if(browserType==8){p.drive=index==2?.35f:.5f;p.feedback=index==2?.37f:.158f;p.rate=.05f;p.depth=.18f;p.time=0.f;p.mix=index==3?.5f:1.f;}
-  if(browserType==9||browserType==10){const float drives[]={.4f,.15f,.4f,.75f};p.drive=drives[index];p.rate=.5f;p.depth=.35f;p.mix=1.f;}
   if(browserType==2){const float drives[]={.35f,.08f,.2f,.45f,.8f};set("drive",drives[index]);set("level",index>=3?.45f:.65f);}
   if(browserType==3){set("cabOn",1);set("irOn",0);set("cab",1);}
   if(browserType==4){const float values[5][3]={{0,0,0},{3,0,-2},{-1,0,4},{0,4,0},{0,-4,0}};set("eqLow",values[index][0]);set("eqMid",values[index][1]);set("eqHigh",values[index][2]);}
