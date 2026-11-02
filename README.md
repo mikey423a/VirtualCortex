@@ -1,26 +1,31 @@
-# Virtual Cortex 6.1
+# Virtual Cortex 6.2
 
-Windows x64 standalone guitar amplifier/effects application and VST3 built with JUCE 8.0.10 and ASIO enabled.
+Windows x64 standalone guitar amplifier/effects application and VST3, built with JUCE 8.0.10 and ASIO enabled.
 
 ## Current verified build
 
-[Successful 6.1 Windows build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/41373888288)
+[Successful 6.2 build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/41376751062)
 
-The editor now uses a dark device browser, a four-row icon grid, selected-effect controls, and A-H slot bypass buttons. It resizes from 900x560 to 1800x1100 and chooses its initial size from the display work area. Numeric controls display readable units immediately after launch. Existing DSP algorithms and all 28 parameter IDs were retained.
+The editor follows the supplied desktop reference's 1184x864 layout: narrow icon rail, device list, two visible grid rows, parameter tiles and a two-row Gig view. Panel, title strip and selection colours were sampled from the reference. The whole canvas scales with its original proportions to fit smaller displays.
 
-- Standalone EXE and VST3 compiled with MSVC on Windows Server 2022.
-- All 21 CTest checks passed, including native editor screenshots at three sizes, initial value formatting, drive binding, slot insertion, and bypass.
+The interface retains Virtual Cortex branding and names for its actual supported effects. The DSP algorithms, plugin IDs and all 28 parameter IDs are retained. This update does not add Quad Cortex's proprietary amp library, capture workflow, hardware phantom power or ground lift.
+
+- EXE and VST3 compiled with MSVC on the Windows Server 2022 runner.
+- All 21 CTest checks passed, including native editor renders, initial value formatting, editable readout binding, block insertion, bypass and the second grid bank.
 - VST3 passed pluginval 1.0.4 at strictness level 5.
-- Standalone remained running for the 10-second startup test.
-- Inno Setup installer compiled and passed silent install/uninstall checks.
-- Windows 11 interactive audio and Merging Anubis ASIO input/output still require user testing. Installer is unsigned.
+- Standalone passed the 10-second startup test.
+- Inno Setup installer passed install/uninstall checks.
+- Anubis ASIO input/output and Windows 11 interactive audio still require user testing. Installer is unsigned.
 
-The VirtualCortex-Windows-x64 artifact contains the Setup EXE, standalone EXE, VST3 ZIP, hashes, and installer logs. The VirtualCortex-build-logs artifact includes the actual native editor PNGs and test logs.
+Download the VirtualCortex-Windows-x64 artifact for Setup EXE, standalone EXE, VST3 ZIP, hashes and installer logs. Native PNG renders are included in VirtualCortex-build-logs.
 
-## Using the editor
+## Controls
 
-The default serial engine is preserved. The sidebar selects which serial effect's controls are shown. Enable GRID ENGINE to hear the editable parallel grid. Click a slot, select a device type in the browser, and use ADD TO SLOT. A-H toggle block bypass in the selected row. The input's four enabled rows share the same audio input and mix to the main output.
+- I / II select the two pairs of grid rows; the Gig view row dropdown selects any of the four rows.
+- The icon rail selects a device category. In Grid mode, a device-list entry inserts that effect into the selected slot. Entries also provide original parameter presets, IR loading or VCMLP1 model loading as applicable.
+- The top A-H buttons select slots; the Gig view tiles toggle the selected row's block bypass states.
+- STOMP or the header pedal button enables the Grid engine. SERIAL / GRID status is shown at the bottom. The default serial engine is preserved.
+- Double-click a numeric readout to edit it. The ellipsis in the parameter header opens block removal/bypass options.
+- The cabinet and amp panels expose the existing IR and VCMLP1 loading controls. Some grid blocks have fixed settings in the existing engine; output trim applies to the serial engine.
 
-Load cabinet IRs or VCMLP1 models with the selected cabinet/amp controls. Some grid effects have fixed settings in the existing DSP. Output trim currently applies to the serial engine. This update does not reproduce Quad Cortex firmware, its amp library, or hardware capture/phantom-power/ground-lift controls.
-
-Source is in VirtualCortex/. The Windows workflow is .github/workflows/virtualcortex-windows.yml. The nested README describes the earlier setup stage; this page is the current build status.
+Source: VirtualCortex/. Workflow: .github/workflows/virtualcortex-windows.yml. This page supersedes the historical nested setup README.
