@@ -15,6 +15,12 @@ Windows x64 standalone guitar amplifier/effects application and VST3, built with
 
 Download the VirtualCortex-Windows-x64 artifact for Setup EXE, standalone EXE, VST3 ZIP, hashes and installer logs. Native screenshots and test logs are in VirtualCortex-build-logs.
 
+## Experimental NAM backend
+
+An optional offline NAM renderer now compiles on Windows with NeuralAmpModelerCore v0.5.4. [The build](https://github.com/mikey423a/VirtualCortex/actions/runs/41522572979) passed all 31 CTest checks, including a numerical Linear-model oracle and upstream LSTM/WaveNet rendering, plus pluginval level 5, standalone startup and installer checks.
+
+This is a separate command-line prototype, not live NAM playback in the GUI. The app remains 6.12.0 with its existing VCMLP1 loader. No Neural DSP algorithms, factory captures or new named device models are included. See [research findings](REUSE-RESEARCH.md), [tool usage](VirtualCortex/NAM-BACKEND.md) and [verification scope](validation/NAM-BACKEND.md).
+
 ## New in 6.12: fullscreen and larger displays
 
 The standalone header has a FULL SCREEN button. F11 toggles fullscreen and Esc exits; the previous window position and size are restored. The VST3 leaves window management to the DAW. The old 1776 × 1296 editor limit has been raised to 7680 × 4320, and windows can use different aspect ratios. The existing canvas scales proportionally and remains centered, with black side margins on widescreen displays.
