@@ -120,6 +120,20 @@ int runProcessorAudioTests(){
    juce::AudioBuffer<float> b(2,128);juce::MidiBuffer midi;
    for(int step=0;step<10;++step){controls.time=step/10.f;controls.depth=1.f-step/10.f;p->setGridSlotParameters(0,0,controls);b.clear();allocationProbe::count=0;allocationProbe::enabled=true;p->processBlock(b,midi);allocationProbe::enabled=false;check(allocationProbe::count==0,"Repeat FX allocated in the audio callback");}
   }
+  {
+   struct TempoHead final:juce::AudioPlayHead {juce::Optional<PositionInfo> getPosition() const override {PositionInfo p;p.setBpm(100.);return p;}} playhead;
+   auto p=std::make_unique<VirtualCortexProcessor>();grid(*p,vc::BlockType::Empty);prepare(*p);p->setPlayHead(&playhead);set(*p,"stereoDelayOn",1);set(*p,"sdSync",1);set(*p,"sdBpm",120);set(*p,"sdBeatsL",.25f);set(*p,"sdBeatsR",.5f);set(*p,"sdMix",1);set(*p,"sdFeedback",0);set(*p,"sdFilterMix",0);settle(*p,0,120);
+   juce::AudioBuffer<float> b(2,128);juce::MidiBuffer midi;float peak=0;int peakIndex=-1;
+   for(int block=0;block<125;++block){b.clear();if(block==0)b.setSample(0,0,.1f);p->processBlock(b,midi);for(int i=0;i<128;++i)if(std::abs(b.getSample(0,i))>peak){peak=std::abs(b.getSample(0,i));peakIndex=block*128+i;}}
+   check(std::abs(peakIndex-7200)<=1&&std::abs(peak-.1f)<.0001f,"Host tempo did not control stereo delay timing");
+   const auto saved=state(*p);auto restored=std::make_unique<VirtualCortexProcessor>();prepare(*restored);restore(*restored,saved);check(restored->parameters.getRawParameterValue("stereoDelayOn")->load()>.5f,"Stereo delay on-state lost on recall");check(std::abs(restored->parameters.getRawParameterValue("sdBeatsL")->load()-.25f)<.001,"Stereo tempo setting lost on recall");
+   auto xml=juce::AudioProcessor::getXmlFromBinary(saved.getData(),(int)saved.getSize());auto tree=juce::ValueTree::fromXml(*xml);for(const auto* id:vc::stereoDelayIDs)tree.removeChild(tree.getChildWithProperty("id",id),nullptr);for(const auto* id:vc::stereoDelayFlagIDs)tree.removeChild(tree.getChildWithProperty("id",id),nullptr);auto legacyXml=tree.createXml();juce::MemoryBlock legacy;juce::AudioProcessor::copyXmlToBinary(*legacyXml,legacy);restore(*restored,legacy);
+   check(restored->parameters.getRawParameterValue("stereoDelayOn")->load()<.5f,"Old preset retained enabled stereo delay");check(std::abs(restored->parameters.getRawParameterValue("sdBeatsL")->load()-1.f)<.001,"Old preset did not restore new-parameter defaults");
+   set(*p,"sdSync",0);set(*p,"sdModDepth",2);set(*p,"sdDucking",.6f);
+   for(int step=0;step<10;++step){set(*p,"sdTimeL",20.f+step*37);set(*p,"sdTape",(float)(step%2));b.clear();allocationProbe::count=0;allocationProbe::enabled=true;p->processBlock(b,midi);allocationProbe::enabled=false;check(allocationProbe::count==0,"Stereo delay automation allocated in callback");for(int ch=0;ch<2;++ch)for(int i=0;i<128;++i)check(std::isfinite(b.getSample(ch,i)),"Stereo delay produced non-finite audio");}
+   for(int mode=0;mode<2;++mode){if(mode)grid(*p,vc::BlockType::Empty);else{set(*p,"gridMode",0);serialDry(*p);}set(*p,"outputTrim",1);settle(*p,.1f,100);set(*p,"outputTrim",0);check(std::abs(settle(*p,.1f,200))<1.e-6f,"Global trim did not mute stereo delay wet output");}
+   p->setPlayHead(nullptr);
+  }
   // Exercise actual JUCE processor buffers at the common Anubis rate/buffer range.
   for(double rate:{44100.,48000.,96000.,192000.})for(int size:{32,64,128,256,512}){
    auto p=std::make_unique<VirtualCortexProcessor>();prepare(*p,rate,size);juce::AudioBuffer<float> b(2,size);juce::MidiBuffer midi;

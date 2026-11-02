@@ -7,6 +7,7 @@
 #include <mutex>
 #include "DSP/CoreDSP.h"
 #include "DSP/PortableAudioEngine.h"
+#include "DSP/StereoDelay.h"
 #include "DSP/PendingIRQueue.h"
 #include "DSP/PendingNeuralQueue.h"
 class VirtualCortexProcessor final : public juce::AudioProcessor {
@@ -22,7 +23,7 @@ public:
  bool acceptsMidi() const override {return false;}
  bool producesMidi() const override {return false;}
  bool isMidiEffect() const override {return false;}
- double getTailLengthSeconds() const override {return 3.0;}
+ double getTailLengthSeconds() const override;
  int getNumPrograms() override {return 1;}
  int getCurrentProgram() override {return 0;}
  void setCurrentProgram(int) override {}
@@ -46,6 +47,11 @@ public:
  juce::String getCabinetIRName() const;
 private:
  static juce::AudioProcessorValueTreeState::ParameterLayout makeLayout();
+ void processStereoDelay(juce::AudioBuffer<float>&);
+ std::array<std::atomic<float>*,18> stereoParameters{};
+ std::array<std::atomic<float>*,4> stereoFlags{};
+ vc::StereoDelay stereoDelay;
+ std::atomic<double> stereoTempo{120.0};
  // Stable APVTS parameter objects: avoid string/table lookups on the audio thread.
  struct CachedParameters {
   std::atomic<float>* gate=nullptr;

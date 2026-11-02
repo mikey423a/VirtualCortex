@@ -79,7 +79,7 @@ int main(int argc,char** argv){
   require(processor->getEditableGrid().get(3,6)->type==vc::BlockType::Chorus,"Chorus browser selection inserted wrong block");
   require(std::abs(processor->getGridSlotParameters(3,6).rate-.04f)<1.e-5f,"Chorus preset parameters not applied");
   editor->setEditorsVisible(true);capture("chorus-browser-preset.png",1184,864);
-  auto* category=dynamic_cast<juce::ComboBox*>(editor->findChildWithID("device-category"));require(category&&category->getNumItems()==22,"Expanded category selector missing");
+  auto* category=dynamic_cast<juce::ComboBox*>(editor->findChildWithID("device-category"));require(category&&category->getNumItems()==23,"Expanded category selector missing");
   for(int type:{16,17,18,19,20,21}){
    editor->selectSlot(1,type-16);category->setSelectedId(type,juce::sendNotificationSync);
    auto* entry=dynamic_cast<juce::Button*>(editor->findChildWithID("device-0"));require(entry&&entry->isVisible(),"New category has no selectable device");entry->onClick();
@@ -92,6 +92,11 @@ int main(int argc,char** argv){
   require(processor->getGridSlotParameters(0,5).repeatFx,"Repeat FX enable was not applied");
   auto* cutoff=dynamic_cast<juce::Slider*>(editor->findChildWithID("slot-param-5"));require(cutoff&&cutoff->isVisible(),"Loop cutoff control missing");cutoff->setValue(.4,juce::sendNotificationSync);require(processor->getGridSlotParameters(0,5).repeatFx,"Editing a knob cleared Repeat FX");
   capture("delay-repeat-fx.png",1184,864);editor->setEditorsVisible(false);require(!repeat->isVisible(),"Repeat FX control remains over hidden editor");capture("delay-grid-only.png",1184,864);
+  category->setSelectedId(23,juce::sendNotificationSync);auto* stereoPreset=dynamic_cast<juce::Button*>(editor->findChildWithID("device-1"));require(stereoPreset&&stereoPreset->isVisible(),"Stereo delay preset missing");stereoPreset->onClick();
+  require(processor->parameters.getRawParameterValue("stereoDelayOn")->load()>.5f,"Stereo delay did not enable");require(processor->parameters.getRawParameterValue("sdPingPong")->load()>.5f,"Ping-pong preset not applied");editor->setEditorsVisible(true);
+  for(int page=0;page<3;++page){auto* button=dynamic_cast<juce::Button*>(editor->findChildWithID("stereo-page-"+juce::String(page)));require(button&&button->isVisible(),"Stereo delay page missing");button->onClick();const auto name=juce::String("stereo-delay-page-")+juce::String(page)+".png";capture(name.toRawUTF8(),1184,864);}
+  auto* wet=dynamic_cast<juce::Slider*>(editor->findChildWithID("sdWetLevel"));require(wet&&wet->isVisible(),"Deep stereo delay control hidden");wet->setValue(-6,juce::sendNotificationSync);require(std::abs(processor->parameters.getRawParameterValue("sdWetLevel")->load()+6)<.001f,"Stereo delay control did not bind to parameter");
+  editor->setEditorsVisible(false);for(int i=0;i<3;++i)require(!editor->findChildWithID("stereo-page-"+juce::String(i))->isVisible(),"Stereo page remains over grid view");capture("stereo-delay-grid-only.png",1184,864);
   editor.reset();processor->releaseResources();
   std::cout<<"PASS: native editor snapshots at three sizes, control binding, insertion and bypass\n";
   return 0;

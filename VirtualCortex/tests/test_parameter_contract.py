@@ -22,3 +22,6 @@ assert not missing, f"Editor references missing processor parameters: {missing}"
 # Prevent an accidental silent loss of a control from the editor.
 assert set(used) == set(declared), f"Processor parameters without editor controls: {sorted(set(declared)-set(used))}"
 print(f"Verified {len(declared)} unique processor parameters and editor bindings")
+
+legacy = {"gate","drive","tone","level","cab","delayTime","delayFeedback","delayMix","reverbMix","ampBias","inputHP","cabCut","tremRate","tremDepth","outputTrim","eqLow","eqMid","eqHigh","gateOn","ampOn","cabOn","delayOn","reverbOn","tremOn","bypass","eqOn","irOn","gridMode"}
+assert legacy <= set(declared), "An existing automation parameter was removed"
