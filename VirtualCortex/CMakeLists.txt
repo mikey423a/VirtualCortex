@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(VirtualCortex VERSION 6.0.0 LANGUAGES CXX)
+project(VirtualCortex VERSION 6.1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 if(MSVC)
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -145,3 +145,13 @@ target_sources(VirtualCortex PRIVATE Source/PluginProcessor.cpp Source/PluginEdi
 target_compile_definitions(VirtualCortex PUBLIC JUCE_VST3_CAN_REPLACE_VST2=0 PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
 target_link_libraries(VirtualCortex PRIVATE juce::juce_audio_utils juce::juce_dsp juce::juce_gui_extra juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
 
+
+if(BUILD_TESTING)
+  juce_add_console_app(VirtualCortexUIReview PRODUCT_NAME "VirtualCortexUIReview")
+  target_sources(VirtualCortexUIReview PRIVATE tests/ui_review.cpp)
+  target_include_directories(VirtualCortexUIReview PRIVATE Source)
+  juce_generate_juce_header(VirtualCortexUIReview)
+  target_compile_definitions(VirtualCortexUIReview PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
+  target_link_libraries(VirtualCortexUIReview PRIVATE VirtualCortex juce::juce_audio_utils juce::juce_dsp juce::juce_gui_extra)
+  add_test(NAME native_editor_layout COMMAND VirtualCortexUIReview "${CMAKE_CURRENT_BINARY_DIR}/ui-review")
+endif()

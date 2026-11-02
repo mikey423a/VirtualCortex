@@ -64,5 +64,6 @@ jobs:
             VirtualCortex/build-windows/windows-build-manifest.txt
             VirtualCortex/build-windows/Testing/Temporary/LastTest.log
             VirtualCortex/build-windows/*verification*.txt
+            VirtualCortex/build-windows/ui-review/*.png
             VirtualCortex/dist/*test*.log
           if-no-files-found: warn
