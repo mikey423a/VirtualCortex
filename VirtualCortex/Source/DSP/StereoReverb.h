@@ -27,7 +27,7 @@ public:
   for(auto& d:pre)d.prepare((std::size_t)std::ceil(fs*.7)+8);
   for(std::size_t ch=0;ch<2;++ch)for(std::size_t j=0;j<4;++j){auto& a=diffusers[ch][j];a.length=fs*(.0031+.0017*j+.00037*ch);a.delay.prepare((std::size_t)std::ceil(a.length)+4);}
   preCurrent=preTarget=1;preFade=0;preFading=false;preBlend=0;
-  lowState={};highState={};inputLow={};inputHigh={};phase=0;envelope=0;idle=0;counter=0;awake=false;initialized=false;cfg={};smooth={};mix=0;wetGain=1;coefficient=std::exp(-1./(fs*.02));
+  coefficientsValid=false;lowState={};highState={};inputLow={};inputHigh={};phase=0;envelope=0;idle=0;counter=0;awake=false;initialized=false;cfg={};smooth={};mix=0;wetGain=1;coefficient=std::exp(-1./(fs*.02));
  }
  bool active()const noexcept{return awake;}
  void configure(StereoReverbParameters p)noexcept{
@@ -89,10 +89,14 @@ private:
   return preFading?a*(1-preBlend)+pre[channel].read(preTarget+offset)*preBlend:a;
  }
  void updateCoefficients()noexcept{
+  const std::array<float,8> key{{smooth.lowFreq,smooth.highFreq,smooth.inputHP,smooth.inputLP,smooth.size,smooth.decay,smooth.lowDecay,smooth.highDecay}};
+  if(coefficientsValid&&key==coefficientKey)return;
+  coefficientKey=key;coefficientsValid=true;
   auto pole=[&](float hz){return (float)std::exp(-6.283185307179586*std::min((double)hz,fs*.45)/fs);};
   lowC=pole(smooth.lowFreq);highC=pole(smooth.highFreq);inputHPC=pole(smooth.inputHP);inputLPC=pole(smooth.inputLP);
   for(std::size_t i=0;i<8;++i){double t=times[i]*smooth.size;gMid[i]=(float)std::pow(.001,t/smooth.decay);gLow[i]=(float)std::pow(.001,t/(smooth.decay*smooth.lowDecay));float gHigh=(float)std::pow(.001,t/(smooth.decay*smooth.highDecay));highRatio[i]=gHigh/gMid[i];}
  }
+ std::array<float,8> coefficientKey{};bool coefficientsValid=false;
  inline static constexpr std::array<double,8> times{{.0293,.0371,.0419,.0473,.0539,.0611,.0677,.0793}};
  std::array<Delay,8> tank;std::array<Delay,2> pre;std::array<std::array<Allpass,4>,2> diffusers;
  std::array<float,8> lowState{},highState{},gMid{},gLow{},highRatio{};std::array<float,2> inputHigh{},inputLow{};

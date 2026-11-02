@@ -44,5 +44,12 @@ int main(){
  p.enabled=false;r.configure(p);for(int i=0;i<48000;++i)r.process(.1f,-.2f);auto dry=r.process(.1f,-.2f);assert(dry[0]==.1f&&dry[1]==-.2f);
  // Preparing again clears the tank, diffusers and envelope.
  r.prepare(48000);p={};p.enabled=true;p.mix=1;r.configure(p);for(int i=0;i<48000;++i)for(float x:r.process(0,0))assert(x==0);
+ // Cached coefficients must be invalidated when preparing a different rate.
+ for(double rate:{44100.,96000.,192000.}){
+  vc::StereoReverb reused,fresh;Params q;q.enabled=true;q.mix=1;q.decay=4;q.lowDecay=1.5f;
+  reused.prepare(48000);reused.configure(q);for(int i=0;i<24000;++i)reused.process(.1f,.05f);
+  reused.prepare(rate);reused.configure(q);fresh.prepare(rate);fresh.configure(q);
+  for(int i=0;i<24000;++i){float x=i==0?.1f:0.f;assert(reused.process(x,0)==fresh.process(x,0));}
+ }
  std::cout<<"PASS stereo FDN decay, decorrelation, early timing, width, damping, ducking, automation and reset\n";
 }
