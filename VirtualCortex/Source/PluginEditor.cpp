@@ -22,7 +22,7 @@ CortexLookAndFeel::CortexLookAndFeel(){
 }
 void CortexLookAndFeel::drawButtonBackground(juce::Graphics& g,juce::Button& b,const juce::Colour&,bool over,bool){
  const auto id=b.getComponentID();auto r=b.getLocalBounds().toFloat();
- if(id=="directory"){return;}
+ if(id=="directory"||id=="edit-menu"){return;}
  if(id.startsWith("device-")){if(b.getToggleState()||over){g.setColour(juce::Colour(0xff111212));g.fillRoundedRectangle(r,6.f);}return;}
  g.setColour(juce::Colour(b.getToggleState()&&id.startsWith("quick-")?0xffffd545:(over?0xff292929:0xff1d1d1d)));g.fillRoundedRectangle(r.reduced(.5f),id=="lane"?16.f:5.f);
 }
@@ -115,7 +115,8 @@ VirtualCortexEditor::VirtualCortexEditor(VirtualCortexProcessor& p):AudioProcess
  for(auto* b:{&savePresetButton,&loadPresetButton,&addButton,&removeButton,&loadIRButton,&loadGridIRButton,&loadNeuralButton})addAndMakeVisible(*b);
  for(auto* l:{&irName,&gridIRName,&neuralName,&statusLabel}){l->setColour(juce::Label::textColourId,muted);l->setFont(juce::Font(juce::FontOptions(11.f)));addAndMakeVisible(*l);}
  for(int i=0;i<8;++i){auto& b=browserButtons[(size_t)i];b.rail=true;b.type=i+1;b.setTooltip(CortexBlockButton::nameFor(i+1));b.onClick=[this,i]{browserType=i+1;variant=0;masterPage=(i==7);lastView=-1;updateView();};addAndMakeVisible(b);}
- addButton.onClick=[this]{insertBlock(browserType);};removeButton.onClick=[this]{insertBlock(0);};
+ addButton.onClick=[this]{insertBlock(browserType);};removeButton.setButtonText("");removeButton.setComponentID("edit-menu");removeButton.setTooltip("Selected block options");
+ removeButton.onClick=[this]{juce::PopupMenu menu;menu.addItem(1,"Remove selected block");menu.addItem(2,"Toggle selected block bypass");auto safe=juce::Component::SafePointer<VirtualCortexEditor>(this);menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&removeButton),[safe](int item){if(!safe)return;if(item==1)safe->insertBlock(0);if(item==2)safe->toggleSelectedSlot();});};
  slotEnabled.onClick=[this]{toggleSelectedSlot();};addAndMakeVisible(slotEnabled);
  for(int r=0;r<4;++r){auto& lane=laneButtons[(size_t)r];lane.setButtonText("ROW "+juce::String(r+1));lane.setComponentID("lane");lane.setClickingTogglesState(true);lane.onClick=[this,r]{processor.setGridLaneEnabled((size_t)r,laneButtons[(size_t)r].getToggleState());refreshGridControls();};addAndMakeVisible(lane);
   for(int c=0;c<8;++c){auto& b=gridCells[(size_t)r][(size_t)c];b.onClick=[this,r,c]{selectSlot(r,c);};addAndMakeVisible(b);}
@@ -171,7 +172,7 @@ void VirtualCortexEditor::updateView(){refreshGridControls();const int type=curr
  const auto colour=CortexBlockButton::colourFor(type);
  if(!gm||masterPage){for(int i:visibleKnobs()){knobs[(size_t)i].slider.setVisible(true);knobs[(size_t)i].value.setVisible(true);knobs[(size_t)i].slider.setColour(juce::Slider::rotarySliderFillColourId,colour);knobs[(size_t)i].slider.setEnabled(!(gm&&masterPage));knobs[(size_t)i].value.setEnabled(!(gm&&masterPage));}int enable=-1;switch(type){case 1:enable=0;break;case 2:enable=1;break;case 3:enable=2;break;case 4:enable=7;break;case 5:enable=3;break;case 6:enable=4;break;case 7:enable=5;break;}if(enable>=0)switches[(size_t)enable].button.setVisible(true);switches[8].button.setVisible(type==3&&!gm);}
  else for(int i:visibleSlotControls()){slotSliders[(size_t)i].setVisible(true);slotValues[(size_t)i].setVisible(true);slotSliders[(size_t)i].setColour(juce::Slider::rotarySliderFillColourId,colour);}
- slotEnabled.setVisible(gm&&!masterPage&&type!=0);loadIRButton.setVisible(!gm&&type==3);irName.setVisible(!gm&&type==3);loadGridIRButton.setVisible(gm&&type==3);gridIRName.setVisible(gm&&type==3);loadNeuralButton.setVisible(gm&&type==2);neuralName.setVisible(gm&&type==2);addButton.setEnabled(browserType<8);removeButton.setEnabled(!masterPage);
+ slotEnabled.setVisible(gm&&!masterPage&&type!=0);loadIRButton.setVisible(!gm&&type==3);irName.setVisible(!gm&&type==3);loadGridIRButton.setVisible(gm&&type==3);gridIRName.setVisible(gm&&type==3);loadNeuralButton.setVisible(gm&&type==2);neuralName.setVisible(gm&&type==2);addButton.setVisible(false);addButton.setEnabled(browserType<8);removeButton.setEnabled(!masterPage);
  for(int i=0;i<8;++i){browserButtons[(size_t)i].selected=i+1==browserType;browserButtons[(size_t)i].repaint();}refreshDeviceList();
  resized();repaint();
 }
@@ -190,7 +191,7 @@ void VirtualCortexEditor::resized(){
   const auto knob=juce::Rectangle<int>(x+96,y+42,76,76),value=juce::Rectangle<int>(x+6,y+85,92,28);
   if(gridMode()&&!masterPage){slotSliders[(size_t)i].setBounds(knob);slotValues[(size_t)i].setBounds(value);}else{knobs[(size_t)i].slider.setBounds(knob);knobs[(size_t)i].value.setBounds(value);}}
  for(auto& sw:switches)if(&sw!=&switches[6]&&&sw!=&switches[9])sw.button.setBounds(1137,318,36,35);slotEnabled.setBounds(1137,318,36,35);
- switches[8].button.setBounds(309,489,150,34);removeButton.setBounds(1018,551,146,31);
+ switches[8].button.setBounds(309,489,150,34);removeButton.setBounds(302,318,35,35);
  for(auto* b:{&loadIRButton,&loadGridIRButton,&loadNeuralButton})b->setBounds(838,492,245,32);
  for(auto* l:{&irName,&gridIRName,&neuralName})l->setBounds(838,530,245,25);
  presetMenuButton.setBounds(302,635,172,52);rowSelector.setBounds(302,688,172,52);stompModeButton.setBounds(302,741,172,52);
