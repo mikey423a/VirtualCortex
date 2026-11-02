@@ -2,7 +2,7 @@
 #include <cmath>
 
 namespace {
-const juce::Colour background(0xff090a0b), panel(0xff1c1d1f), muted(0xff8a8e93), mint(0xff53e3c2);
+const juce::Colour background(0xff090a0b), panel(0xff1c1c1c), muted(0xff8a8e93), mint(0xff61fbd8);
 void drawCaption(juce::Graphics& g,const juce::String& s,juce::Rectangle<int> r,float size,juce::Colour c=juce::Colours::white,int align=juce::Justification::centredLeft){
  g.setColour(c);g.setFont(juce::Font(juce::FontOptions(size)));g.drawFittedText(s,r,align,1);
 }
@@ -55,7 +55,7 @@ void CortexLookAndFeel::drawRotarySlider(juce::Graphics& g,int x,int y,int w,int
 }
 CortexBlockButton::CortexBlockButton():juce::Button("Signal slot"){}
 juce::Colour CortexBlockButton::colourFor(int type){
- const juce::uint32 values[]={0xff41454a,0xffd8a944,0xfff25562,0xff57d3bf,0xff4097ef,0xff43d8c9,0xff65f2cb,0xff9265ff,0xffa0a7ad};
+ const juce::uint32 values[]={0xff41454a,0xffd8a944,0xfff25562,0xff57d3bf,0xff4097ef,0xff43d8c9,0xff61fbd8,0xff9265ff,0xffa0a7ad};
  return juce::Colour(values[juce::jlimit(0,8,type)]);
 }
 juce::String CortexBlockButton::nameFor(int type){
@@ -82,7 +82,8 @@ void CortexBlockButton::paintButton(juce::Graphics& g,bool over,bool){
   drawIcon(g,{bounds.getCentreX()-12,bounds.getCentreY()-12,24,24},type,selected?juce::Colours::white:juce::Colour(0xff66696b));return;
  }
  if(stomp){
-  g.setColour(selected?mint:(type?colour.withAlpha(.085f):juce::Colour(0xff242424)));g.fillRect(bounds);
+  const juce::uint32 tileColours[]={0xff292929,0xff241a12,0xff241a12,0xff162522,0xff131a22,0xff162522,0xff292929,0xff131a22};
+  g.setColour(selected?mint:juce::Colour(tileColours[juce::jlimit(0,7,type)]));g.fillRect(bounds);
   g.setColour(juce::Colour(0xff050505));g.drawRect(bounds,1.f);
   const auto ink=selected?juce::Colours::black:juce::Colours::white;
   drawCaption(g,caption,{getWidth()-27,6,23,25},20.f,selected?juce::Colour(0xff316f63):muted,juce::Justification::centred);
@@ -202,11 +203,11 @@ void VirtualCortexEditor::resized(){
 }
 void VirtualCortexEditor::paint(juce::Graphics& g){
  g.fillAll(juce::Colours::black);g.addTransform(juce::AffineTransform::scale(designScale).translated(designOffsetX,designOffsetY));
- g.setColour(juce::Colour(0xff303030));g.fillRect(0,0,1184,26);drawCaption(g,"Virtual Cortex",{440,1,300,23},12.f,juce::Colour(0xffa5a5a5),juce::Justification::centred);
+ g.setColour(juce::Colour(0xff313031));g.fillRect(0,0,1184,26);drawCaption(g,"Virtual Cortex",{440,1,300,23},12.f,juce::Colour(0xffa5a5a5),juce::Justification::centred);
  g.setColour(juce::Colour(0xff5845ff));g.fillRoundedRectangle(10,2,65,18,9);drawCaption(g,"VC",{10,2,65,18},10.f,juce::Colours::white,juce::Justification::centred);
  CortexBlockButton::drawIcon(g,{14,38,24,27},7,juce::Colours::white);drawCaption(g,"Virtual Cortex",{55,36,160,32},14.f,juce::Colour(0xff777777));
  drawCaption(g,"GRID",{438,30,66,45},14.f,juce::Colours::white,juce::Justification::centred);g.setColour(juce::Colour(0xff85f87d));g.fillRect(438,26,66,2);
- g.setColour(juce::Colour(0xff111111));g.fillRoundedRectangle(9,78,43,752,6);g.setColour(panel);g.fillRoundedRectangle(browserArea.toFloat(),6.f);
+ g.setColour(juce::Colour(0xff131313));g.fillRoundedRectangle(9,78,43,752,6);g.setColour(panel);g.fillRoundedRectangle(browserArea.toFloat(),6.f);
  drawCaption(g,CortexBlockButton::nameFor(browserType).toUpperCase(),{68,87,216,26},13.f);
  const float lineY[2]={179.f,283.f};for(int row=0;row<2;++row){g.setColour(juce::Colour(processor.isGridLaneEnabled((size_t)(rowBank*2+row))?0xffa3a3a3:0xff383838));g.drawLine(352,lineY[row],1124,lineY[row],1.f);g.setColour(juce::Colour(0xff111212));g.fillRoundedRectangle(1124.f,137.f+row*104.f,49,row?75.f:84.f,16);drawCaption(g,"Main",{1125,152+row*104,47,25},12.f,juce::Colours::white,juce::Justification::centred);drawCaption(g,"Out",{1125,179+row*104,47,25},12.f,juce::Colours::white,juce::Justification::centred);}
  g.setColour(juce::Colour(0xff111111));g.fillRoundedRectangle(parameterArea.toFloat(),5);g.setColour(panel);g.fillRect(302,354,872,236);
