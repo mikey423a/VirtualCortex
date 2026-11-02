@@ -31,6 +31,7 @@ public:
  void resized() override;
  // Used by the native UI review to exercise real selection and insertion.
  void selectSlot(int row,int col);
+ void setEditorsVisible(bool visible);
  bool insertBlock(int type);
  bool toggleSelectedSlot();
 private:
@@ -48,6 +49,7 @@ private:
  std::array<juce::TextButton,2> bankButtons;
  std::array<juce::Label,6> slotValues;
  juce::TextButton headerStompButton{""},previousPreset{"<"},nextPreset{">"},directoryButton{"DIRECTORY"},ioButton{"I/O"},stompModeButton{"STOMP"},presetMenuButton{"PRESET"};
+ juce::TextButton editorsButton{"SHOW EDITORS"};
  juce::ComboBox rowSelector;
  std::array<juce::Slider,6> slotSliders;
  std::array<juce::String,6> slotLabels{{"DRIVE","MIX","TIME","FEEDBACK","RATE","DEPTH"}};
@@ -63,7 +65,7 @@ private:
  juce::StringArray deviceNames() const;
  void refreshDeviceList();
  void applyDeviceVariant(int);
- bool lastGridMode=false,masterPage=false;
+ bool lastGridMode=false,masterPage=false,editorsVisible=false;
  juce::Rectangle<int> browserArea,gridArea,parameterArea,stompArea;
  bool gridMode() const;
  int currentType() const;

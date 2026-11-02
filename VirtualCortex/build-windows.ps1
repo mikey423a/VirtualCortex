@@ -106,7 +106,7 @@ if (-not (Test-Path $package) -or (Get-Item $package).Length -eq 0) {
 # Provide reproducible evidence of what was packaged.
 $manifest = Join-Path $build 'windows-build-manifest.txt'
 @(
-    'Virtual Cortex 6.3',
+    'Virtual Cortex 6.4',
     ('Built: ' + (Get-Date).ToUniversalTime().ToString('o')),
     ('JUCE source: ' + $juce),
     ('ASIO enabled: ' + [bool]$EnableAsio),

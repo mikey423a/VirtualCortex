@@ -81,6 +81,16 @@ int runProcessorAudioTests(){
   // UTF-8 filenames, bypassed model recall, empty presets and missing assets.
   const auto model=folder.getChildFile(juce::String::fromUTF8("amplifier-\xc3\xa9.vcmlp"));saveModel(model);
   {
+   auto parallel=std::make_unique<VirtualCortexProcessor>();grid(*parallel,vc::BlockType::Empty);
+   for(std::size_t row=0;row<4;++row)parallel->setGridLaneEnabled(row,true);
+   parallel->setGridBlock(3,0,{vc::BlockType::Amp,true});prepare(*parallel);
+   check(parallel->loadGridNeuralModel(model,3,0),"Fourth parallel row model failed to load");
+   check(std::abs(settle(*parallel,0)-.0625f)<1.e-5f,"Four enabled rows were not averaged");
+   for(std::size_t row=0;row<3;++row)parallel->setGridLaneEnabled(row,false);
+   check(std::abs(settle(*parallel,0)-.25f)<1.e-5f,"Fourth row could not process independently");
+   parallel->setGridLaneEnabled(3,false);check(std::abs(settle(*parallel,.1f)-.1f)<1.e-5f,"All rows disabled did not return dry input");
+  }
+  {
    auto p=std::make_unique<VirtualCortexProcessor>();grid(*p,vc::BlockType::Amp);prepare(*p);
    check(p->loadGridNeuralModel(model,0,0),"Unicode model path did not load");check(std::abs(settle(*p,0)-.25f)<1.e-5f,"Loaded model did not reach audio");
    p->setGridBlock(0,0,{vc::BlockType::Amp,false});const auto disabledState=state(*p);
