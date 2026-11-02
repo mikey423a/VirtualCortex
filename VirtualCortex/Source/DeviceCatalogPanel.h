@@ -82,14 +82,17 @@ private:
   action.setButtonText(e->implementationType>=23?"OPEN POST-CHAIN CONTROLS":e->implementationType>0?"ADD ORIGINAL TO SELECTED SLOT":"MODEL NOT AVAILABLE");
  }
  void rebuild(){
-  const auto query=search.getText().trim();const auto section=sections.getSelectedId()>1?sections.getText():juce::String();const int filter=availability.getSelectedId();
+  const auto query=search.getText().trim().removeCharacters(juce::String::fromUTF8(u8"\u00ae\u2122"));
+  const auto words=juce::StringArray::fromTokens(query," \t",{});const auto section=sections.getSelectedId()>1?sections.getText():juce::String();const int filter=availability.getSelectedId();
   visible.clear();int originals=0,references=0,announced=0;
   for(const auto& e:vc::deviceCatalog){
    if(e.implementationType>0)++originals;else if(e.announced)++announced;else ++references;
    if(section.isNotEmpty()&&section!=text(e.section))continue;
    if((filter==2&&e.implementationType==0)||(filter==3&&(e.implementationType>0||e.announced))||(filter==4&&!e.announced))continue;
    const juce::String searchable=text(e.name)+" "+text(e.category)+" "+text(e.basedOn)+" "+text(e.previous)+" "+text(e.plugin)+" "+text(e.section);
-   if(query.isNotEmpty()&&!searchable.containsIgnoreCase(query))continue;
+   const auto normalized=searchable.removeCharacters(juce::String::fromUTF8(u8"\u00ae\u2122"));
+   bool matches=true;for(const auto& word:words)if(!normalized.containsIgnoreCase(word)){matches=false;break;}
+   if(!matches)continue;
    visible.push_back(&e);
   }
   list.deselectAllRows();list.updateContent();if(!visible.empty())list.selectRow(0);refreshDetails();

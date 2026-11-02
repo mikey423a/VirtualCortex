@@ -36,6 +36,7 @@ int main(int argc,char** argv){
    query("bRiT 2203 87");require(catalog->visibleEntryCount()==1&&catalog->selectedPlayableType()==0&&!action->isEnabled(),"Reference entry presented as playable");
    action->onClick();require(chosen==-1,"Unavailable model invoked insertion");
    capture("catalog-reference-1184x864.png",1184,864);
+   query("Marshall JCM800");require(catalog->visibleEntryCount()>0&&catalog->selectedPlayableType()==0,"Gear search requires trademark symbols");
    query("");availability->setSelectedId(2,juce::sendNotificationSync);require(catalog->visibleEntryCount()==23,"Original count incorrect");
    query("Bit-crusher");require(catalog->visibleEntryCount()==1&&action->isEnabled(),"Working original cannot be selected");
    action->onClick();require(chosen==15,"Original action routed to wrong processor");
