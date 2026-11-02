@@ -79,7 +79,7 @@ int main(int argc,char** argv){
   require(processor->getEditableGrid().get(3,6)->type==vc::BlockType::Chorus,"Chorus browser selection inserted wrong block");
   require(std::abs(processor->getGridSlotParameters(3,6).rate-.04f)<1.e-5f,"Chorus preset parameters not applied");
   editor->setEditorsVisible(true);capture("chorus-browser-preset.png",1184,864);
-  auto* category=dynamic_cast<juce::ComboBox*>(editor->findChildWithID("device-category"));require(category&&category->getNumItems()==23,"Expanded category selector missing");
+  auto* category=dynamic_cast<juce::ComboBox*>(editor->findChildWithID("device-category"));require(category&&category->getNumItems()==24,"Expanded category selector missing");
   for(int type:{16,17,18,19,20,21}){
    editor->selectSlot(1,type-16);category->setSelectedId(type,juce::sendNotificationSync);
    auto* entry=dynamic_cast<juce::Button*>(editor->findChildWithID("device-0"));require(entry&&entry->isVisible(),"New category has no selectable device");entry->onClick();
@@ -99,6 +99,10 @@ int main(int argc,char** argv){
   processor->parameters.getParameter("sdSync")->setValueNotifyingHost(1.f);auto* mainPage=dynamic_cast<juce::Button*>(editor->findChildWithID("stereo-page-0"));mainPage->onClick();require(!editor->findChildWithID("sdTimeL")->isEnabled(),"Manual time not disabled in tempo sync");require(!editor->findChildWithID("sdCross")->isEnabled(),"Manual cross feedback not disabled in ping pong");
   processor->parameters.getParameter("sdSync")->setValueNotifyingHost(0.f);processor->parameters.getParameter("sdPingPong")->setValueNotifyingHost(0.f);mainPage->onClick();require(editor->findChildWithID("sdTimeL")->isEnabled()&&editor->findChildWithID("sdCross")->isEnabled(),"Manual stereo controls did not re-enable");
   editor->setEditorsVisible(false);for(int i=0;i<3;++i)require(!editor->findChildWithID("stereo-page-"+juce::String(i))->isVisible(),"Stereo page remains over grid view");capture("stereo-delay-grid-only.png",1184,864);
+  category->setSelectedId(24,juce::sendNotificationSync);auto* reverbPreset=dynamic_cast<juce::Button*>(editor->findChildWithID("device-4"));require(reverbPreset&&reverbPreset->isVisible(),"Stereo reverb preset missing");reverbPreset->onClick();require(processor->parameters.getRawParameterValue("stereoReverbOn")->load()>.5f,"Stereo reverb did not enable");require(processor->parameters.getRawParameterValue("srDucking")->load()>.7f,"Ducked preset missing");editor->setEditorsVisible(true);
+  for(int page=0;page<3;++page){auto* button=dynamic_cast<juce::Button*>(editor->findChildWithID("stereo-page-reverb-"+juce::String(page)));require(button&&button->isVisible(),"Stereo reverb page missing");button->onClick();const auto name=juce::String("stereo-reverb-page-")+juce::String(page)+".png";capture(name.toRawUTF8(),1184,864);}
+  auto* width=dynamic_cast<juce::Slider*>(editor->findChildWithID("srWidth"));require(width&&width->isVisible(),"Reverb width missing");width->setValue(.5,juce::sendNotificationSync);require(std::abs(processor->parameters.getRawParameterValue("srWidth")->load()-.5f)<.001,"Reverb control not bound");editor->setEditorsVisible(false);for(int i=0;i<3;++i)require(!editor->findChildWithID("stereo-page-reverb-"+juce::String(i))->isVisible(),"Reverb page over grid view");capture("stereo-reverb-grid-only.png",1184,864);
+
   editor.reset();processor->releaseResources();
   std::cout<<"PASS: native editor snapshots at three sizes, control binding, insertion and bypass\n";
   return 0;

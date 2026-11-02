@@ -23,5 +23,9 @@ assert not missing, f"Editor references missing processor parameters: {missing}"
 assert set(used) == set(declared), f"Processor parameters without editor controls: {sorted(set(declared)-set(used))}"
 print(f"Verified {len(declared)} unique processor parameters and editor bindings")
 
-legacy = {"gate","drive","tone","level","cab","delayTime","delayFeedback","delayMix","reverbMix","ampBias","inputHP","cabCut","tremRate","tremDepth","outputTrim","eqLow","eqMid","eqHigh","gateOn","ampOn","cabOn","delayOn","reverbOn","tremOn","bypass","eqOn","irOn","gridMode"}
+legacy = {"gate","drive","ampBias","inputHP","tone","level","cab","cabCut","delayTime","delayFeedback","delayMix","reverbMix","tremRate","tremDepth","outputTrim","eqLow","eqMid","eqHigh","gateOn","ampOn","cabOn","delayOn","reverbOn","tremOn","bypass","eqOn","irOn","gridMode"}
 assert legacy <= set(declared), "An existing automation parameter was removed"
+
+# New automation parameters must append to the established 6.9 order.
+expected = ["gate","drive","ampBias","inputHP","tone","level","cab","cabCut","delayTime","delayFeedback","delayMix","reverbMix","tremRate","tremDepth","outputTrim","eqLow","eqMid","eqHigh","gateOn","ampOn","cabOn","delayOn","reverbOn","tremOn","eqOn","bypass","irOn","gridMode","sdTimeL","sdTimeR","sdFeedback","sdCross","sdLowCut","sdHighCut","sdMix","sdModRate","sdModDepth","sdDucking","sdDuckRelease","sdWidth","sdWetLevel","sdGlide","sdBpm","sdBeatsL","sdBeatsR","sdFilterMix","stereoDelayOn","sdPingPong","sdTape","sdSync"]
+assert declared[:50] == expected, "Existing host parameter order changed"

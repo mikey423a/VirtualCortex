@@ -8,6 +8,7 @@
 #include "DSP/CoreDSP.h"
 #include "DSP/PortableAudioEngine.h"
 #include "DSP/StereoDelay.h"
+#include "DSP/StereoReverb.h"
 #include "DSP/PendingIRQueue.h"
 #include "DSP/PendingNeuralQueue.h"
 class VirtualCortexProcessor final : public juce::AudioProcessor {
@@ -51,6 +52,9 @@ private:
  std::array<std::atomic<float>*,18> stereoParameters{};
  std::array<std::atomic<float>*,4> stereoFlags{};
  vc::StereoDelay stereoDelay;
+ vc::StereoReverb stereoReverb;
+ std::array<std::atomic<float>*,18> reverbParameters{};
+ std::atomic<float>* reverbEnabled=nullptr;
  std::atomic<double> stereoTempo{120.0};
  // Stable APVTS parameter objects: avoid string/table lookups on the audio thread.
  struct CachedParameters {

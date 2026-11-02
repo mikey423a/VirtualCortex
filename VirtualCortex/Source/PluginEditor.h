@@ -39,8 +39,8 @@ private:
  CortexLookAndFeel look;
  struct Knob {juce::Slider slider;std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attachment;juce::Label value;juce::String label;};
  struct Switch {juce::ToggleButton button;std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> attachment;};
- std::array<Knob,36> knobs;
- std::array<Switch,14> switches;
+ std::array<Knob,54> knobs;
+ std::array<Switch,15> switches;
  std::array<std::array<CortexBlockButton,8>,4> gridCells;
  std::array<juce::TextButton,4> laneButtons;
  std::array<CortexBlockButton,8> stomps;
@@ -51,7 +51,8 @@ private:
  juce::TextButton headerStompButton{""},previousPreset{"<"},nextPreset{">"},directoryButton{"DIRECTORY"},ioButton{"I/O"},stompModeButton{"STOMP"},presetMenuButton{"PRESET"};
  juce::TextButton editorsButton{"SHOW EDITORS"};
  juce::ComboBox rowSelector,categoryBox;
- std::array<juce::TextButton,3> stereoPages;
+ std::array<juce::TextButton,3> stereoPages,reverbPages;
+ int reverbPage=0;
  int stereoPage=0;
  std::array<juce::Slider,6> slotSliders;
  std::array<juce::String,6> slotLabels{{"DRIVE","MIX","TIME","FEEDBACK","RATE","DEPTH"}};
