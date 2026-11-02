@@ -184,6 +184,14 @@ VirtualCortexEditor::VirtualCortexEditor(VirtualCortexProcessor& p):AudioProcess
  fullScreenButton.onClick=[this]{setFullScreenMode(!isFullScreenMode());};
  addChildComponent(fullScreenButton);
  fullScreenButton.setVisible(processor.wrapperType==juce::AudioProcessor::wrapperType_Standalone);
+ catalogButton.setComponentID("catalog-toggle");catalogButton.setTooltip("Browse playable originals and the complete reference device inventory");
+ catalogButton.onClick=[this]{catalogPanel.setVisible(!catalogPanel.isVisible());if(catalogPanel.isVisible())catalogPanel.toFront(false);};
+ addAndMakeVisible(catalogButton);addChildComponent(catalogPanel);
+ catalogPanel.onChooseOriginal=[this](int type){
+  if(type<=21){if(!insertBlock(type))return;}
+  else {browserType=type;masterPage=true;lastView=-1;updateView();}
+  setEditorsVisible(true);catalogPanel.setVisible(false);
+ };
  setWantsKeyboardFocus(true);
  setResizable(true,true);setResizeLimits(800,584,7680,4320);
  int width=1184,height=864;if(auto* display=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay()){height=juce::jlimit(584,864,display->userArea.getHeight()-100);width=(int)std::round(height*1184./864.);if(width>display->userArea.getWidth()-60){width=juce::jmax(800,display->userArea.getWidth()-60);height=(int)std::round(width*864./1184.);}}
@@ -207,6 +215,7 @@ bool VirtualCortexEditor::setFullScreenMode(bool enabled){
  return true;
 }
 bool VirtualCortexEditor::keyPressed(const juce::KeyPress& key){
+ if(key.getKeyCode()==juce::KeyPress::escapeKey&&catalogPanel.isVisible()){catalogPanel.setVisible(false);return true;}
  if(key.getKeyCode()==juce::KeyPress::F11Key)return setFullScreenMode(!isFullScreenMode());
  if(key.getKeyCode()==juce::KeyPress::escapeKey&&isFullScreenMode())return setFullScreenMode(false);
  return false;
@@ -275,6 +284,7 @@ void VirtualCortexEditor::resized(){
  bankButtons[0].setVisible(false);bankButtons[1].setVisible(false);
  const int rowStep=editorsVisible?46:160,rowTop=editorsVisible?132:153;
  for(int r=0;r<4;++r){laneButtons[(size_t)r].setVisible(true);laneButtons[(size_t)r].setBounds(302,rowTop+r*rowStep+5,49,editorsVisible?39:84);for(int c=0;c<8;++c){auto& cell=gridCells[(size_t)r][(size_t)c];cell.setVisible(true);cell.setBounds(363+c*93,rowTop+r*rowStep,94,editorsVisible?44:92);}}
+ catalogButton.setBounds(511,35,115,32);catalogPanel.setBounds(53,78,1121,752);
  fullScreenButton.setBounds(805,35,162,32);
  editorsButton.setButtonText(editorsVisible?"HIDE EDITORS":"SHOW EDITORS");editorsButton.setBounds(205,837,140,24);
  const auto indices=gridMode()&&!masterPage?visibleSlotControls():visibleKnobs();
@@ -324,7 +334,7 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
 
  g.setColour(panel);g.fillRect(302,598,172,232);g.setColour(juce::Colour(0xff070707));g.drawRect(302,598,172,36,1);drawCaption(g,"Gig view",{343,599,125,33},20.f,juce::Colours::white,juce::Justification::centredLeft,true);drawCaption(g,"Parameter Editor",{310,796,156,32},14.f,muted);
  }
- drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.12.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
+ drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.13.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
 }
 void VirtualCortexEditor::applyPreset(int index){auto set=[this](const char* id,float value){if(auto* p=processor.parameters.getParameter(id))p->setValueNotifyingHost(p->convertTo0to1(value));};if(index<2)return;set("gridMode",0.f);
  if(index==2){set("drive",.12f);set("tone",.7f);set("level",.65f);set("delayMix",.12f);set("reverbMix",.25f);set("ampBias",0.f);set("delayOn",1.f);set("reverbOn",1.f);}

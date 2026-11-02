@@ -1,6 +1,6 @@
 # Experimental NAM offline backend
 
-This separate command-line program renders audio through NeuralAmpModelerCore v0.5.4, pinned at commit 1f42f88535884450104b8711d7595019afa0495b. It is development groundwork, not the Virtual Cortex GUI's amp loader. The installed 6.12 app still accepts VCMLP1 models; NAM playback inside the GUI is not implemented by this change.
+This separate command-line program renders audio through NeuralAmpModelerCore v0.5.4, pinned at commit 1f42f88535884450104b8711d7595019afa0495b. It is development groundwork, not the Virtual Cortex GUI's amp loader. The installed 6.13 app still accepts VCMLP1 models; NAM playback inside the GUI is not implemented by this change.
 
 ```
 virtualcortex_nam_render.exe model.nam input.wav output.wav

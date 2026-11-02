@@ -1,6 +1,7 @@
 #pragma once
 #include "PluginProcessor.h"
 #include <array>
+#include "DeviceCatalogPanel.h"
 
 class CortexLookAndFeel final : public juce::LookAndFeel_V4 {
 public:
@@ -54,6 +55,8 @@ private:
  juce::TextButton headerStompButton{""},previousPreset{"<"},nextPreset{">"},directoryButton{"DIRECTORY"},ioButton{"I/O"},stompModeButton{"STOMP"},presetMenuButton{"PRESET"};
  juce::Rectangle<int> windowedBounds;
  juce::TextButton fullScreenButton{"FULL SCREEN"};
+ DeviceCatalogPanel catalogPanel;
+ juce::TextButton catalogButton{"CATALOG"};
  juce::TextButton editorsButton{"SHOW EDITORS"};
  juce::ComboBox rowSelector,categoryBox;
  std::array<juce::TextButton,3> stereoPages,reverbPages;

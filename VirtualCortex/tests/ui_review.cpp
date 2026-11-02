@@ -21,6 +21,36 @@ int main(int argc,char** argv){
    auto out=dir.getChildFile(name).createOutputStream();require(out!=nullptr,"PNG output failed");
    juce::PNGImageFormat png;require(png.writeImageToStream(image,*out),"PNG encoder failed");
   };
+  {
+   auto* openCatalog=dynamic_cast<juce::Button*>(editor->findChildWithID("catalog-toggle"));
+   auto* catalog=dynamic_cast<DeviceCatalogPanel*>(editor->findChildWithID("device-catalog-panel"));
+   require(openCatalog&&catalog&&!catalog->isVisible(),"Catalog must start hidden");
+   openCatalog->onClick();require(catalog->isVisible()&&catalog->visibleEntryCount()==712,"Catalog is incomplete");
+   auto* search=dynamic_cast<juce::TextEditor*>(catalog->findChildWithID("catalog-search"));
+   auto* availability=dynamic_cast<juce::ComboBox*>(catalog->findChildWithID("catalog-availability"));
+   auto* section=dynamic_cast<juce::ComboBox*>(catalog->findChildWithID("catalog-section"));
+   auto* action=dynamic_cast<juce::Button*>(catalog->findChildWithID("catalog-action"));
+   require(search&&availability&&section&&action,"Catalog controls missing");
+   auto callback=catalog->onChooseOriginal;int chosen=-1;catalog->onChooseOriginal=[&](int type){chosen=type;};
+   auto query=[&](const char* value){search->setText(value,false);search->onTextChange();};
+   query("bRiT 2203 87");require(catalog->visibleEntryCount()==1&&catalog->selectedPlayableType()==0&&!action->isEnabled(),"Reference entry presented as playable");
+   action->onClick();require(chosen==-1,"Unavailable model invoked insertion");
+   capture("catalog-reference-1184x864.png",1184,864);
+   query("");availability->setSelectedId(2,juce::sendNotificationSync);require(catalog->visibleEntryCount()==23,"Original count incorrect");
+   query("Bit-crusher");require(catalog->visibleEntryCount()==1&&action->isEnabled(),"Working original cannot be selected");
+   action->onClick();require(chosen==15,"Original action routed to wrong processor");
+   query("Stereo Reverb");action->onClick();require(chosen==24,"Post-chain action routed to wrong processor");
+   query("");availability->setSelectedId(4,juce::sendNotificationSync);require(catalog->visibleEntryCount()==57&&!action->isEnabled(),"Announced entries not isolated");
+   availability->setSelectedId(3,juce::sendNotificationSync);require(catalog->visibleEntryCount()==632,"Released reference count incorrect");
+   availability->setSelectedId(1,juce::sendNotificationSync);
+   for(int i=0;i<section->getNumItems();++i)if(section->getItemText(i)=="Guitar amps")section->setSelectedId(section->getItemId(i),juce::sendNotificationSync);
+   require(catalog->visibleEntryCount()==83&&!action->isEnabled(),"Guitar amp section incomplete");
+   capture("catalog-guitar-amps-2560x1440.png",2560,1440);
+   capture("catalog-guitar-amps-822x600.png",822,600);
+   query("zz-no-matching-device-zz");require(catalog->visibleEntryCount()==0&&!action->isEnabled(),"Empty search retained a stale action");
+   catalog->onChooseOriginal=callback;
+   require(editor->keyPressed(juce::KeyPress(juce::KeyPress::escapeKey))&&!catalog->isVisible(),"Escape did not close catalog");
+  }
   for(int r=0;r<4;++r){auto* lane=editor->findChildWithID("lane-"+juce::String(r));require(lane&&lane->isVisible(),"A parallel row is hidden");}
   auto* initialDrive=editor->findChildWithID("drive");require(initialDrive&&!initialDrive->isVisible(),"Editors must start hidden");
   require(!editor->findChildWithID("fullscreen-toggle")->isVisible(),"Fullscreen leaked into plugin editor");
