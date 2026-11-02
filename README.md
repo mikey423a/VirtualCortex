@@ -1,13 +1,13 @@
-# Virtual Cortex 6.5
+# Virtual Cortex 6.6
 
 Windows x64 standalone guitar amplifier/effects application and VST3, built with JUCE 8.0.10 and ASIO enabled.
 
 ## Verified build
 
-[Successful 6.5 build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/41419026978)
+[Successful 6.6 build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/41426495067)
 
 - EXE and VST3 compiled using MSVC on Windows Server 2022.
-- All 23 CTest checks passed, including the real JUCE processor, editor renders, four-row routing and the new effects.
+- All 24 CTest checks passed, including the real JUCE processor, editor renders, four-row routing and the new effects.
 - VST3 passed pluginval 1.0.4 at strictness level 5.
 - Standalone stayed running for the 10-second startup test.
 - Inno Setup installer passed install/uninstall and installed-binary checks.
@@ -21,23 +21,28 @@ All four signal rows are visible together. The bottom parameter editor and Gig v
 
 In Grid mode, each enabled row receives the same input and enabled outputs are averaged. Row buttons enable/disable individual lanes. Empty enabled rows contribute dry input; when all rows are disabled, dry input passes through. This is fixed parallel routing, not an arbitrary split/merge graph or independent hardware buses. Enable GRID ENGINE to hear the grid; the existing serial engine remains available.
 
-## New original effects in 6.5
+## New in 6.6
 
-- Compressor: feed-forward peak detection with threshold, ratio, attack, release, makeup and parallel mix.
-- Overdrive: soft clipping with drive, tone, level and mix.
-- Distortion: hard clipping with the same controls.
-- Drive blocks use 2x interpolation, tone filtering and DC removal; this does not imply alias-free processing or a measured analog circuit model.
-- Choose a new category in the left rail and a browser entry to insert the effect. Selecting a new effect from serial mode enables Grid mode. Parameters are stored per slot and recalled with presets.
-- Tests cover compressor response, drive algorithm distinction, DC removal, dry mix, rates, preset recall and zero C++ allocations during tested audio callback automation.
+Five original Grid effects are now available, bringing the application to 15 processing block types:
 
-These are original algorithms, not Neural DSP device models. The full website device list is not implemented. See [DEVICE-COVERAGE.md](DEVICE-COVERAGE.md) for the remaining gaps.
+- Chorus and flanger: fractional delay modulation with rate, depth, base delay, feedback and mix.
+- Phaser: six allpass stages with rate, depth, center frequency, feedback and mix.
+- Wah: envelope-following bandpass filter with sensitivity, manual position, resonance, attack, release and mix. Set sensitivity to zero for a stationary/manual sweep.
+- Bit-crusher: 4–16-bit symmetric quantization, 1–64 sample hold, level and mix.
+- Browser entries select starting settings; parameters remain editable and are saved per slot.
+- Selecting a new Grid-only effect from serial mode enables Grid mode.
+- Portable audio tests check delay timing, phaser magnitude, wah response, quantization/hold, dry mix and rate handling. Native processor tests exercise state recall and allocation-free processing during tested automation. The browser selection path is also exercised by the real editor test.
 
-## Existing functionality
+These are original basic algorithms, not measured branded-device emulations. Modulation currently uses independent channel state with synchronized LFO phase; no stereo-spread or expression-pedal/MIDI support is claimed. Individual factory amps, cabinets, Neural Captures and licensed plugin devices are not bundled. The full website catalog remains incomplete; see [DEVICE-COVERAGE.md](DEVICE-COVERAGE.md).
 
-Original amp, gate, cabinet IR loading, EQ, delay, reverb, tremolo and VCMLP1 model loading remain. Plugin IDs and all 28 existing host parameter IDs are unchanged. Old presets remain readable; presets using new block types require 6.5 or later.
+## Existing original effects
 
-The top A-H buttons select slots. Click a grid slot to select it, then choose a browser entry to insert a device. With editors shown, Gig tiles toggle block bypass; numeric readouts can be edited by double-clicking. The parameter header menu removes or bypasses the selected block. The cabinet and amp browsers expose IR and VCMLP1 loading. Grid gate/EQ still have fixed settings.
+The compressor, soft-clipping overdrive and hard-clipping distortion added in 6.5 remain, along with amp, gate, cabinet IR loading, EQ, delay, reverb, tremolo and VCMLP1 model loading. All 28 existing host parameter IDs and plugin IDs are unchanged. Older presets remain readable. Presets using the five new block types require 6.6 or later.
 
-The project does not bundle the Quad Cortex factory models, Neural Captures, licensed Neural DSP plugin devices, or NAM support. Visual similarity is not evidence of sonic equivalence.
+## Controls and limits
+
+Choose a row/slot, then select a category in the left rail and an entry in the browser. Row buttons enable individual parallel lanes. SHOW EDITORS opens the parameter and Gig panels while keeping all four rows visible. Gig tiles toggle block bypass; double-click numeric readouts to edit values. The parameter header menu removes or bypasses the selected block. Cabinet and amp browsers expose IR and VCMLP1 loading.
+
+Grid gate/EQ retain fixed settings. The project has no NAM or Quad Cortex capture-format compatibility. Visual similarity does not establish sonic equivalence.
 
 Source: VirtualCortex/. Workflow: .github/workflows/virtualcortex-windows.yml.
