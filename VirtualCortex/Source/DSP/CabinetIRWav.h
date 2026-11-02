@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cstring>
 #include <fstream>
+#include <filesystem>
 #include <iterator>
 #include <stdexcept>
 #include <string>
@@ -17,7 +18,7 @@ inline std::uint16_t irU16(const unsigned char* p) { return std::uint16_t(p[0]) 
 inline std::uint32_t irU32(const unsigned char* p) { return std::uint32_t(p[0]) | (std::uint32_t(p[1])<<8) | (std::uint32_t(p[2])<<16) | (std::uint32_t(p[3])<<24); }
 inline LoadedCabinetIR loadCabinetIRWav(const std::string& path, unsigned targetRate, std::size_t maxTaps=4096) {
  if(targetRate<8000 || targetRate>192000 || maxTaps==0) throw std::runtime_error("Invalid IR target sample rate or capacity");
- std::ifstream f(path,std::ios::binary);
+ std::ifstream f(std::filesystem::u8path(path),std::ios::binary);
  if(!f) throw std::runtime_error("Cannot open cabinet IR WAV");
  std::vector<unsigned char> b((std::istreambuf_iterator<char>(f)),{});
  if(b.size()<12 || std::memcmp(b.data(),"RIFF",4) || std::memcmp(b.data()+8,"WAVE",4)) throw std::runtime_error("Invalid RIFF/WAVE IR");

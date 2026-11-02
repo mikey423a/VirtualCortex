@@ -2,6 +2,7 @@
 #include <array>
 #include <cmath>
 #include <fstream>
+#include <filesystem>
 #include <stdexcept>
 #include <string>
 
@@ -31,7 +32,7 @@ struct NeuralAmpModel {
 };
 // Text file: VCMLP1, then 64 input weights, 8 biases, 8 output weights, output bias.
 inline NeuralAmpModel loadNeuralAmpModel(const std::string& path) {
- std::ifstream in(path); if(!in) throw std::runtime_error("Cannot open neural model: "+path);
+ std::ifstream in(std::filesystem::u8path(path)); if(!in) throw std::runtime_error("Cannot open neural model: "+path);
  std::string magic; if(!(in>>magic)||magic!="VCMLP1") throw std::runtime_error("Unsupported neural model format (expected VCMLP1)");
  NeuralAmpModel model;
  for(auto& row:model.weights) for(auto& w:row) if(!(in>>w)) throw std::runtime_error("Incomplete neural weights");

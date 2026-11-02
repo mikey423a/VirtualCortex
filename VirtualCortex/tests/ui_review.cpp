@@ -2,10 +2,12 @@
 #include <iostream>
 #include <stdexcept>
 
+int runProcessorAudioTests();
 static void require(bool ok,const char* message){if(!ok)throw std::runtime_error(message);}
 int main(int argc,char** argv){
  try {
   juce::ScopedJuceInitialiser_GUI gui;
+  if(argc>1&&juce::String(argv[1])=="--audio-tests")return runProcessorAudioTests();
   auto processor=std::make_unique<VirtualCortexProcessor>();
   processor->prepareToPlay(48000.,128);
   auto editor=std::make_unique<VirtualCortexEditor>(*processor);
@@ -47,6 +49,11 @@ int main(int argc,char** argv){
   capture("grid-amp-1120x660.png",1120,660);
   editor->selectSlot(3,2);
   capture("bank-II-1184x864.png",1184,864);
+  bool openedOutput=false;
+  for(int i=0;i<editor->getNumChildComponents();++i)if(auto* button=dynamic_cast<CortexBlockButton*>(editor->getChildComponent(i)))if(button->rail&&button->type==8){button->onClick();openedOutput=true;break;}
+  auto* trim=dynamic_cast<juce::Slider*>(editor->findChildWithID("outputTrim"));
+  require(openedOutput&&trim&&trim->isVisible()&&trim->isEnabled(),"Grid output trim UI is disabled");
+  capture("grid-output-1184x864.png",1184,864);
   editor.reset();processor->releaseResources();
   std::cout<<"PASS: native editor snapshots at three sizes, control binding, insertion and bypass\n";
   return 0;

@@ -9,6 +9,35 @@ VirtualCortexProcessor::VirtualCortexProcessor()
  : AudioProcessor(BusesProperties().withInput("Input",juce::AudioChannelSet::stereo(),true)
                                   .withOutput("Output",juce::AudioChannelSet::stereo(),true)),
    parameters(*this,nullptr,"PARAMETERS",makeLayout()) {
+ cached.gate=parameters.getRawParameterValue("gate");
+ cached.drive=parameters.getRawParameterValue("drive");
+ cached.ampBias=parameters.getRawParameterValue("ampBias");
+ cached.inputHP=parameters.getRawParameterValue("inputHP");
+ cached.tone=parameters.getRawParameterValue("tone");
+ cached.level=parameters.getRawParameterValue("level");
+ cached.cab=parameters.getRawParameterValue("cab");
+ cached.cabCut=parameters.getRawParameterValue("cabCut");
+ cached.delayTime=parameters.getRawParameterValue("delayTime");
+ cached.delayFeedback=parameters.getRawParameterValue("delayFeedback");
+ cached.delayMix=parameters.getRawParameterValue("delayMix");
+ cached.reverbMix=parameters.getRawParameterValue("reverbMix");
+ cached.tremRate=parameters.getRawParameterValue("tremRate");
+ cached.tremDepth=parameters.getRawParameterValue("tremDepth");
+ cached.outputTrim=parameters.getRawParameterValue("outputTrim");
+ cached.eqLow=parameters.getRawParameterValue("eqLow");
+ cached.eqMid=parameters.getRawParameterValue("eqMid");
+ cached.eqHigh=parameters.getRawParameterValue("eqHigh");
+ cached.gateOn=parameters.getRawParameterValue("gateOn");
+ cached.ampOn=parameters.getRawParameterValue("ampOn");
+ cached.cabOn=parameters.getRawParameterValue("cabOn");
+ cached.delayOn=parameters.getRawParameterValue("delayOn");
+ cached.reverbOn=parameters.getRawParameterValue("reverbOn");
+ cached.tremOn=parameters.getRawParameterValue("tremOn");
+ cached.eqOn=parameters.getRawParameterValue("eqOn");
+ cached.bypass=parameters.getRawParameterValue("bypass");
+ cached.irOn=parameters.getRawParameterValue("irOn");
+ cached.gridMode=parameters.getRawParameterValue("gridMode");
+
  vc::SignalGrid grid;
  grid.set(0,0,{vc::BlockType::Gate,true});grid.set(0,1,{vc::BlockType::Amp,true});
  grid.set(0,2,{vc::BlockType::Cabinet,true});grid.set(1,0,{vc::BlockType::Amp,true});
@@ -107,11 +136,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout VirtualCortexProcessor::make
 bool VirtualCortexProcessor::isBusesLayoutSupported(const BusesLayout& layout) const {
  const auto in=layout.getMainInputChannelSet(),out=layout.getMainOutputChannelSet();
  return (in==juce::AudioChannelSet::mono() || in==juce::AudioChannelSet::stereo()) &&
-        (out==juce::AudioChannelSet::mono() || out==juce::AudioChannelSet::stereo()) && in==out;
+        (out==juce::AudioChannelSet::mono() || out==juce::AudioChannelSet::stereo()) &&
+        (in==out || (in==juce::AudioChannelSet::mono() && out==juce::AudioChannelSet::stereo()));
 }
 
 void VirtualCortexProcessor::prepareToPlay(double sampleRate,int samplesPerBlock){
- fs=juce::jmax(8000.0,sampleRate);
+ fs=std::isfinite(sampleRate)?juce::jmax(8000.0,sampleRate):48000.0;
+ assetSampleRate.store(fs,std::memory_order_release);
  // Routing changes are published through atomic row snapshots.
  updateGridRouting();
  gridAudio.prepare(fs);
@@ -119,13 +150,13 @@ void VirtualCortexProcessor::prepareToPlay(double sampleRate,int samplesPerBlock
  channels.clear();
  channels.resize((size_t)juce::jmax(1,getTotalNumOutputChannels()));
  for(auto& s:channels){
-  s.lowEQ.coefficients=juce::dsp::IIR::Coefficients<float>::makeLowShelf(fs,140.0,0.707,1.0);
-  s.midEQ.coefficients=juce::dsp::IIR::Coefficients<float>::makePeakFilter(fs,850.0,0.85,1.0);
-  s.highEQ.coefficients=juce::dsp::IIR::Coefficients<float>::makeHighShelf(fs,3500.0,0.707,1.0);
+  s.lowEQ.coefficients=juce::dsp::IIR::Coefficients<float>::makeLowShelf(fs,140.f,0.707f,1.f);
+  s.midEQ.coefficients=juce::dsp::IIR::Coefficients<float>::makePeakFilter(fs,850.f,0.85f,1.f);
+  s.highEQ.coefficients=juce::dsp::IIR::Coefficients<float>::makeHighShelf(fs,3500.f,0.707f,1.f);
   s.lowEQ.reset();s.midEQ.reset();s.highEQ.reset();
   s.inputFilter.prepare(fs);
   s.outputSmoother.prepare(fs, 12.f);
-  s.outputSmoother.reset(parameters.getRawParameterValue("outputTrim")->load());
+  s.outputSmoother.reset(cached.outputTrim->load(std::memory_order_relaxed));
   s.inputFilter.setCutoff(55.f);
   s.delay.assign((size_t)(fs*0.85)+2,0.f);
   s.combA.assign((size_t)(fs*0.031)+1,0.f);
@@ -137,24 +168,31 @@ void VirtualCortexProcessor::prepareToPlay(double sampleRate,int samplesPerBlock
 
 void VirtualCortexProcessor::processBlock(juce::AudioBuffer<float>& b,juce::MidiBuffer&){
  juce::ScopedNoDenormals noDenormals;
- const auto param=[this](const char* id){return parameters.getRawParameterValue(id)->load();};
  if (b.getNumChannels() == 0 || b.getNumSamples() == 0 || channels.empty()) return;
  // Process only the supported main bus channels; clear unexpected extra channels.
  for (int ch = getTotalNumInputChannels(); ch < b.getNumChannels(); ++ch)
   b.clear(ch, 0, b.getNumSamples());
+ // A mono guitar input feeds both sides of a stereo effects chain.
+ if(getTotalNumInputChannels()==1 && getTotalNumOutputChannels()==2 && b.getNumChannels()>=2)
+  b.copyFrom(1,0,b,0,0,b.getNumSamples());
+ // Stop non-finite device/host samples before they enter stateful filters.
+ for(int ch=0;ch<b.getNumChannels();++ch){auto* samples=b.getWritePointer(ch);
+  for(int i=0;i<b.getNumSamples();++i)if(!std::isfinite(samples[i]))samples[i]=0.f;
+ }
  // Apply staged changes even while bypassed or in the serial engine.
  // Otherwise model/IR updates can remain indefinitely pending until the user
  // re-enables grid processing, and the first unbypassed block may be stale.
  updateGridRouting();
  commitPendingGridIR();
  commitPendingNeuralModels();
- if(param("bypass")>0.5f)return; // Dry passthrough.
- if (param("gridMode")>0.5f) {
+ if(cached.bypass->load(std::memory_order_relaxed)>0.5f)return; // Dry passthrough.
+ if (cached.gridMode->load(std::memory_order_relaxed)>0.5f) {
   // No heap allocation: snapshot controls before processing this audio block.
   for(std::size_t row=0;row<4;++row) for(std::size_t col=0;col<8;++col)
    gridAudio.setSlotParameters(row,col,slotControls[row][col].load());
  }
- if (param("gridMode")>0.5f && gridAudioReady) {
+ const float outputTrim=cached.outputTrim->load(std::memory_order_relaxed);
+ if (cached.gridMode->load(std::memory_order_relaxed)>0.5f && gridAudioReady) {
   // JUCE provides planar audio; portable engine expects interleaved frames.
   // Fixed-size stack chunks keep the audio callback allocation-free.
   constexpr int chunkFrames=128;
@@ -170,36 +208,35 @@ void VirtualCortexProcessor::processBlock(juce::AudioBuffer<float>& b,juce::Midi
    }
    for(int i=0;i<frames;++i)
     for(int ch=0;ch<count;++ch)
-     b.setSample(ch,offset+i,interleaved[static_cast<size_t>(i*count+ch)]);
+     b.setSample(ch,offset+i,juce::jlimit(-1.f,1.f,interleaved[static_cast<size_t>(i*count+ch)]*channels[(size_t)ch].outputSmoother.process(outputTrim)));
   }
   return;
  }
- const float gateThreshold=juce::Decibels::decibelsToGain(param("gate"));
- const float drive=param("drive"),tone=param("tone"),level=param("level"),cabMix=param("cab");
- const float bias=param("ampBias"),tremDepth=param("tremDepth"),tremRate=param("tremRate");
- const float feedback=param("delayFeedback"),delayMix=param("delayMix"),reverbMix=param("reverbMix");
- const float outputTrim=param("outputTrim");
- const bool gateOn=param("gateOn")>0.5f,ampOn=param("ampOn")>0.5f,cabOn=param("cabOn")>0.5f;
- const bool eqOn=param("eqOn")>0.5f,irOn=param("irOn")>0.5f;
- const bool delayOn=param("delayOn")>0.5f,reverbOn=param("reverbOn")>0.5f,tremOn=param("tremOn")>0.5f;
- const bool useIR = cabOn && irOn && cabinetConvolution.getCurrentIRSize() > 0;
+ const float gateThreshold=juce::Decibels::decibelsToGain(cached.gate->load(std::memory_order_relaxed));
+ const float drive=cached.drive->load(std::memory_order_relaxed),tone=cached.tone->load(std::memory_order_relaxed),level=cached.level->load(std::memory_order_relaxed),cabMix=cached.cab->load(std::memory_order_relaxed);
+ const float bias=cached.ampBias->load(std::memory_order_relaxed),tremDepth=cached.tremDepth->load(std::memory_order_relaxed),tremRate=cached.tremRate->load(std::memory_order_relaxed);
+ const float feedback=cached.delayFeedback->load(std::memory_order_relaxed),delayMix=cached.delayMix->load(std::memory_order_relaxed),reverbMix=cached.reverbMix->load(std::memory_order_relaxed);
+ const bool gateOn=cached.gateOn->load(std::memory_order_relaxed)>0.5f,ampOn=cached.ampOn->load(std::memory_order_relaxed)>0.5f,cabOn=cached.cabOn->load(std::memory_order_relaxed)>0.5f;
+ const bool eqOn=cached.eqOn->load(std::memory_order_relaxed)>0.5f,irOn=cached.irOn->load(std::memory_order_relaxed)>0.5f;
+ const bool delayOn=cached.delayOn->load(std::memory_order_relaxed)>0.5f,reverbOn=cached.reverbOn->load(std::memory_order_relaxed)>0.5f,tremOn=cached.tremOn->load(std::memory_order_relaxed)>0.5f;
+ const bool useIR = cabOn && irOn && cabinetIRLoaded.load(std::memory_order_acquire) && cabinetConvolution.getCurrentIRSize() > 0;
  const float gain=1.f+drive*38.f;
  const float toneCoeff=std::exp(-2.f*juce::MathConstants<float>::pi*(400.f+tone*10500.f)/(float)fs);
- const float cabLowCoeff=std::exp(-2.f*juce::MathConstants<float>::pi*param("cabCut")/(float)fs);
+ const float cabLowCoeff=std::exp(-2.f*juce::MathConstants<float>::pi*cached.cabCut->load(std::memory_order_relaxed)/(float)fs);
  const float cabHighCoeff=std::exp(-2.f*juce::MathConstants<float>::pi*95.f/(float)fs);
- const float inputCutoff=param("inputHP");
+ const float inputCutoff=cached.inputHP->load(std::memory_order_relaxed);
  const float gateAttack=std::exp(-1.f/(0.002f*(float)fs));
  const float gateRelease=std::exp(-1.f/(0.075f*(float)fs));
- const size_t delaySamples=(size_t)juce::jlimit(1,(int)channels.front().delay.size()-1,(int)(fs*param("delayTime")*0.001));
- const float eqLow=param("eqLow"),eqMid=param("eqMid"),eqHigh=param("eqHigh");
+ const size_t delaySamples=(size_t)juce::jlimit(1,(int)channels.front().delay.size()-1,(int)(fs*cached.delayTime->load(std::memory_order_relaxed)*0.001));
+ const float eqLow=cached.eqLow->load(std::memory_order_relaxed),eqMid=cached.eqMid->load(std::memory_order_relaxed),eqHigh=cached.eqHigh->load(std::memory_order_relaxed);
  // PRE-IR: gate -> amp -> cabinet filter (if no IR). EQ is applied post-IR.
  for(int ch=0;ch<b.getNumChannels();++ch){
   if((size_t)ch>=channels.size()){b.clear(ch,0,b.getNumSamples());continue;}
   auto& s=channels[(size_t)ch];auto* data=b.getWritePointer(ch);
   if (s.lastInputCutoff != inputCutoff) { s.inputFilter.setCutoff(inputCutoff); s.lastInputCutoff = inputCutoff; }
-  if (s.lastEqLow != eqLow) { *s.lowEQ.coefficients=*juce::dsp::IIR::Coefficients<float>::makeLowShelf(fs,140.0,0.707,juce::Decibels::decibelsToGain(eqLow)); s.lastEqLow=eqLow; }
-  if (s.lastEqMid != eqMid) { *s.midEQ.coefficients=*juce::dsp::IIR::Coefficients<float>::makePeakFilter(fs,850.0,0.85,juce::Decibels::decibelsToGain(eqMid)); s.lastEqMid=eqMid; }
-  if (s.lastEqHigh != eqHigh) { *s.highEQ.coefficients=*juce::dsp::IIR::Coefficients<float>::makeHighShelf(fs,3500.0,0.707,juce::Decibels::decibelsToGain(eqHigh)); s.lastEqHigh=eqHigh; }
+  if (s.lastEqLow != eqLow) { *s.lowEQ.coefficients=juce::dsp::IIR::ArrayCoefficients<float>::makeLowShelf(fs,140.f,0.707f,juce::Decibels::decibelsToGain(eqLow)); s.lastEqLow=eqLow; }
+  if (s.lastEqMid != eqMid) { *s.midEQ.coefficients=juce::dsp::IIR::ArrayCoefficients<float>::makePeakFilter(fs,850.f,0.85f,juce::Decibels::decibelsToGain(eqMid)); s.lastEqMid=eqMid; }
+  if (s.lastEqHigh != eqHigh) { *s.highEQ.coefficients=juce::dsp::IIR::ArrayCoefficients<float>::makeHighShelf(fs,3500.f,0.707f,juce::Decibels::decibelsToGain(eqHigh)); s.lastEqHigh=eqHigh; }
   for(int i=0;i<b.getNumSamples();++i){
    float x=data[i];
    x=s.inputFilter.process(x);
@@ -270,16 +307,18 @@ bool VirtualCortexProcessor::loadGridNeuralModel(const juce::File& file,
  if(!vc::SignalGrid::valid(row,col) || !file.existsAsFile()) return false;
  const auto grid=getEditableGrid();
  const auto slot=grid.get(row,col);
- if(!slot || !slot->enabled || slot->type!=vc::BlockType::Amp) return false;
+ if(!slot || slot->type!=vc::BlockType::Amp) return false;
  vc::NeuralAmpModel model;
  try { model=vc::loadNeuralAmpModel(file.getFullPathName().toStdString()); }
  catch(const std::exception&) { return false; }
+ std::lock_guard<std::mutex> guard(assetMutex);
  if(!pendingNeuralModels.submit(row,col,&model)) return false;
  gridNeuralPaths[row][col]=file.getFullPathName();
  return true;
 }
 juce::String VirtualCortexProcessor::getGridNeuralModelName(std::size_t row,std::size_t col) const {
  if(!vc::SignalGrid::valid(row,col)) return "Invalid slot";
+ std::lock_guard<std::mutex> guard(assetMutex);
  const auto& path=gridNeuralPaths[row][col];
  return path.isEmpty()?"No neural model":juce::File(path).getFileName();
 }
@@ -291,9 +330,10 @@ bool VirtualCortexProcessor::loadGridCabinetIR(const juce::File& file,
  vc::LoadedCabinetIR decoded;
  try {
   decoded=vc::loadCabinetIRWav(file.getFullPathName().toStdString(),
-                        static_cast<unsigned>(fs), vc::PortableAudioEngine::maxIrTaps);
+                        static_cast<unsigned>(assetSampleRate.load(std::memory_order_acquire)), vc::PortableAudioEngine::maxIrTaps);
  } catch (const std::exception&) { return false; }
  if (decoded.taps.empty()) return false;
+ std::lock_guard<std::mutex> guard(assetMutex);
  if (!pendingGridIRs.submit(row,col,decoded.taps.data(),decoded.taps.size())) return false;
  gridIRPaths[row][col]=file.getFullPathName();
  return true;
@@ -301,20 +341,30 @@ bool VirtualCortexProcessor::loadGridCabinetIR(const juce::File& file,
 juce::String VirtualCortexProcessor::getGridCabinetIRName(std::size_t row,
                                                            std::size_t col) const {
  if (!vc::SignalGrid::valid(row,col)) return "Invalid slot";
+ std::lock_guard<std::mutex> guard(assetMutex);
  const auto& path=gridIRPaths[row][col];
  return path.isEmpty() ? "No grid IR" : juce::File(path).getFileName();
 }
 bool VirtualCortexProcessor::loadCabinetIR(const juce::File& file){
  if(!file.existsAsFile() || !file.hasFileExtension("wav;aiff;aif")) return false;
+ juce::AudioFormatManager formats;formats.registerBasicFormats();
+ std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(file));
+ if(!reader || reader->lengthInSamples<=0)return false;
+ std::lock_guard<std::mutex> guard(assetMutex);
  cabinetConvolution.loadImpulseResponse(file, juce::dsp::Convolution::Stereo::yes,
                                       juce::dsp::Convolution::Trim::yes, 0,
                                       juce::dsp::Convolution::Normalise::yes);
  cabinetIRName=file.getFileName();
  cabinetIRPath=file.getFullPathName();
+ cabinetIRLoaded.store(true,std::memory_order_release);
  return true;
+}
+juce::String VirtualCortexProcessor::getCabinetIRName() const {
+ std::lock_guard<std::mutex> guard(assetMutex);return cabinetIRName;
 }
 void VirtualCortexProcessor::getStateInformation(juce::MemoryBlock& dest){
  auto state=parameters.copyState();
+ std::lock_guard<std::mutex> guard(assetMutex);
  state.setProperty("cabinetIRPath",cabinetIRPath, nullptr);
  const auto bytes=vc::encodeGrid(getEditableGrid());
  state.setProperty("gridV1",juce::String::toHexString(bytes.data(),static_cast<int>(bytes.size()),0),nullptr);
@@ -360,15 +410,22 @@ void VirtualCortexProcessor::setStateInformation(const void* data,int size){
    if(restored.hasProperty(key+"depth"))p.depth=static_cast<float>(restored.getProperty(key+"depth"));
    setGridSlotParameters(row,col,p);
    const auto neuralPath=restored.getProperty(key+"neuralPath").toString();
-   if(neuralPath.isNotEmpty() && juce::File(neuralPath).existsAsFile())
-    loadGridNeuralModel(juce::File(neuralPath),row,col);
+   if(neuralPath.isEmpty() || !loadGridNeuralModel(juce::File(neuralPath),row,col)){
+    std::lock_guard<std::mutex> guard(assetMutex);
+    pendingNeuralModels.submit(row,col,nullptr);gridNeuralPaths[row][col].clear();
+   }
    const auto gridPath=restored.getProperty(key+"irPath").toString();
-   if(gridPath.isNotEmpty() && juce::File(gridPath).existsAsFile())
-    loadGridCabinetIR(juce::File(gridPath),row,col);
+   if(gridPath.isEmpty() || !loadGridCabinetIR(juce::File(gridPath),row,col)){
+    std::lock_guard<std::mutex> guard(assetMutex);
+    pendingGridIRs.submit(row,col,nullptr,0);gridIRPaths[row][col].clear();
+   }
   }
   parameters.replaceState(restored);
-  if(path.isNotEmpty() && juce::File(path).existsAsFile()) loadCabinetIR(juce::File(path));
-  else { cabinetIRPath.clear(); cabinetIRName = "No IR loaded"; }
+  if(path.isEmpty() || !loadCabinetIR(juce::File(path))){
+   std::lock_guard<std::mutex> guard(assetMutex);
+   cabinetIRPath.clear();cabinetIRName="No IR loaded";
+   cabinetIRLoaded.store(false,std::memory_order_release);
+  }
  }
 }
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter(){return new VirtualCortexProcessor();}

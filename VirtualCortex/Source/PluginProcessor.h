@@ -43,9 +43,40 @@ public:
  bool loadGridNeuralModel(const juce::File& modelFile,std::size_t row,std::size_t col);
  juce::String getGridNeuralModelName(std::size_t row,std::size_t col) const;
  juce::String getGridCabinetIRName(std::size_t row, std::size_t col) const;
- juce::String getCabinetIRName() const { return cabinetIRName; }
+ juce::String getCabinetIRName() const;
 private:
  static juce::AudioProcessorValueTreeState::ParameterLayout makeLayout();
+ // Stable APVTS parameter objects: avoid string/table lookups on the audio thread.
+ struct CachedParameters {
+  std::atomic<float>* gate=nullptr;
+  std::atomic<float>* drive=nullptr;
+  std::atomic<float>* ampBias=nullptr;
+  std::atomic<float>* inputHP=nullptr;
+  std::atomic<float>* tone=nullptr;
+  std::atomic<float>* level=nullptr;
+  std::atomic<float>* cab=nullptr;
+  std::atomic<float>* cabCut=nullptr;
+  std::atomic<float>* delayTime=nullptr;
+  std::atomic<float>* delayFeedback=nullptr;
+  std::atomic<float>* delayMix=nullptr;
+  std::atomic<float>* reverbMix=nullptr;
+  std::atomic<float>* tremRate=nullptr;
+  std::atomic<float>* tremDepth=nullptr;
+  std::atomic<float>* outputTrim=nullptr;
+  std::atomic<float>* eqLow=nullptr;
+  std::atomic<float>* eqMid=nullptr;
+  std::atomic<float>* eqHigh=nullptr;
+  std::atomic<float>* gateOn=nullptr;
+  std::atomic<float>* ampOn=nullptr;
+  std::atomic<float>* cabOn=nullptr;
+  std::atomic<float>* delayOn=nullptr;
+  std::atomic<float>* reverbOn=nullptr;
+  std::atomic<float>* tremOn=nullptr;
+  std::atomic<float>* eqOn=nullptr;
+  std::atomic<float>* bypass=nullptr;
+  std::atomic<float>* irOn=nullptr;
+  std::atomic<float>* gridMode=nullptr;
+ } cached;
  struct ChannelState {
   float gateEnvelope=0, cabLP=0, cabHP=0, toneLP=0, tremPhase=0;
   vc::HighPassOnePole inputFilter;
@@ -79,6 +110,9 @@ private:
  bool gridAudioReady = false;
  std::vector<ChannelState> channels;
  double fs=48000;
+ std::atomic<double> assetSampleRate{48000.0};
+ mutable std::mutex assetMutex;
+ std::atomic<bool> cabinetIRLoaded{false};
  juce::dsp::Convolution cabinetConvolution;
  juce::String cabinetIRName = "No IR loaded";
  juce::String cabinetIRPath;
