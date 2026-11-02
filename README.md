@@ -1,10 +1,10 @@
-# Virtual Cortex 6.10
+# Virtual Cortex 6.10.1
 
 Windows x64 standalone guitar amplifier/effects application and VST3, built with JUCE 8.0.10 and ASIO enabled.
 
 ## Verified build
 
-[Successful 6.10 build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/41447139700)
+[Successful 6.10.1 build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/41465770775)
 
 - EXE and VST3 compiled using MSVC on Windows Server 2022.
 - All 28 CTest checks passed, including the real JUCE processor, editor renders, four-row routing and the new effects.
@@ -104,3 +104,7 @@ The original algorithm uses eight unequal feedback delays, normalized orthogonal
 There are now 69 host parameters: all previous 50 IDs and their order are retained, with 18 reverb controls and one enable appended. Old presets default the new master off. Portable tests verify broadband decay, stereo decorrelation, zero wet width, early timing, damping, ducking, extreme automation, malformed controls, bypass fade and prepare/reset. A nominal 1.2 s unmodulated broadband tail measured approximately 1.10–1.13 s at 44.1/48/96/192 kHz using a -5 to -25 dB Schroeder slope. These measurements cover the tested configuration only. Native tests verify state migration, allocation-free tested automation, output mute and all editor pages.
 
 Further work includes octave-band characterization across the control range, aliasing/discontinuity/CPU measurements, level-matched musical listening, convolution/hybrid modes and additional genuine device implementations. This release does not certify studio-quality sound, full Neural DSP catalog parity, Windows 11 audio behavior or Anubis hardware I/O. Installer unsigned.
+
+## 6.10.1 grid appearance fix
+
+Rounded-square grid blocks now retain their shape in both compact and expanded views. Corner radius and outline thickness scale with the block dimensions instead of keeping a fixed radius that became circular at small sizes. DSP, parameter IDs and preset format are unchanged. Verified Windows build: https://github.com/mikey423a/VirtualCortex/actions/runs/41465770775. All 28 CTests, VST3 pluginval level 5, standalone startup and installer install/uninstall checks passed; native compact and expanded screenshots were inspected. Windows 11 audio behavior and Anubis hardware I/O still require testing. Installer unsigned.
