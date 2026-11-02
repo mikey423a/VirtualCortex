@@ -1,13 +1,13 @@
-# Virtual Cortex 6.7
+# Virtual Cortex 6.8
 
 Windows x64 standalone guitar amplifier/effects application and VST3, built with JUCE 8.0.10 and ASIO enabled.
 
 ## Verified build
 
-[Successful 6.7 build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/41430856615)
+[Successful 6.8 build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/41434583472)
 
 - EXE and VST3 compiled using MSVC on Windows Server 2022.
-- All 25 CTest checks passed, including the real JUCE processor, editor renders, four-row routing and the new effects.
+- All 26 CTest checks passed, including the real JUCE processor, editor renders, four-row routing and the new effects.
 - VST3 passed pluginval 1.0.4 at strictness level 5.
 - Standalone stayed running for the 10-second startup test.
 - Inno Setup installer passed install/uninstall and installed-binary checks.
@@ -23,9 +23,24 @@ In Grid mode, each enabled row receives the same input and enabled outputs are a
 
 ## Sound-quality priority
 
-The current effects are original functional implementations. Passing the software checks does not establish studio-quality sound or parity with commercial effects. Development now prioritizes stereo reverb/delay quality, deeper controls and audio evaluation ahead of catalog count. See [STUDIO-EFFECTS-PLAN.md](STUDIO-EFFECTS-PLAN.md) for the researched architecture, repeat-feedback path and Cortex-style advanced editor requirements. Those upgrades are not included in 6.7.
+The current effects are original functional implementations. Passing the software checks does not establish studio-quality sound or parity with commercial effects. Development now prioritizes stereo reverb/delay quality, deeper controls and audio evaluation ahead of catalog count. See [STUDIO-EFFECTS-PLAN.md](STUDIO-EFFECTS-PLAN.md) for the researched architecture, repeat-feedback path and Cortex-style advanced editor requirements. The full stereo/FDN redesign remains planned. The first repeat-filter step is included in 6.8.
 
-## New in 6.7
+## New in 6.8: editable repeat return
+
+Select a Grid Delay block, show its editor, and enable REPEAT FX.
+
+- TIME, FEEDBACK and MIX remain available.
+- LOOP HIGH PASS, LOOP LOW PASS and LOOP FILTER MIX control processing inside the regeneration path.
+- Dry input and the first repeat remain unfiltered; subsequent repeats pass through the filters each time they regenerate.
+- The optional path uses third-order Lagrange reading with smoothed time, cutoff, feedback and mix changes.
+- Repeat FX is saved per slot. A preset without the new property loads with Repeat FX disabled, preserving the legacy delay path.
+- Controls use the existing Cortex-style rotary tiles and toggle; there is no separate plugin skin.
+
+This is a filtered feedback path, not an arbitrary effect-block insert chain, stereo cross-feedback matrix, or tape/BBD emulation. It applies to Grid Delay; serial Delay is unchanged. The existing Grid time range remains 20–500 ms. Repeat FX is not a completed studio-quality redesign.
+
+Tests verify first-repeat behavior, filtered regeneration, loop blend, dry input, timing/cutoff automation, several sample rates, state recall, legacy state and tested allocation-free callbacks. Native UI tests check the checkbox and loop controls.
+
+## Additions from 6.7
 
 Six original blocks bring the catalog to 21 processing block types:
 

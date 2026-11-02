@@ -2,12 +2,12 @@
 
 Status: researched design and acceptance requirements, not implemented studio engines.
 This supersedes catalog-count growth as the immediate priority.
-Current 6.7 remains a functional milestone: its 25 passing software checks do not certify sonic quality.
+Current 6.8 remains a functional milestone: its 26 passing software checks do not certify sonic quality.
 
 ## User requirements
 
 Studio-quality reverb/delay is the target. Expose meaningful deep controls rather than just many names. Keep the Cortex-style grid, browser, dark panels, category accents and rotary controls. New features should look native to that design.
-The delay must regenerate repeats and support a separately editable repeat-feedback path. The current Delay already regenerates repeats, but it does not expose a feedback-effects chain.
+The delay must regenerate repeats and support a separately editable repeat-feedback path. Grid Delay now exposes an optional filtered repeat return in 6.8. A freely insertable feedback-effects chain and stereo feedback matrix are not implemented.
 
 Interpretation pending further user detail: implement a dedicated repeat-processing path first, leaving dry guitar untouched. Do not silently build arbitrary feedback connections between the four main rows. Arbitrary insertable loop graphs are a separate routing feature.
 
@@ -93,3 +93,7 @@ Before a studio-quality claim:
 5. Additional character models and modulation only after the clean cores meet their acceptance tests.
 
 No studio-quality certification, commercial-plugin parity, or full factory-catalog completion is claimed by this document.
+
+## Completed first step: 6.8
+
+REPEAT FX is an opt-in, saved per-slot Grid Delay setting. It exposes loop high-pass, low-pass and filter-blend controls in the existing Cortex-style block editor. Regenerated repeats traverse those filters; dry input and the first repeat do not. Time and cutoff changes are smoothed, and the optional path uses third-order Lagrange delay reading. This is not the full proposed studio delay. The legacy path remains when Repeat FX is disabled, and old presets default to that path. Next priorities remain true stereo-frame routing, deeper typed parameters, long-delay modes and the quality/listening gates above.

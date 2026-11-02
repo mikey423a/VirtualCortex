@@ -11,7 +11,7 @@ Virtual Cortex is an original, limited effects application. It does not include 
 | Guitar and bass amps | Generic amp and custom VCMLP1 loader | Individual models, controls, reference measurements and validation; no dedicated bass library |
 | Guitar and bass cabinets | Basic filter and user IR loading | Measured cabinet/microphone library and multi-mic controls |
 | Guitar and bass overdrive | Original soft-clipping overdrive and hard-clipping distortion in Grid mode (6.5) | Individual pedal models, dedicated bass variants and reference validation |
-| Delay | Basic variable delay | Distinct algorithms and stereo behavior |
+| Delay | Basic variable delay plus opt-in filtered repeat return (6.8) | Distinct algorithms and stereo behavior |
 | Reverb | Basic reverb plus original room delay network | Distinct algorithms and spatial validation |
 | Compressor | Original feed-forward peak compressor in Grid mode (6.5) | Additional topologies, metering, sidechain/stereo linking and reference validation |
 | Pitch | Absent | Pitch tracking/shifting and latency handling |
@@ -47,3 +47,7 @@ The application now has 15 processing block types, not 15 branded device models.
 Verified build: https://github.com/mikey423a/VirtualCortex/actions/runs/41430856615. All 25 CTests, pluginval level 5, standalone startup and installer install/uninstall checks passed. The catalog now has 21 processing block types. New blocks are vibrato, ring modulation, per-slot gain/polarity, high/low-cut filters, Tone EQ and Room Reverb. These are original algorithms, not factory models or certified studio-quality effects.
 
 The current Delay already feeds delayed samples back into its buffer through its feedback control. A separately editable effects chain inside that repeat path is not implemented. See STUDIO-EFFECTS-PLAN.md for the quality-first stereo redesign and Cortex-style feedback editor requirement.
+
+## 6.8 repeat-path milestone
+
+Verified build: https://github.com/mikey423a/VirtualCortex/actions/runs/41434583472. All 26 CTests, pluginval level 5, standalone startup and installer checks passed. Repeat FX adds high-pass, low-pass and filter-blend controls inside Grid Delay regeneration while preserving the dry input and first repeat. Presets without the new flag use the legacy delay path. An arbitrary insert chain and the researched stereo studio-effects redesign remain unimplemented. Software validation does not establish studio-quality sound.
