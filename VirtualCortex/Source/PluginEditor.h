@@ -47,7 +47,7 @@ private:
  std::array<juce::TextButton,8> deviceEntries,quickSelectors;
  std::array<juce::TextButton,2> bankButtons;
  std::array<juce::Label,6> slotValues;
- juce::TextButton previousPreset{"<"},nextPreset{">"},directoryButton{"DIRECTORY"},ioButton{"I/O"},stompModeButton{"STOMP"},presetMenuButton{"PRESET"};
+ juce::TextButton headerStompButton{""},previousPreset{"<"},nextPreset{">"},directoryButton{"DIRECTORY"},ioButton{"I/O"},stompModeButton{"STOMP"},presetMenuButton{"PRESET"};
  juce::ComboBox rowSelector;
  std::array<juce::Slider,6> slotSliders;
  std::array<juce::String,6> slotLabels{{"DRIVE","MIX","TIME","FEEDBACK","RATE","DEPTH"}};
