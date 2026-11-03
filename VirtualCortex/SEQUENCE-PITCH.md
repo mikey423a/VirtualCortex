@@ -1,4 +1,4 @@
-# Step Crush pitch sequence - 6.19
+# Ottocrush pitch sequence - 6.19
 
 PITCH SEQUENCE on the PITCH / STEPS page overrides the Rate/Filter/Bits sequence
 target. The six bipolar steps map to +/-12 semitones at full sequence depth.

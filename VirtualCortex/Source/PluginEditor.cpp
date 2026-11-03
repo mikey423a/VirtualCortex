@@ -61,7 +61,7 @@ juce::Colour CortexBlockButton::colourFor(int type){
  return juce::Colour(values[juce::jlimit(0,29,type)]);
 }
 juce::String CortexBlockButton::nameFor(int type){
- const char* names[]={"Empty","Gate","Amp","Cabinet","EQ","Delay","Reverb","Tremolo","Compressor","Overdrive","Distortion","Chorus","Flanger","Phaser","Wah","Bit-crusher","Vibrato","Ring modulator","Gain","Low / High Cut","Tone EQ","Room Reverb","Output","Stereo Delay","Stereo Reverb","Four-head Echo","Interval Echo","Layer Loom","Prism Synth","Step Crush"};
+ const char* names[]={"Empty","Gate","Amp","Cabinet","EQ","Delay","Reverb","Tremolo","Compressor","Overdrive","Distortion","Chorus","Flanger","Phaser","Wah","Bit-crusher","Vibrato","Ring modulator","Gain","Low / High Cut","Tone EQ","Room Reverb","Output","Stereo Delay","Stereo Reverb","Four-head Echo","Chase Pitch Delay","Layer Loom","Prism Synth","Ottocrush"};
  return names[juce::jlimit(0,29,type)];
 }
 void CortexBlockButton::drawIcon(juce::Graphics& g,juce::Rectangle<float> r,int type,juce::Colour colour){
@@ -346,7 +346,7 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
  if(editorsVisible){
  g.setColour(juce::Colour(0xff111111));g.fillRoundedRectangle(parameterArea.toFloat(),5);g.setColour(panel);g.fillRect(302,354,872,236);
  for(int i=0;i<3;++i){g.setColour(muted);g.fillEllipse(318.f,325.f+i*7.f,2.f,2.f);g.fillEllipse(318.f,605.f+i*7.f,2.f,2.f);}
- drawCaption(g,CortexBlockButton::nameFor(currentType()),{347,319,135,33},18.f,muted);drawCaption(g,currentType()==2?"Original amplifier":currentType()==3?"Cabinet IR":currentType()>=28?"INPUT PROCESSOR":currentType()>=23?"POST CHAIN":currentType()==8?"Original peak compressor":currentType()==9?"Original soft clipping":currentType()==10?"Original hard clipping":"Original",{485,319,600,33},18.f,CortexBlockButton::colourFor(currentType()));
+ drawCaption(g,CortexBlockButton::nameFor(currentType()),{347,319,currentType()==26?195:135,33},18.f,muted);drawCaption(g,currentType()==2?"Original amplifier":currentType()==3?"Cabinet IR":currentType()>=28?"INPUT PROCESSOR":currentType()>=23?"POST CHAIN":currentType()==8?"Original peak compressor":currentType()==9?"Original soft clipping":currentType()==10?"Original hard clipping":"Original",{currentType()==26?545:485,319,currentType()==26?540:600,33},18.f,CortexBlockButton::colourFor(currentType()));
  const auto indices=gridMode()&&!masterPage?visibleSlotControls():visibleKnobs();for(int j=0;j<10;++j){int x=302+(j%5)*174,y=354+(j/5)*118;g.setColour(juce::Colour(0xff070707));g.drawLine((float)x+174,(float)y+8,(float)x+174,(float)y+118,1.f);g.drawLine((float)x,(float)y+118,(float)x+174,(float)y+118,1.f);if(j<(int)indices.size()){int i=indices[(size_t)j];drawCaption(g,gridMode()&&!masterPage?slotLabels[(size_t)i]:knobs[(size_t)i].label,{x+9,y+6,156,23},15.f);}}
  if(indices.empty())drawCaption(g,currentType()==0?"Select a slot, then choose a device from the directory.":currentType()==3?"Load a cabinet impulse response.":"Fixed settings in the current grid engine.",{320,381,730,44},14.f,muted);
 
@@ -401,7 +401,7 @@ void VirtualCortexEditor::applyDeviceVariant(int index){
  auto set=[this](const char* id,float v){if(auto* p=processor.parameters.getParameter(id))p->setValueNotifyingHost(p->convertTo0to1(v));};
  if(browserType==28){set("syOn",1);set("syTranspose",index?-12:0);set("syCutoff",index?600:1800);set("syMix",1);set("syWave",1);masterPage=true;lastView=-1;updateView();statusLabel.setText("Mono tracking | Left input | MIDI channel 1 (host routing)",juce::dontSendNotification);return;}
  if(browserType==29){set("scOn",1);set("scMode",index==1?1:0);set("scPitch",index==2?1:0);set("scStutter",index==1?.7f:0);set("scMix",.7f);masterPage=true;lastView=-1;updateView();statusLabel.setText("Six steps | Optional tempo sync | Rate / Filter / Bits / Pitch",juce::dontSendNotification);return;}
- if(browserType==26){set("ieOn",1);set("ieA",index?12:7);set("ieB",index?-12:-5);set("ieTime",350);set("ieFeedback",.4f);set("ieMix",.3f);set("ieStep",500);set("ieCutoff",5000);masterPage=true;lastView=-1;updateView();statusLabel.setText("Interval Echo: original sequenced digital pitch delay",juce::dontSendNotification);return;}
+ if(browserType==26){set("ieOn",1);set("ieA",index?12:7);set("ieB",index?-12:-5);set("ieTime",350);set("ieFeedback",.4f);set("ieMix",.3f);set("ieStep",500);set("ieCutoff",5000);masterPage=true;lastView=-1;updateView();statusLabel.setText("Chase Pitch Delay: original sequenced digital pitch delay",juce::dontSendNotification);return;}
  if(browserType==27){set("llOn",1);masterPage=true;lastView=-1;updateView();statusLabel.setText("Layer Loom: 16 seconds, 8 layers. Session audio is not saved in presets.",juce::dontSendNotification);return;}
  if(browserType==25){set("mhOn",1);set("mhMix",.3f);for(int i=1;i<=4;++i){const auto prefix="mh"+juce::String(i);set((prefix+"Time").toRawUTF8(),(index?125.f:100.f)*i);set((prefix+"Level").toRawUTF8(),.5f);set((prefix+"Pan").toRawUTF8(),i%2?-.7f:.7f);set((prefix+"Feedback").toRawUTF8(),i==4?.55f:0.f);}masterPage=true;lastView=-1;updateView();return;}
  if(browserType==24){

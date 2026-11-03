@@ -1,4 +1,4 @@
-# Prism Synth and Step Crush — 6.17
+# Prism Synth and Ottocrush — 6.17
 
 Original effects inspired by the broad instrument-synth and sequenced-crusher ideas
 of Meris Enzo and Ottobit Jr. No Meris code, factory presets, circuit model or sonic
@@ -29,7 +29,7 @@ synth works without MIDI routing. MIDI-out hardware/DAW compatibility needs user
 verification. The host-owned JUCE MidiBuffer may allocate when it grows; core DSP
 allocates only during prepare. The processor regression reserves MIDI capacity.
 
-## Step Crush
+## Ottocrush
 
 Stereo pre-chain bit/sample-rate reducer, followed by a one-pole low-pass filter.
 Six editable bipolar step values, manual step time (30–2000 ms), depth,
@@ -47,7 +47,7 @@ following with manual fallback; see SEQUENCER-TEMPO.md.
 
 ## Placement and compatibility
 
-Input → Prism Synth → Step Crush → existing serial/grid engine → existing master
+Input → Prism Synth → Ottocrush → existing serial/grid engine → existing master
 delays/reverbs/looper → output. These two effects are global input processors, not
 independent per-slot grid inserts. Both default off; the four-row grid is preserved.
 Twenty-eight parameters append after the previous 102, preserving earlier IDs and

@@ -1,10 +1,10 @@
-# Interval Echo and Layer Loom (6.16)
+# Chase Pitch Delay and Layer Loom (6.16)
 
 Two original post-chain processors, inspired by published Chase Bliss workflows.
 No proprietary DSP, artwork or model data is included. They are not Thermae or
 Blooper emulations, and sonic equivalence has not been established.
 
-Interval Echo: stereo filtered feedback delay, two intervals (-12 to +12 semitones)
+Chase Pitch Delay: stereo filtered feedback delay, two intervals (-12 to +12 semitones)
 and a free-running three-step sequence (unshifted, A, B), adjustable step time,
 base delay and mix. Two overlapping read windows shift pitch. The shifter adds
 up to 60 ms of read-window delay. This is digital pitch shifting, not BBD clock
