@@ -545,8 +545,70 @@ bool VirtualCortexProcessor::loadCabinetIR(const juce::File& file){
 juce::String VirtualCortexProcessor::getCabinetIRName() const {
  std::lock_guard<std::mutex> guard(assetMutex);return cabinetIRName;
 }
+bool VirtualCortexProcessor::hasScene(int index) const {
+ if(index<0||index>=8)return false;
+ std::lock_guard<std::mutex> lock(sceneMutex);return scenes[(std::size_t)index].isValid();
+}
+bool VirtualCortexProcessor::storeScene(int index) {
+ if(index<0||index>=8)return false;
+ juce::ValueTree snapshot("Scene");
+ for(auto* base:getParameters())if(auto* p=dynamic_cast<juce::RangedAudioParameter*>(base)){
+  juce::ValueTree value("Value");value.setProperty("id",p->paramID,nullptr);
+  value.setProperty("normalised",p->getValue(),nullptr);snapshot.addChild(value,-1,nullptr);
+ }
+ const auto grid=getEditableGrid();
+ for(std::size_t r=0;r<4;++r){
+  snapshot.setProperty("lane"+juce::String((int)r),isGridLaneEnabled(r),nullptr);
+  for(std::size_t c=0;c<8;++c){
+   juce::ValueTree slot("Slot");const auto block=*grid.get(r,c);const auto p=getGridSlotParameters(r,c);
+   slot.setProperty("row",(int)r,nullptr);slot.setProperty("col",(int)c,nullptr);
+   slot.setProperty("type",(int)block.type,nullptr);slot.setProperty("enabled",block.enabled,nullptr);
+   slot.setProperty("drive",p.drive,nullptr);slot.setProperty("mix",p.mix,nullptr);
+   slot.setProperty("time",p.time,nullptr);slot.setProperty("feedback",p.feedback,nullptr);
+   slot.setProperty("rate",p.rate,nullptr);slot.setProperty("depth",p.depth,nullptr);
+   slot.setProperty("repeatFx",p.repeatFx,nullptr);snapshot.addChild(slot,-1,nullptr);
+  }
+ }
+ std::lock_guard<std::mutex> lock(sceneMutex);scenes[(std::size_t)index]=snapshot;activeScene.store(index);return true;
+}
+bool VirtualCortexProcessor::recallScene(int index) {
+ if(index<0||index>=8)return false;
+ juce::ValueTree snapshot;
+ {std::lock_guard<std::mutex> lock(sceneMutex);snapshot=scenes[(std::size_t)index];}
+ if(!snapshot.isValid())return false;
+ for(const auto& value:snapshot){
+  if(value.hasType("Value")){
+   const float v=(float)value.getProperty("normalised",0.f);
+   if(std::isfinite(v))if(auto* p=parameters.getParameter(value.getProperty("id").toString()))
+    p->setValueNotifyingHost(juce::jlimit(0.f,1.f,v));
+  }else if(value.hasType("Slot")){
+   const int r=value.getProperty("row",-1),c=value.getProperty("col",-1);
+   if(r<0||r>=4||c<0||c>=8)continue;
+   auto block=*getEditableGrid().get((std::size_t)r,(std::size_t)c);
+   // Shared topology: never apply old settings to a replacement device.
+   if((int)block.type!=(int)value.getProperty("type",-1))continue;
+   auto p=getGridSlotParameters(r,c);
+   p.drive=value.getProperty("drive",p.drive);p.mix=value.getProperty("mix",p.mix);
+   p.time=value.getProperty("time",p.time);p.feedback=value.getProperty("feedback",p.feedback);
+   p.rate=value.getProperty("rate",p.rate);p.depth=value.getProperty("depth",p.depth);
+   p.repeatFx=value.getProperty("repeatFx",false);setGridSlotParameters(r,c,p);
+   block.enabled=value.getProperty("enabled",true);setGridBlock(r,c,block);
+  }
+ }
+ for(std::size_t r=0;r<4;++r)setGridLaneEnabled(r,(bool)snapshot.getProperty("lane"+juce::String((int)r),true));
+ activeScene.store(index);return true;
+}
 void VirtualCortexProcessor::getStateInformation(juce::MemoryBlock& dest){
  auto state=parameters.copyState();
+ state.removeChild(state.getChildWithName("ScenesV1"),nullptr);
+ juce::ValueTree bank("ScenesV1");
+ {std::lock_guard<std::mutex> lock(sceneMutex);
+  bank.setProperty("selected",activeScene.load(),nullptr);
+  for(int i=0;i<8;++i)if(scenes[(std::size_t)i].isValid()){
+   auto copy=scenes[(std::size_t)i].createCopy();copy.setProperty("index",i,nullptr);bank.addChild(copy,-1,nullptr);
+  }
+ }
+ state.addChild(bank,-1,nullptr);
  std::lock_guard<std::mutex> guard(assetMutex);
  state.setProperty("cabinetIRPath",cabinetIRPath, nullptr);
  const auto bytes=vc::encodeGrid(getEditableGrid());
@@ -568,6 +630,17 @@ void VirtualCortexProcessor::setStateInformation(const void* data,int size){
  std::unique_ptr<juce::XmlElement> xml(getXmlFromBinary(data,size));
  if(xml&&xml->hasTagName(parameters.state.getType())){
   auto restored=juce::ValueTree::fromXml(*xml);
+  const auto bank=restored.getChildWithName("ScenesV1");
+  {std::lock_guard<std::mutex> lock(sceneMutex);scenes={};activeScene.store(-1);
+   if(bank.isValid()){
+    for(const auto& scene:bank){const int i=scene.getProperty("index",-1);
+     if(scene.hasType("Scene")&&i>=0&&i<8&&scene.getNumChildren()<=256)scenes[(std::size_t)i]=scene.createCopy();
+    }
+    const int selected=bank.getProperty("selected",-1);
+    if(selected>=0&&selected<8&&scenes[(std::size_t)selected].isValid())activeScene.store(selected);
+   }
+  }
+  restored.removeChild(bank,nullptr);
   const auto path=restored.getProperty("cabinetIRPath").toString();
   const auto gridHex=restored.getProperty("gridV1").toString();
   if(gridHex.length()==static_cast<int>(vc::GridBytes{}.size()*2)){

@@ -167,7 +167,12 @@ VirtualCortexEditor::VirtualCortexEditor(VirtualCortexProcessor& p):AudioProcess
  for(size_t i=0;i<switches.size();++i)if(i!=8&&i!=9&&i<11){switches[i].button.setComponentID(i==6?"bypass":"power");switches[i].button.setTooltip(i==6?"Global bypass":"Enable selected effect");}
  slotEnabled.setComponentID("power");
  for(int i=0;i<8;++i){auto& b=deviceEntries[(size_t)i];b.setComponentID("device-"+juce::String(i));b.onClick=[this,i]{applyDeviceVariant(i);};addChildComponent(b);
-  auto& q=quickSelectors[(size_t)i];q.setComponentID("quick-"+juce::String(i));q.setButtonText(juce::String::charToString((juce::juce_wchar)('A'+i)));q.setTooltip("Select slot "+juce::String(i+1));q.onClick=[this,i]{selectSlot(selectedRow,i);};addAndMakeVisible(q);}
+  auto& q=quickSelectors[(size_t)i];q.setComponentID("quick-"+juce::String(i));q.setButtonText(juce::String::charToString((juce::juce_wchar)('A'+i)));q.setTooltip("Scene "+juce::String::charToString((juce::juce_wchar)('A'+i))+": click to recall; Shift-click to store. Empty scenes store on first click.");q.onClick=[this,i]{
+   const bool save=juce::ModifierKeys::getCurrentModifiersRealtime().isShiftDown()||!processor.hasScene(i);
+   const bool ok=save?processor.storeScene(i):processor.recallScene(i);
+   refreshGridControls();refreshSlotControls();lastView=-1;updateView();
+   statusLabel.setText(ok?juce::String("Scene ")+juce::String::charToString((juce::juce_wchar)('A'+i))+(save?" stored — save preset to keep changes":" recalled"):"Scene unavailable",juce::dontSendNotification);
+  };addAndMakeVisible(q);}
  for(int i=0;i<2;++i){auto& b=bankButtons[(size_t)i];b.setButtonText(i==0?"I":"II");b.onClick=[this,i]{rowBank=i;selectSlot(i*2,selectedColumn);};addAndMakeVisible(b);}
  previousPreset.onClick=[this]{int id=presetBox.getSelectedId();presetBox.setSelectedId(id<=2?4:id-1);};nextPreset.onClick=[this]{int id=presetBox.getSelectedId();presetBox.setSelectedId(id>=4?2:juce::jmax(2,id+1));};
  directoryButton.onClick=[this]{loadPresetButton.triggerClick();};presetMenuButton.onClick=[this]{presetBox.showPopup();};stompModeButton.onClick=[this]{processor.parameters.getParameter("gridMode")->setValueNotifyingHost(1.f);lastView=-1;updateView();};
@@ -236,7 +241,7 @@ bool VirtualCortexEditor::insertBlock(int type){if(type<0||type>21)return false;
 bool VirtualCortexEditor::toggleSelectedSlot(){const auto grid=processor.getEditableGrid();const auto slot=*grid.get((size_t)selectedRow,(size_t)selectedColumn);if(slot.type==vc::BlockType::Empty)return false;bool ok=processor.setGridBlock((size_t)selectedRow,(size_t)selectedColumn,{slot.type,!slot.enabled});refreshGridControls();return ok;}
 void VirtualCortexEditor::refreshGridControls(){const auto grid=processor.getEditableGrid();for(int r=0;r<4;++r){laneButtons[(size_t)r].setToggleState(processor.isGridLaneEnabled((size_t)r),juce::dontSendNotification);for(int c=0;c<8;++c){const auto slot=*grid.get((size_t)r,(size_t)c);auto& b=gridCells[(size_t)r][(size_t)c];b.type=(int)slot.type;b.blockEnabled=slot.enabled&&processor.isGridLaneEnabled((size_t)r);b.selected=r==selectedRow&&c==selectedColumn;b.caption=juce::String::charToString((juce::juce_wchar)('A'+c));b.repaint();}}
  for(int c=0;c<8;++c){const auto slot=*grid.get((size_t)selectedRow,(size_t)c);auto& b=stomps[(size_t)c];b.type=(int)slot.type;b.blockEnabled=slot.enabled;b.selected=c==selectedColumn;b.repaint();}
- for(int c=0;c<8;++c)quickSelectors[(size_t)c].setToggleState(c==selectedColumn,juce::dontSendNotification);
+ for(int c=0;c<8;++c)quickSelectors[(size_t)c].setToggleState(c==processor.selectedScene(),juce::dontSendNotification);
  slotEnabled.setToggleState(grid.get((size_t)selectedRow,(size_t)selectedColumn)->enabled,juce::dontSendNotification);
 }
 void VirtualCortexEditor::refreshSlotControls(){const auto p=processor.getGridSlotParameters((size_t)selectedRow,(size_t)selectedColumn);repeatFxButton.setToggleState(p.repeatFx,juce::dontSendNotification);const float values[]={p.drive,p.mix,p.time,p.feedback,p.rate,p.depth};for(int i=0;i<6;++i)if(!slotSliders[(size_t)i].isMouseButtonDown())slotSliders[(size_t)i].setValue(values[i],juce::dontSendNotification);irName.setText(processor.getCabinetIRName(),juce::dontSendNotification);gridIRName.setText(processor.getGridCabinetIRName((size_t)selectedRow,(size_t)selectedColumn),juce::dontSendNotification);neuralName.setText(processor.getGridNeuralModelName((size_t)selectedRow,(size_t)selectedColumn),juce::dontSendNotification);
@@ -352,7 +357,7 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
 
  g.setColour(panel);g.fillRect(302,598,172,232);g.setColour(juce::Colour(0xff070707));g.drawRect(302,598,172,36,1);drawCaption(g,"Gig view",{343,599,125,33},20.f,juce::Colours::white,juce::Justification::centredLeft,true);drawCaption(g,"Parameter Editor",{310,796,156,32},14.f,muted);
  }
- drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.19.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
+ drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.20.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
 }
 void VirtualCortexEditor::applyPreset(int index){auto set=[this](const char* id,float value){if(auto* p=processor.parameters.getParameter(id))p->setValueNotifyingHost(p->convertTo0to1(value));};if(index<2)return;set("gridMode",0.f);
  if(index==2){set("drive",.12f);set("tone",.7f);set("level",.65f);set("delayMix",.12f);set("reverbMix",.25f);set("ampBias",0.f);set("delayOn",1.f);set("reverbOn",1.f);}

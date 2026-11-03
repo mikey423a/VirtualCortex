@@ -199,6 +199,37 @@ int runProcessorAudioTests(){
    set(*p,"ieOn",1);set(*p,"ieA",12);set(*p,"llRate",.5f);auto saved=state(*p);auto q=std::make_unique<VirtualCortexProcessor>();prepare(*q);restore(*q,saved);check(q->parameters.getRawParameterValue("ieA")->load()==12,"Interval recall failed");check(q->loopStatus()==0,"Session-only audio incorrectly reported restored");
    p->loopCommand(vc::LayerLoom::Clear);for(int block=0;block<50;++block){set(*p,"ieA",block%2?-12:12);set(*p,"ieTime",block%2?1:4000);b.clear();allocationProbe::count=0;allocationProbe::enabled=true;p->processBlock(b,midi);allocationProbe::enabled=false;check(allocationProbe::count==0,"Creative automation allocated");for(int i=0;i<128;++i)check(std::isfinite(b.getSample(0,i)),"Creative non-finite audio");}
   }
+  {
+   auto p=std::make_unique<VirtualCortexProcessor>();prepare(*p);grid(*p,vc::BlockType::Delay);
+   check(!p->recallScene(0)&&!p->storeScene(-1)&&!p->hasScene(8),"Invalid or empty scene accepted");
+   for(int i=0;i<8;++i){
+    set(*p,"ieA",(float)i);set(*p,"scPitch",i%2);p->setGridLaneEnabled(1,i%2!=0);
+    auto slot=p->getGridSlotParameters(0,0);slot.mix=.1f*(i+1);p->setGridSlotParameters(0,0,slot);
+    auto block=*p->getEditableGrid().get(0,0);block.enabled=i%2!=0;p->setGridBlock(0,0,block);
+    check(p->storeScene(i),"Scene store failed");
+   }
+   const auto saved=state(*p);auto q=std::make_unique<VirtualCortexProcessor>();prepare(*q);restore(*q,saved);
+   check(q->selectedScene()==7,"Selected scene not persisted");
+   juce::AudioBuffer<float> audio(2,128);juce::MidiBuffer midi;
+   for(int i=0;i<8;++i){
+    check(q->hasScene(i)&&q->recallScene(i),"Scene lost on state restore");
+    check(q->parameters.getRawParameterValue("ieA")->load()==(float)i,"Scene parameter recall failed");
+    check((q->parameters.getRawParameterValue("scPitch")->load()>.5f)==(i%2!=0),"Scene boolean recall failed");
+    check(q->isGridLaneEnabled(1)==(i%2!=0),"Scene lane recall failed");
+    check(q->getEditableGrid().get(0,0)->enabled==(i%2!=0),"Scene bypass recall failed");
+    check(std::abs(q->getGridSlotParameters(0,0).mix-.1f*(i+1))<1.e-6f,"Scene slot recall failed");
+    audio.clear();allocationProbe::count=0;allocationProbe::enabled=true;q->processBlock(audio,midi);allocationProbe::enabled=false;
+    check(allocationProbe::count==0,"Post-scene audio callback allocated");
+    for(int ch=0;ch<2;++ch)for(int j=0;j<128;++j)check(std::isfinite(audio.getSample(ch,j)),"Scene produced invalid audio");
+   }
+   auto replacement=*q->getEditableGrid().get(0,0);replacement.type=vc::BlockType::Amp;q->setGridBlock(0,0,replacement);
+   auto slot=q->getGridSlotParameters(0,0);slot.mix=.37f;q->setGridSlotParameters(0,0,slot);q->recallScene(0);
+   check(q->getEditableGrid().get(0,0)->type==vc::BlockType::Amp&&std::abs(q->getGridSlotParameters(0,0).mix-.37f)<1.e-6f,"Scene changed replacement device");
+   auto xml=juce::AudioProcessor::getXmlFromBinary(saved.getData(),(int)saved.getSize());auto tree=juce::ValueTree::fromXml(*xml);
+   tree.removeChild(tree.getChildWithName("ScenesV1"),nullptr);auto legacyXml=tree.createXml();juce::MemoryBlock legacy;
+   juce::AudioProcessor::copyXmlToBinary(*legacyXml,legacy);restore(*q,legacy);
+   check(q->selectedScene()==-1&&!q->hasScene(0)&&!q->hasScene(7),"Old preset retained unrelated scenes");
+  }
   std::cout<<"PASS: mono/stereo, trim, callback allocations, UTF-8 assets, preset clearing, and rate/buffer matrix\n";return 0;
  }catch(const std::exception& e){allocationProbe::enabled=false;std::cerr<<e.what()<<'\n';return 1;}
 }

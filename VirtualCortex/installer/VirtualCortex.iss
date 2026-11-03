@@ -7,7 +7,7 @@
 [Setup]
 AppId={{143CC6AA-FE5D-43B6-A7A5-8EC2A8D13E28}
 AppName=Virtual Cortex
-AppVersion=6.19.0
+AppVersion=6.20.0
 AppPublisher=VirtualCortex
 DefaultDirName={autopf}\Virtual Cortex
 DefaultGroupName=Virtual Cortex
@@ -17,7 +17,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0.17763
 PrivilegesRequired=admin
 OutputDir={#DistDir}
-OutputBaseFilename=VirtualCortex-6.19.0-Windows-x64-Setup
+OutputBaseFilename=VirtualCortex-6.20.0-Windows-x64-Setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern

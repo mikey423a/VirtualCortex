@@ -52,7 +52,15 @@ public:
  juce::String getCabinetIRName() const;
  void loopCommand(unsigned command)noexcept{loopCommands.fetch_or(command);}
  unsigned loopStatus()const noexcept{return loopState.load();}
+ // Message/control-thread operations; never call from processBlock.
+ bool storeScene(int index);
+ bool recallScene(int index);
+ bool hasScene(int index) const;
+ int selectedScene() const noexcept {return activeScene.load();}
 private:
+ mutable std::mutex sceneMutex;
+ std::array<juce::ValueTree,8> scenes{};
+ std::atomic<int> activeScene{-1};
  void processTracking(juce::AudioBuffer<float>&,juce::MidiBuffer&,bool bypass);
  std::array<std::atomic<float>*,6> sequenceTempo{};
  float sequencerStep(float manual,std::size_t offset) const;
