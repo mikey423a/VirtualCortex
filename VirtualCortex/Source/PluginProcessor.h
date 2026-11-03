@@ -10,6 +10,7 @@
 #include "DSP/StereoDelay.h"
 #include "DSP/MultiHeadEcho.h"
 #include "DSP/CreativeEffects.h"
+#include "DSP/TrackingEffects.h"
 #include "DSP/StereoReverb.h"
 #include "DSP/PendingIRQueue.h"
 #include "DSP/PendingNeuralQueue.h"
@@ -24,7 +25,7 @@ public:
  bool hasEditor() const override {return true;}
  const juce::String getName() const override {return "Virtual Cortex";}
  bool acceptsMidi() const override {return false;}
- bool producesMidi() const override {return false;}
+ bool producesMidi() const override {return true;}
  bool isMidiEffect() const override {return false;}
  double getTailLengthSeconds() const override;
  int getNumPrograms() override {return 1;}
@@ -51,6 +52,11 @@ public:
  void loopCommand(unsigned command)noexcept{loopCommands.fetch_or(command);}
  unsigned loopStatus()const noexcept{return loopState.load();}
 private:
+ void processTracking(juce::AudioBuffer<float>&,juce::MidiBuffer&,bool bypass);
+ vc::TrackingSynth trackingSynth;vc::SequenceCrusher sequenceCrusher;
+ std::array<std::atomic<float>*,25> trackingParameters{};
+ std::array<std::atomic<float>*,3> trackingFlags{};
+ int emittedNote=-1;bool midiPanic=true;
  vc::IntervalEcho intervalEcho;vc::LayerLoom layerLoom;
  std::array<std::atomic<float>*,10> creativeParameters{};std::array<std::atomic<float>*,3> creativeFlags{};
  std::atomic<unsigned> loopCommands{0},loopState{0};

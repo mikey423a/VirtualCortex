@@ -55,6 +55,17 @@ int runProcessorAudioTests(){
   auto folder=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("VirtualCortexAudio",{},false);
   check(folder.createDirectory().wasOk(),"Fixture directory failed");
   struct Cleanup {juce::File dir;~Cleanup(){dir.deleteRecursively();}} cleanup{folder};
+  // Monophonic audio-to-MIDI is emitted at valid sample offsets, never a stuck note.
+  {
+   auto p=std::make_unique<VirtualCortexProcessor>();layout(*p,1,2);serialDry(*p);prepare(*p);set(*p,"syOn",1);set(*p,"syMidi",1);set(*p,"scOn",1);
+   check(p->producesMidi(),"MIDI output capability absent");juce::AudioBuffer<float> b(2,128);juce::MidiBuffer midi;midi.ensureSize(4096);int ons=0,offs=0;
+   for(int block=0;block<200;++block){for(int i=0;i<128;++i)b.setSample(0,i,.2f*std::sin(float(6.283185307*220.*(block*128+i)/48000.)));
+    allocationProbe::count=0;allocationProbe::enabled=true;p->processBlock(b,midi);allocationProbe::enabled=false;check(allocationProbe::count==0,"Tracking DSP allocated with reserved MIDI buffer");
+    for(const auto metadata:midi){const auto msg=metadata.getMessage();check(metadata.samplePosition>=0&&metadata.samplePosition<128,"MIDI offset invalid");if(msg.isNoteOn()){check(msg.getNoteNumber()==57,"Wrong tracked MIDI note");++ons;}if(msg.isNoteOff())++offs;}
+   }
+   check(ons==1&&offs==0,"Tracking retriggered stable note");set(*p,"bypass",1);p->processBlock(b,midi);for(const auto m:midi)if(m.getMessage().isNoteOff())++offs;check(offs==1,"Bypass left MIDI note active");
+   auto saved=state(*p);auto q=std::make_unique<VirtualCortexProcessor>();restore(*q,saved);check(q->parameters.getRawParameterValue("syMidi")->load()>.5f,"Tracking state lost");
+  }
   // A 1-in/2-out guitar route must produce matching dry audio on both outputs.
   {
    auto p=std::make_unique<VirtualCortexProcessor>();layout(*p,1,2);set(*p,"bypass",1);prepare(*p);

@@ -25,7 +25,7 @@ int main(int argc,char** argv){
    auto* openCatalog=dynamic_cast<juce::Button*>(editor->findChildWithID("catalog-toggle"));
    auto* catalog=dynamic_cast<DeviceCatalogPanel*>(editor->findChildWithID("device-catalog-panel"));
    require(openCatalog&&catalog&&!catalog->isVisible(),"Catalog must start hidden");
-   openCatalog->onClick();require(catalog->isVisible()&&catalog->visibleEntryCount()==715,"Catalog is incomplete");
+   openCatalog->onClick();require(catalog->isVisible()&&catalog->visibleEntryCount()==717,"Catalog is incomplete");
    auto* search=dynamic_cast<juce::TextEditor*>(catalog->findChildWithID("catalog-search"));
    auto* availability=dynamic_cast<juce::ComboBox*>(catalog->findChildWithID("catalog-availability"));
    auto* section=dynamic_cast<juce::ComboBox*>(catalog->findChildWithID("catalog-section"));
@@ -37,7 +37,7 @@ int main(int argc,char** argv){
    action->onClick();require(chosen==-1,"Unavailable model invoked insertion");
    capture("catalog-reference-1184x864.png",1184,864);
    query("Marshall JCM800");require(catalog->visibleEntryCount()>0&&catalog->selectedPlayableType()==0,"Gear search requires trademark symbols");
-   query("");availability->setSelectedId(2,juce::sendNotificationSync);require(catalog->visibleEntryCount()==26,"Original count incorrect");
+   query("");availability->setSelectedId(2,juce::sendNotificationSync);require(catalog->visibleEntryCount()==28,"Original count incorrect");
    query("Bit-crusher");require(catalog->visibleEntryCount()==1&&action->isEnabled(),"Working original cannot be selected");
    action->onClick();require(chosen==15,"Original action routed to wrong processor");
    query("Stereo Reverb");action->onClick();require(chosen==24,"Post-chain action routed to wrong processor");
@@ -138,7 +138,7 @@ int main(int argc,char** argv){
   require(processor->getEditableGrid().get(3,6)->type==vc::BlockType::Chorus,"Chorus browser selection inserted wrong block");
   require(std::abs(processor->getGridSlotParameters(3,6).rate-.04f)<1.e-5f,"Chorus preset parameters not applied");
   editor->setEditorsVisible(true);capture("chorus-browser-preset.png",1184,864);
-  auto* category=dynamic_cast<juce::ComboBox*>(editor->findChildWithID("device-category"));require(category&&category->getNumItems()==27,"Expanded category selector missing");
+  auto* category=dynamic_cast<juce::ComboBox*>(editor->findChildWithID("device-category"));require(category&&category->getNumItems()==29,"Expanded category selector missing");
   for(int type:{16,17,18,19,20,21}){
    editor->selectSlot(1,type-16);category->setSelectedId(type,juce::sendNotificationSync);
    auto* entry=dynamic_cast<juce::Button*>(editor->findChildWithID("device-0"));require(entry&&entry->isVisible(),"New category has no selectable device");entry->onClick();
@@ -186,6 +186,13 @@ int main(int argc,char** argv){
   }
   for(int i=0;i<6;++i)require(editor->findChildWithID("loop-command-"+juce::String(i))->isVisible(),"Loop transport missing");
   editor->setEditorsVisible(false);require(!editor->findChildWithID("loop-command-0")->isVisible(),"Loop transport over hidden editor");
+  for(int type:{28,29}){category->setSelectedId(type,juce::sendNotificationSync);editor->setEditorsVisible(true);auto* preset=dynamic_cast<juce::Button*>(editor->findChildWithID("device-0"));require(preset&&preset->isVisible(),"Tracking effect preset missing");preset->onClick();
+   auto* page=dynamic_cast<juce::Button*>(editor->findChildWithID("tracking-page"));require(page&&page->isVisible(),"Tracking page missing");
+   auto* mainKnob=dynamic_cast<juce::Slider*>(editor->findChildWithID(type==28?"syMix":"scBits"));if(!mainKnob->isVisible())page->onClick();require(mainKnob->isVisible(),"Tracking main control missing");mainKnob->setValue(type==28?.6:6,juce::sendNotificationSync);require(std::abs(processor->parameters.getRawParameterValue(type==28?"syMix":"scBits")->load()-(type==28?.6:6))<.001,"Tracking parameter binding failed");
+   capture(type==28?"prism-synth-2560x1440.png":"step-crush-2560x1440.png",2560,1440);page->onClick();
+   require(editor->findChildWithID(type==28?"syAttack":"scStep6")->isVisible(),"Tracking second page incomplete");capture(type==28?"prism-envelopes-2560x1440.png":"step-crush-sequence-2560x1440.png",2560,1440);
+   capture(type==28?"prism-synth-822x600.png":"step-crush-822x600.png",822,600);editor->setEditorsVisible(false);require(!page->isVisible(),"Tracking pages over hidden editor");
+  }
   editor.reset();processor->releaseResources();
   std::cout<<"PASS: native editor snapshots at three sizes, control binding, insertion and bypass\n";
   return 0;

@@ -41,6 +41,8 @@ VirtualCortexProcessor::VirtualCortexProcessor()
  for(std::size_t i=0;i<stereoFlags.size();++i)stereoFlags[i]=parameters.getRawParameterValue(vc::stereoDelayFlagIDs[i]);
  for(std::size_t i=0;i<reverbParameters.size();++i)reverbParameters[i]=parameters.getRawParameterValue(vc::stereoReverbIDs[i]);
  const char* mhIDs[]={"mh1Time","mh1Level","mh1Pan","mh1Feedback","mh2Time","mh2Level","mh2Pan","mh2Feedback","mh3Time","mh3Level","mh3Pan","mh3Feedback","mh4Time","mh4Level","mh4Pan","mh4Feedback","mhMix"};for(std::size_t i=0;i<17;++i)mhParameters[i]=parameters.getRawParameterValue(mhIDs[i]);mhEnabled=parameters.getRawParameterValue("mhOn");
+ const char* trackingIDs[]={"syMix","syTranspose","syDetune","syCutoff","syResonance","syAttack","syRelease","syGlide","syWave","syGate","scBits","scRate","scCutoff","scStepMs","scDepth","scMix","scMode","scStutterMs","scStutter","scStep1","scStep2","scStep3","scStep4","scStep5","scStep6"};for(std::size_t i=0;i<25;++i)trackingParameters[i]=parameters.getRawParameterValue(trackingIDs[i]);
+ const char* trackingFlagIDs[]={"syOn","syMidi","scOn"};for(std::size_t i=0;i<3;++i)trackingFlags[i]=parameters.getRawParameterValue(trackingFlagIDs[i]);
  const char* creativeIDs[]={"ieTime","ieFeedback","ieA","ieB","ieStep","ieCutoff","ieMix","llLevel","llRate","llCutoff"};for(std::size_t i=0;i<10;++i)creativeParameters[i]=parameters.getRawParameterValue(creativeIDs[i]);
  const char* creativeFlagIDs[]={"ieOn","llOn","llReverse"};for(std::size_t i=0;i<3;++i)creativeFlags[i]=parameters.getRawParameterValue(creativeFlagIDs[i]);
  reverbEnabled=parameters.getRawParameterValue("stereoReverbOn");
@@ -212,6 +214,34 @@ juce::AudioProcessorValueTreeState::ParameterLayout VirtualCortexProcessor::make
  addBool("ieOn","ieOn",false);
  addBool("llOn","llOn",false);
  addBool("llReverse","llReverse",false);
+ addFloat("syMix","syMix",0.0f,1.0f,1.0f);
+ addFloat("syTranspose","syTranspose",-24.0f,24.0f,0.0f);
+ addFloat("syDetune","syDetune",0.0f,30.0f,7.0f);
+ addFloat("syCutoff","syCutoff",60.0f,18000.0f,1800.0f);
+ addFloat("syResonance","syResonance",0.5f,8.0f,1.0f);
+ addFloat("syAttack","syAttack",1.0f,500.0f,8.0f);
+ addFloat("syRelease","syRelease",10.0f,2000.0f,100.0f);
+ addFloat("syGlide","syGlide",1.0f,500.0f,25.0f);
+ addFloat("syWave","syWave",0.0f,2.0f,1.0f);
+ addFloat("syGate","syGate",-70.0f,-15.0f,-45.0f);
+ addFloat("scBits","scBits",1.0f,24.0f,8.0f);
+ addFloat("scRate","scRate",48.0f,48000.0f,8000.0f);
+ addFloat("scCutoff","scCutoff",60.0f,18000.0f,6000.0f);
+ addFloat("scStepMs","scStepMs",30.0f,2000.0f,125.0f);
+ addFloat("scDepth","scDepth",0.0f,1.0f,1.0f);
+ addFloat("scMix","scMix",0.0f,1.0f,0.5f);
+ addFloat("scMode","scMode",0.0f,2.0f,0.0f);
+ addFloat("scStutterMs","scStutterMs",5.0f,250.0f,60.0f);
+ addFloat("scStutter","scStutter",0.0f,1.0f,0.0f);
+ addFloat("scStep1","scStep1",-1.0f,1.0f,0.0f);
+ addFloat("scStep2","scStep2",-1.0f,1.0f,0.5f);
+ addFloat("scStep3","scStep3",-1.0f,1.0f,-0.5f);
+ addFloat("scStep4","scStep4",-1.0f,1.0f,1.0f);
+ addFloat("scStep5","scStep5",-1.0f,1.0f,0.0f);
+ addFloat("scStep6","scStep6",-1.0f,1.0f,-1.0f);
+ addBool("syOn","syOn",false);
+ addBool("syMidi","syMidi",false);
+ addBool("scOn","scOn",false);
  return p;
 }
 
@@ -228,7 +258,7 @@ void VirtualCortexProcessor::prepareToPlay(double sampleRate,int samplesPerBlock
  // Routing changes are published through atomic row snapshots.
  updateGridRouting();
  gridAudio.prepare(fs);
- intervalEcho.prepare(fs);layerLoom.prepare(fs);loopCommands=0;loopState=0;
+ trackingSynth.prepare(fs);sequenceCrusher.prepare(fs);midiPanic=true;intervalEcho.prepare(fs);layerLoom.prepare(fs);loopCommands=0;loopState=0;
  multiHead.prepare(fs);mhMix=0;mhDrain=0;
  stereoDelay.prepare(fs);
  stereoReverb.prepare(fs);
@@ -252,7 +282,7 @@ void VirtualCortexProcessor::prepareToPlay(double sampleRate,int samplesPerBlock
  }
 }
 
-void VirtualCortexProcessor::processBlock(juce::AudioBuffer<float>& b,juce::MidiBuffer&){
+void VirtualCortexProcessor::processBlock(juce::AudioBuffer<float>& b,juce::MidiBuffer& midi){
  juce::ScopedNoDenormals noDenormals;
  if (b.getNumChannels() == 0 || b.getNumSamples() == 0 || channels.empty()) return;
  // Process only the supported main bus channels; clear unexpected extra channels.
@@ -271,7 +301,9 @@ void VirtualCortexProcessor::processBlock(juce::AudioBuffer<float>& b,juce::Midi
  updateGridRouting();
  commitPendingGridIR();
  commitPendingNeuralModels();
- if(cached.bypass->load(std::memory_order_relaxed)>0.5f)return; // Dry passthrough.
+ const bool bypass=cached.bypass->load(std::memory_order_relaxed)>0.5f;
+ processTracking(b,midi,bypass);
+ if(bypass)return; // Dry passthrough; tracking sends note-off.
  if (cached.gridMode->load(std::memory_order_relaxed)>0.5f) {
   // No heap allocation: snapshot controls before processing this audio block.
   for(std::size_t row=0;row<4;++row) for(std::size_t col=0;col<8;++col)
@@ -392,6 +424,21 @@ double VirtualCortexProcessor::getTailLengthSeconds() const {
  const double rawFeedback=stereoParameters[2]->load();
  const double feedback=std::isfinite(rawFeedback)?juce::jlimit(0.,.95,rawFeedback):0.;
  return juce::jlimit(3.,3600.,reverbTail+ms*.001*(feedback>1.e-6?1.+std::log(.001)/std::log(feedback):1.));
+}
+void VirtualCortexProcessor::processTracking(juce::AudioBuffer<float>& b,juce::MidiBuffer& midi,bool bypass){
+ midi.clear();
+ auto v=[this](std::size_t i){return trackingParameters[i]->load(std::memory_order_relaxed);};
+ vc::TrackingSynth::Parameters p;p.mix=v(0);p.transpose=v(1);p.detune=v(2);p.cutoff=v(3);p.resonance=v(4);p.attack=v(5);p.release=v(6);p.glide=v(7);p.wave=v(8);p.gate=v(9);p.enabled=!bypass&&trackingFlags[0]->load()>.5f;trackingSynth.configure(p);
+ vc::SequenceCrusher::Parameters c;c.bits=v(10);c.rate=v(11);c.cutoff=v(12);c.stepMs=v(13);c.depth=v(14);c.mix=v(15);c.mode=v(16);c.stutterMs=v(17);c.stutter=v(18);for(std::size_t j=0;j<6;++j)c.steps[j]=v(19+j);c.enabled=!bypass&&trackingFlags[2]->load()>.5f;sequenceCrusher.configure(c);
+ const bool sendMidi=p.enabled&&trackingFlags[1]->load()>.5f;
+ // JUCE's host-owned MidiBuffer may grow when MIDI export is enabled. Audio DSP
+ // uses fixed/prepared storage; MIDI allocation behavior depends on the host.
+ if(midiPanic&&(trackingFlags[1]->load()>.5f||emittedNote>=0)){midi.addEvent(juce::MidiMessage::allNotesOff(1),0);midiPanic=false;emittedNote=-1;}
+ const int count=juce::jmin(2,b.getNumChannels());
+ for(int i=0;i<b.getNumSamples();++i){const float l=b.getSample(0,i),r=count>1?b.getSample(1,i):l;const auto frame=trackingSynth.process(l,r);const int next=sendMidi?frame.note:-1;
+  if(next!=emittedNote){if(emittedNote>=0)midi.addEvent(juce::MidiMessage::noteOff(1,emittedNote),i);if(next>=0)midi.addEvent(juce::MidiMessage::noteOn(1,next,(juce::uint8)juce::jlimit(1,127,int(frame.velocity*127))),i);emittedNote=next;}
+  const auto crushed=sequenceCrusher.process(frame.audio[0],frame.audio[1]);if(!bypass)for(int ch=0;ch<count;++ch)b.setSample(ch,i,crushed[(std::size_t)ch]);
+ }
 }
 void VirtualCortexProcessor::processStereoDelay(juce::AudioBuffer<float>& b){
  auto value=[this](std::size_t i){return stereoParameters[i]->load(std::memory_order_relaxed);};
@@ -547,6 +594,7 @@ void VirtualCortexProcessor::setStateInformation(const void* data,int size){
   }
   const auto current=parameters.copyState();
   auto addDefault=[&](const char* id){if(restored.getChildWithProperty("id",id).isValid())return;auto node=current.getChildWithProperty("id",id).createCopy();if(node.isValid())if(auto* parameter=parameters.getParameter(id)){node.setProperty("value",parameter->convertFrom0to1(parameter->getDefaultValue()),nullptr);restored.addChild(node,-1,nullptr);}};
+  const char* trackingIDs[]={"syMix","syTranspose","syDetune","syCutoff","syResonance","syAttack","syRelease","syGlide","syWave","syGate","scBits","scRate","scCutoff","scStepMs","scDepth","scMix","scMode","scStutterMs","scStutter","scStep1","scStep2","scStep3","scStep4","scStep5","scStep6","syOn","syMidi","scOn"};for(auto id:trackingIDs)addDefault(id);
   const char* creativeIDs[]={"ieTime","ieFeedback","ieA","ieB","ieStep","ieCutoff","ieMix","llLevel","llRate","llCutoff","ieOn","llOn","llReverse"};for(auto id:creativeIDs)addDefault(id);
   const char* mhIDs[]={"mh1Time","mh1Level","mh1Pan","mh1Feedback","mh2Time","mh2Level","mh2Pan","mh2Feedback","mh3Time","mh3Level","mh3Pan","mh3Feedback","mh4Time","mh4Level","mh4Pan","mh4Feedback","mhMix","mhOn"};for(auto id:mhIDs)addDefault(id);
   for(const auto* id:vc::stereoDelayIDs)addDefault(id);for(const auto* id:vc::stereoDelayFlagIDs)addDefault(id);
