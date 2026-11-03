@@ -9,6 +9,7 @@
 #include "DSP/PortableAudioEngine.h"
 #include "DSP/StereoDelay.h"
 #include "DSP/MultiHeadEcho.h"
+#include "DSP/CreativeEffects.h"
 #include "DSP/StereoReverb.h"
 #include "DSP/PendingIRQueue.h"
 #include "DSP/PendingNeuralQueue.h"
@@ -47,7 +48,12 @@ public:
  juce::String getGridNeuralModelName(std::size_t row,std::size_t col) const;
  juce::String getGridCabinetIRName(std::size_t row, std::size_t col) const;
  juce::String getCabinetIRName() const;
+ void loopCommand(unsigned command)noexcept{loopCommands.fetch_or(command);}
+ unsigned loopStatus()const noexcept{return loopState.load();}
 private:
+ vc::IntervalEcho intervalEcho;vc::LayerLoom layerLoom;
+ std::array<std::atomic<float>*,10> creativeParameters{};std::array<std::atomic<float>*,3> creativeFlags{};
+ std::atomic<unsigned> loopCommands{0},loopState{0};
  static juce::AudioProcessorValueTreeState::ParameterLayout makeLayout();
  void processStereoDelay(juce::AudioBuffer<float>&);
  std::array<std::atomic<float>*,19> stereoParameters{};

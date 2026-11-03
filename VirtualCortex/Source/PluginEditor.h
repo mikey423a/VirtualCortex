@@ -43,8 +43,8 @@ private:
  CortexLookAndFeel look;
  struct Knob {juce::Slider slider;std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attachment;juce::Label value;juce::String label;};
  struct Switch {juce::ToggleButton button;std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> attachment;};
- std::array<Knob,72> knobs;
- std::array<Switch,17> switches;
+ std::array<Knob,82> knobs;
+ std::array<Switch,20> switches;
  std::array<std::array<CortexBlockButton,8>,4> gridCells;
  std::array<juce::TextButton,4> laneButtons;
  std::array<CortexBlockButton,8> stomps;
@@ -61,6 +61,7 @@ private:
  juce::ComboBox rowSelector,categoryBox;
  std::array<juce::TextButton,3> stereoPages,reverbPages;
  std::array<juce::TextButton,4> echoPages;int echoPage=0;
+ std::array<juce::TextButton,6> loopButtons;
  int reverbPage=0;
  int stereoPage=0;
  std::array<juce::Slider,6> slotSliders;

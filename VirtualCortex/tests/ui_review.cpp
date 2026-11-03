@@ -25,7 +25,7 @@ int main(int argc,char** argv){
    auto* openCatalog=dynamic_cast<juce::Button*>(editor->findChildWithID("catalog-toggle"));
    auto* catalog=dynamic_cast<DeviceCatalogPanel*>(editor->findChildWithID("device-catalog-panel"));
    require(openCatalog&&catalog&&!catalog->isVisible(),"Catalog must start hidden");
-   openCatalog->onClick();require(catalog->isVisible()&&catalog->visibleEntryCount()==713,"Catalog is incomplete");
+   openCatalog->onClick();require(catalog->isVisible()&&catalog->visibleEntryCount()==715,"Catalog is incomplete");
    auto* search=dynamic_cast<juce::TextEditor*>(catalog->findChildWithID("catalog-search"));
    auto* availability=dynamic_cast<juce::ComboBox*>(catalog->findChildWithID("catalog-availability"));
    auto* section=dynamic_cast<juce::ComboBox*>(catalog->findChildWithID("catalog-section"));
@@ -37,7 +37,7 @@ int main(int argc,char** argv){
    action->onClick();require(chosen==-1,"Unavailable model invoked insertion");
    capture("catalog-reference-1184x864.png",1184,864);
    query("Marshall JCM800");require(catalog->visibleEntryCount()>0&&catalog->selectedPlayableType()==0,"Gear search requires trademark symbols");
-   query("");availability->setSelectedId(2,juce::sendNotificationSync);require(catalog->visibleEntryCount()==24,"Original count incorrect");
+   query("");availability->setSelectedId(2,juce::sendNotificationSync);require(catalog->visibleEntryCount()==26,"Original count incorrect");
    query("Bit-crusher");require(catalog->visibleEntryCount()==1&&action->isEnabled(),"Working original cannot be selected");
    action->onClick();require(chosen==15,"Original action routed to wrong processor");
    query("Stereo Reverb");action->onClick();require(chosen==24,"Post-chain action routed to wrong processor");
@@ -138,7 +138,7 @@ int main(int argc,char** argv){
   require(processor->getEditableGrid().get(3,6)->type==vc::BlockType::Chorus,"Chorus browser selection inserted wrong block");
   require(std::abs(processor->getGridSlotParameters(3,6).rate-.04f)<1.e-5f,"Chorus preset parameters not applied");
   editor->setEditorsVisible(true);capture("chorus-browser-preset.png",1184,864);
-  auto* category=dynamic_cast<juce::ComboBox*>(editor->findChildWithID("device-category"));require(category&&category->getNumItems()==25,"Expanded category selector missing");
+  auto* category=dynamic_cast<juce::ComboBox*>(editor->findChildWithID("device-category"));require(category&&category->getNumItems()==27,"Expanded category selector missing");
   for(int type:{16,17,18,19,20,21}){
    editor->selectSlot(1,type-16);category->setSelectedId(type,juce::sendNotificationSync);
    auto* entry=dynamic_cast<juce::Button*>(editor->findChildWithID("device-0"));require(entry&&entry->isVisible(),"New category has no selectable device");entry->onClick();
@@ -179,6 +179,13 @@ int main(int argc,char** argv){
    require(std::abs(processor->parameters.getRawParameterValue("mh"+juce::String(page+1)+"Time")->load()-456)<.01f,"Echo time not bound");}
   capture("four-head-echo-2560x1440.png",2560,1440);capture("four-head-echo-822x600.png",822,600);
   editor->setEditorsVisible(false);require(!editor->findChildWithID("echo-head-0")->isVisible(),"Echo controls remain over hidden editor");
+  for(int type:{26,27}){category->setSelectedId(type,juce::sendNotificationSync);editor->setEditorsVisible(true);auto* preset=dynamic_cast<juce::Button*>(editor->findChildWithID("device-0"));require(preset&&preset->isVisible(),"Creative preset missing");preset->onClick();
+   auto* knob=dynamic_cast<juce::Slider*>(editor->findChildWithID(type==26?"ieA":"llRate"));require(knob&&knob->isVisible(),"Creative control hidden");knob->setValue(type==26?12:1.5,juce::sendNotificationSync);
+   require(std::abs(processor->parameters.getRawParameterValue(type==26?"ieA":"llRate")->load()-(type==26?12:1.5))<.001,"Creative binding failed");
+   capture(type==26?"interval-echo-2560x1440.png":"layer-loom-2560x1440.png",2560,1440);capture(type==26?"interval-echo-822x600.png":"layer-loom-822x600.png",822,600);
+  }
+  for(int i=0;i<6;++i)require(editor->findChildWithID("loop-command-"+juce::String(i))->isVisible(),"Loop transport missing");
+  editor->setEditorsVisible(false);require(!editor->findChildWithID("loop-command-0")->isVisible(),"Loop transport over hidden editor");
   editor.reset();processor->releaseResources();
   std::cout<<"PASS: native editor snapshots at three sizes, control binding, insertion and bypass\n";
   return 0;

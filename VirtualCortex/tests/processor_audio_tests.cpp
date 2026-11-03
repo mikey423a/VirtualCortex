@@ -163,6 +163,16 @@ int runProcessorAudioTests(){
    juce::AudioBuffer<float> b(2,128);juce::MidiBuffer midi;
    for(int step=0;step<100;++step){set(*p,"mh1Time",step%2?1:4000);set(*p,"mh1Pan",step%2?-1:1);set(*p,"mhOn",step%3?1:0);b.clear();b.setSample(0,0,.1f);allocationProbe::count=0;allocationProbe::enabled=true;p->processBlock(b,midi);allocationProbe::enabled=false;check(allocationProbe::count==0,"Echo allocated in callback");for(int i=0;i<128;++i)check(std::isfinite(b.getSample(0,i)),"Echo non-finite output");}
   }
+  {
+   auto p=std::make_unique<VirtualCortexProcessor>();grid(*p,vc::BlockType::Empty);prepare(*p);set(*p,"llOn",1);set(*p,"llLevel",1);p->loopCommand(vc::LayerLoom::Record);
+   juce::AudioBuffer<float> b(2,128);juce::MidiBuffer midi;
+   for(int block=0;block<40;++block){for(int i=0;i<128;++i){b.setSample(0,i,.1f);b.setSample(1,i,-.1f);}allocationProbe::count=0;allocationProbe::enabled=true;p->processBlock(b,midi);allocationProbe::enabled=false;check(allocationProbe::count==0,"Loop recording allocated");}
+   p->loopCommand(vc::LayerLoom::Record);b.clear();p->processBlock(b,midi);check((p->loopStatus()&255)==1,"Processor loop recording failed");
+   double energy=0;for(int block=0;block<20;++block){b.clear();p->processBlock(b,midi);for(int i=0;i<128;++i)energy+=std::abs(b.getSample(0,i));}check(energy>100,"Recorded loop is inaudible");
+   p->loopCommand(vc::LayerLoom::Undo);b.clear();p->processBlock(b,midi);check((p->loopStatus()&255)==0,"Processor loop undo failed");p->loopCommand(vc::LayerLoom::Redo);b.clear();p->processBlock(b,midi);check((p->loopStatus()&255)==1,"Processor loop redo failed");
+   set(*p,"ieOn",1);set(*p,"ieA",12);set(*p,"llRate",.5f);auto saved=state(*p);auto q=std::make_unique<VirtualCortexProcessor>();prepare(*q);restore(*q,saved);check(q->parameters.getRawParameterValue("ieA")->load()==12,"Interval recall failed");check(q->loopStatus()==0,"Session-only audio incorrectly reported restored");
+   p->loopCommand(vc::LayerLoom::Clear);for(int block=0;block<50;++block){set(*p,"ieA",block%2?-12:12);set(*p,"ieTime",block%2?1:4000);b.clear();allocationProbe::count=0;allocationProbe::enabled=true;p->processBlock(b,midi);allocationProbe::enabled=false;check(allocationProbe::count==0,"Creative automation allocated");for(int i=0;i<128;++i)check(std::isfinite(b.getSample(0,i)),"Creative non-finite audio");}
+  }
   std::cout<<"PASS: mono/stereo, trim, callback allocations, UTF-8 assets, preset clearing, and rate/buffer matrix\n";return 0;
  }catch(const std::exception& e){allocationProbe::enabled=false;std::cerr<<e.what()<<'\n';return 1;}
 }
