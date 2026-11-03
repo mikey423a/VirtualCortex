@@ -43,7 +43,7 @@ VirtualCortexProcessor::VirtualCortexProcessor()
  const char* mhIDs[]={"mh1Time","mh1Level","mh1Pan","mh1Feedback","mh2Time","mh2Level","mh2Pan","mh2Feedback","mh3Time","mh3Level","mh3Pan","mh3Feedback","mh4Time","mh4Level","mh4Pan","mh4Feedback","mhMix"};for(std::size_t i=0;i<17;++i)mhParameters[i]=parameters.getRawParameterValue(mhIDs[i]);mhEnabled=parameters.getRawParameterValue("mhOn");
  const char* tempoIDs[]={"ieBpm","ieBeats","ieSync","scBpm","scBeats","scSync"};for(std::size_t i=0;i<6;++i)sequenceTempo[i]=parameters.getRawParameterValue(tempoIDs[i]);
  const char* trackingIDs[]={"syMix","syTranspose","syDetune","syCutoff","syResonance","syAttack","syRelease","syGlide","syWave","syGate","scBits","scRate","scCutoff","scStepMs","scDepth","scMix","scMode","scStutterMs","scStutter","scStep1","scStep2","scStep3","scStep4","scStep5","scStep6"};for(std::size_t i=0;i<25;++i)trackingParameters[i]=parameters.getRawParameterValue(trackingIDs[i]);
- const char* trackingFlagIDs[]={"syOn","syMidi","scOn"};for(std::size_t i=0;i<3;++i)trackingFlags[i]=parameters.getRawParameterValue(trackingFlagIDs[i]);
+ const char* trackingFlagIDs[]={"syOn","syMidi","scOn","scPitch"};for(std::size_t i=0;i<4;++i)trackingFlags[i]=parameters.getRawParameterValue(trackingFlagIDs[i]);
  const char* creativeIDs[]={"ieTime","ieFeedback","ieA","ieB","ieStep","ieCutoff","ieMix","llLevel","llRate","llCutoff"};for(std::size_t i=0;i<10;++i)creativeParameters[i]=parameters.getRawParameterValue(creativeIDs[i]);
  const char* creativeFlagIDs[]={"ieOn","llOn","llReverse"};for(std::size_t i=0;i<3;++i)creativeFlags[i]=parameters.getRawParameterValue(creativeFlagIDs[i]);
  reverbEnabled=parameters.getRawParameterValue("stereoReverbOn");
@@ -249,6 +249,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VirtualCortexProcessor::make
  addFloat("scBpm","Crusher tempo (BPM)",20.f,300.f,120.f);
  addFloat("scBeats","Crusher step beats",0.125f,4.f,0.25f);
  addBool("scSync","Crusher tempo sync",false);
+ addBool("scPitch","Crusher pitch sequence",false);
  return p;
 }
 
@@ -441,7 +442,7 @@ void VirtualCortexProcessor::processTracking(juce::AudioBuffer<float>& b,juce::M
  midi.clear();
  auto v=[this](std::size_t i){return trackingParameters[i]->load(std::memory_order_relaxed);};
  vc::TrackingSynth::Parameters p;p.mix=v(0);p.transpose=v(1);p.detune=v(2);p.cutoff=v(3);p.resonance=v(4);p.attack=v(5);p.release=v(6);p.glide=v(7);p.wave=v(8);p.gate=v(9);p.enabled=!bypass&&trackingFlags[0]->load()>.5f;trackingSynth.configure(p);
- vc::SequenceCrusher::Parameters c;c.bits=v(10);c.rate=v(11);c.cutoff=v(12);c.stepMs=sequencerStep(v(13),3);c.depth=v(14);c.mix=v(15);c.mode=v(16);c.stutterMs=v(17);c.stutter=v(18);for(std::size_t j=0;j<6;++j)c.steps[j]=v(19+j);c.enabled=!bypass&&trackingFlags[2]->load()>.5f;sequenceCrusher.configure(c);
+ vc::SequenceCrusher::Parameters c;c.bits=v(10);c.rate=v(11);c.cutoff=v(12);c.stepMs=sequencerStep(v(13),3);c.depth=v(14);c.mix=v(15);c.mode=v(16);c.stutterMs=v(17);c.stutter=v(18);for(std::size_t j=0;j<6;++j)c.steps[j]=v(19+j);c.pitch=trackingFlags[3]->load()>.5f;c.enabled=!bypass&&trackingFlags[2]->load()>.5f;sequenceCrusher.configure(c);
  const bool sendMidi=p.enabled&&trackingFlags[1]->load()>.5f;
  // JUCE's host-owned MidiBuffer may grow when MIDI export is enabled. Audio DSP
  // uses fixed/prepared storage; MIDI allocation behavior depends on the host.
@@ -606,6 +607,7 @@ void VirtualCortexProcessor::setStateInformation(const void* data,int size){
   }
   const auto current=parameters.copyState();
   auto addDefault=[&](const char* id){if(restored.getChildWithProperty("id",id).isValid())return;auto node=current.getChildWithProperty("id",id).createCopy();if(node.isValid())if(auto* parameter=parameters.getParameter(id)){node.setProperty("value",parameter->convertFrom0to1(parameter->getDefaultValue()),nullptr);restored.addChild(node,-1,nullptr);}};
+  addDefault("scPitch");
   for(auto id:{"ieBpm","ieBeats","ieSync","scBpm","scBeats","scSync"})addDefault(id);
   const char* trackingIDs[]={"syMix","syTranspose","syDetune","syCutoff","syResonance","syAttack","syRelease","syGlide","syWave","syGate","scBits","scRate","scCutoff","scStepMs","scDepth","scMix","scMode","scStutterMs","scStutter","scStep1","scStep2","scStep3","scStep4","scStep5","scStep6","syOn","syMidi","scOn"};for(auto id:trackingIDs)addDefault(id);
   const char* creativeIDs[]={"ieTime","ieFeedback","ieA","ieB","ieStep","ieCutoff","ieMix","llLevel","llRate","llCutoff","ieOn","llOn","llReverse"};for(auto id:creativeIDs)addDefault(id);

@@ -58,7 +58,7 @@ private:
  float sequencerStep(float manual,std::size_t offset) const;
  vc::TrackingSynth trackingSynth;vc::SequenceCrusher sequenceCrusher;
  std::array<std::atomic<float>*,25> trackingParameters{};
- std::array<std::atomic<float>*,3> trackingFlags{};
+ std::array<std::atomic<float>*,4> trackingFlags{};
  int emittedNote=-1;bool midiPanic=true;
  vc::IntervalEcho intervalEcho;vc::LayerLoom layerLoom;
  std::array<std::atomic<float>*,10> creativeParameters{};std::array<std::atomic<float>*,3> creativeFlags{};

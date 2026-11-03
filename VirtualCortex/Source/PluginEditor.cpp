@@ -117,8 +117,8 @@ VirtualCortexEditor::VirtualCortexEditor(VirtualCortexProcessor& p):AudioProcess
   k.value.onTextChange=[this,i]{auto& item=knobs[i];item.slider.setValue(item.slider.getValueFromText(item.value.getText()),juce::sendNotificationSync);};
   k.value.setText(k.slider.getTextFromValue(k.slider.getValue()),juce::dontSendNotification);
  }
- const std::array<const char*,25> switchesIds={"gateOn","ampOn","cabOn","delayOn","reverbOn","tremOn","bypass","eqOn","irOn","gridMode","stereoDelayOn","sdPingPong","sdTape","sdSync","stereoReverbOn","srPreGlide","mhOn","ieOn","llOn","llReverse","syOn","syMidi","scOn","ieSync","scSync"};
- const std::array<const char*,25> switchesLabels={"ENABLED","ENABLED","ENABLED","ENABLED","ENABLED","ENABLED","BYPASS","ENABLED","USE IR","GRID ENGINE","ENABLED","PING PONG","TAPE GLIDE","TEMPO SYNC","ENABLED","PRE GLIDE","ENABLED","ENABLED","ENABLED","REVERSE","ENABLED","MIDI NOTES","ENABLED","TEMPO SYNC","TEMPO SYNC"};
+ const std::array<const char*,26> switchesIds={"gateOn","ampOn","cabOn","delayOn","reverbOn","tremOn","bypass","eqOn","irOn","gridMode","stereoDelayOn","sdPingPong","sdTape","sdSync","stereoReverbOn","srPreGlide","mhOn","ieOn","llOn","llReverse","syOn","syMidi","scOn","ieSync","scSync","scPitch"};
+ const std::array<const char*,26> switchesLabels={"ENABLED","ENABLED","ENABLED","ENABLED","ENABLED","ENABLED","BYPASS","ENABLED","USE IR","GRID ENGINE","ENABLED","PING PONG","TAPE GLIDE","TEMPO SYNC","ENABLED","PRE GLIDE","ENABLED","ENABLED","ENABLED","REVERSE","ENABLED","MIDI NOTES","ENABLED","TEMPO SYNC","TEMPO SYNC","PITCH SEQUENCE"};
  for(size_t i=0;i<switches.size();++i){auto& s=switches[i];s.button.setButtonText(switchesLabels[i]);addChildComponent(s.button);s.attachment=std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.parameters,switchesIds[i],s.button);}
  presetBox.addItem("Clean ambience",2);presetBox.addItem("Crunch rhythm",3);presetBox.addItem("Lead delay",4);presetBox.setTextWhenNothingSelected("1A Virtual Cortex MAIN");presetBox.onChange=[this]{applyPreset(presetBox.getSelectedId());};addAndMakeVisible(presetBox);
  for(auto* b:{&savePresetButton,&loadPresetButton,&addButton,&removeButton,&loadIRButton,&loadGridIRButton,&loadNeuralButton})addAndMakeVisible(*b);
@@ -264,9 +264,9 @@ void VirtualCortexEditor::updateView(){refreshGridControls();const int type=curr
  for(int i=0;i<3;++i){stereoPages[(std::size_t)i].setVisible(type==23);stereoPages[(std::size_t)i].setToggleState(i==stereoPage,juce::dontSendNotification);}
  for(int i=0;i<3;++i){reverbPages[(std::size_t)i].setVisible(type==24);reverbPages[(std::size_t)i].setToggleState(i==reverbPage,juce::dontSendNotification);}
  for(int i=0;i<4;++i){echoPages[i].setVisible(type==25);echoPages[i].setToggleState(i==echoPage,juce::dontSendNotification);}switches[16].button.setVisible(type==25);
- switches[23].button.setVisible(type==26);switches[24].button.setVisible(type==29);
+ switches[23].button.setVisible(type==26);switches[24].button.setVisible(type==29);switches[25].button.setVisible(type==29&&trackingPage==1);
  knobs[76].slider.setEnabled(!intervalSync);knobs[76].value.setEnabled(!intervalSync);knobs[95].slider.setEnabled(!crusherSync);knobs[95].value.setEnabled(!crusherSync);
- trackingPageButton.setVisible(type==28||type==29);trackingPageButton.setButtonText(trackingPage?"MAIN":type==28?"ENVELOPES":"STUTTER / STEPS");switches[20].button.setVisible(type==28);switches[21].button.setVisible(type==28);switches[22].button.setVisible(type==29);
+ trackingPageButton.setVisible(type==28||type==29);trackingPageButton.setButtonText(trackingPage?"MAIN":type==28?"ENVELOPES":"PITCH / STEPS");switches[20].button.setVisible(type==28);switches[21].button.setVisible(type==28);switches[22].button.setVisible(type==29);
  for(auto& b:loopButtons)b.setVisible(type==27);switches[17].button.setVisible(type==26);switches[18].button.setVisible(type==27);switches[19].button.setVisible(type==27);
  switches[14].button.setVisible(type==24);switches[15].button.setVisible(type==24);
  if(type==23)for(int i=10;i<14;++i)switches[(std::size_t)i].button.setVisible(true);
@@ -305,6 +305,7 @@ void VirtualCortexEditor::resized(){
  for(int i=0;i<3;++i){stereoPages[(std::size_t)i].setBounds(650+i*170,537,165,32);reverbPages[(std::size_t)i].setBounds(650+i*170,537,165,32);}
  for(int i=0;i<4;++i)echoPages[i].setBounds(480+i*170,537,165,32);
  for(int i=0;i<6;++i)loopButtons[i].setBounds(310+i*142,537,136,32);switches[19].button.setBounds(1000,489,165,34);switches[17].button.setComponentID("power");switches[18].button.setComponentID("power");
+ switches[25].button.setBounds(825,489,170,34);switches[25].button.setComponentID("crusher-pitch");
  switches[23].button.setBounds(1000,489,165,34);switches[24].button.setBounds(1000,489,165,34);switches[23].button.setComponentID("interval-sync");switches[24].button.setComponentID("crusher-sync");
  trackingPageButton.setBounds(1000,537,165,32);switches[21].button.setBounds(1000,489,165,34);switches[20].button.setComponentID("power");switches[22].button.setComponentID("power");
  switches[16].button.setComponentID("power");
@@ -351,7 +352,7 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
 
  g.setColour(panel);g.fillRect(302,598,172,232);g.setColour(juce::Colour(0xff070707));g.drawRect(302,598,172,36,1);drawCaption(g,"Gig view",{343,599,125,33},20.f,juce::Colours::white,juce::Justification::centredLeft,true);drawCaption(g,"Parameter Editor",{310,796,156,32},14.f,muted);
  }
- drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.18.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
+ drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.19.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
 }
 void VirtualCortexEditor::applyPreset(int index){auto set=[this](const char* id,float value){if(auto* p=processor.parameters.getParameter(id))p->setValueNotifyingHost(p->convertTo0to1(value));};if(index<2)return;set("gridMode",0.f);
  if(index==2){set("drive",.12f);set("tone",.7f);set("level",.65f);set("delayMix",.12f);set("reverbMix",.25f);set("ampBias",0.f);set("delayOn",1.f);set("reverbOn",1.f);}
@@ -384,7 +385,7 @@ juce::StringArray VirtualCortexEditor::deviceNames() const{
  case 20:return {"Original flat tone EQ","Warm tone","Mid presence","Mid scoop"};
  case 21:return {"Original room reverb","Small room","Long room","Dark room"};
  case 28:return {"Prism lead","Sub bass"};
- case 29:return {"Digital staircase","Filter stutter"};
+ case 29:return {"Digital staircase","Filter stutter","Octave steps"};
  case 26:return {"Interval staircase","Octave wander"};
  case 27:return {"Session looper"};
  case 25:return {"Four-head spread","Rhythmic cascade"};
@@ -399,7 +400,7 @@ void VirtualCortexEditor::applyDeviceVariant(int index){
  const auto names=deviceNames();if(index<0||index>=names.size())return;variant=index;
  auto set=[this](const char* id,float v){if(auto* p=processor.parameters.getParameter(id))p->setValueNotifyingHost(p->convertTo0to1(v));};
  if(browserType==28){set("syOn",1);set("syTranspose",index?-12:0);set("syCutoff",index?600:1800);set("syMix",1);set("syWave",1);masterPage=true;lastView=-1;updateView();statusLabel.setText("Mono tracking | Left input | MIDI channel 1 (host routing)",juce::dontSendNotification);return;}
- if(browserType==29){set("scOn",1);set("scMode",index?1:0);set("scStutter",index?.7f:0);set("scMix",.7f);masterPage=true;lastView=-1;updateView();statusLabel.setText("Six steps | Optional tempo sync | Rate / Filter / Bits",juce::dontSendNotification);return;}
+ if(browserType==29){set("scOn",1);set("scMode",index==1?1:0);set("scPitch",index==2?1:0);set("scStutter",index==1?.7f:0);set("scMix",.7f);masterPage=true;lastView=-1;updateView();statusLabel.setText("Six steps | Optional tempo sync | Rate / Filter / Bits / Pitch",juce::dontSendNotification);return;}
  if(browserType==26){set("ieOn",1);set("ieA",index?12:7);set("ieB",index?-12:-5);set("ieTime",350);set("ieFeedback",.4f);set("ieMix",.3f);set("ieStep",500);set("ieCutoff",5000);masterPage=true;lastView=-1;updateView();statusLabel.setText("Interval Echo: original sequenced digital pitch delay",juce::dontSendNotification);return;}
  if(browserType==27){set("llOn",1);masterPage=true;lastView=-1;updateView();statusLabel.setText("Layer Loom: 16 seconds, 8 layers. Session audio is not saved in presets.",juce::dontSendNotification);return;}
  if(browserType==25){set("mhOn",1);set("mhMix",.3f);for(int i=1;i<=4;++i){const auto prefix="mh"+juce::String(i);set((prefix+"Time").toRawUTF8(),(index?125.f:100.f)*i);set((prefix+"Level").toRawUTF8(),.5f);set((prefix+"Pan").toRawUTF8(),i%2?-.7f:.7f);set((prefix+"Feedback").toRawUTF8(),i==4?.55f:0.f);}masterPage=true;lastView=-1;updateView();return;}

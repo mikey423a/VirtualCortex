@@ -3,6 +3,7 @@
 #include <array>
 #include <cmath>
 #include <vector>
+#include "StereoSequencePitch.h"
 
 namespace vc {
 // Original implementations. No Meris firmware, models, or factory presets.
@@ -80,24 +81,26 @@ private:
 };
 class SequenceCrusher {
 public:
- struct Parameters {float bits=8,rate=8000,cutoff=6000,stepMs=125,depth=1,mix=.5f,mode=0,stutterMs=60,stutter=0;std::array<float,6>steps{{0,.5f,-.5f,1,0,-1}};bool enabled=false;};
- void prepare(double rate){fs=std::isfinite(rate)?std::clamp(rate,8000.,192000.):48000.;for(auto& b:history)b.assign(std::size_t(fs*.3)+4,0);write=0;holdPhase=stepPhase=0;step=0;held.fill(0);filtered.fill(0);mix=0;stutterPhase=0;captured=0;previousEnabled=false;}
+ struct Parameters {float bits=8,rate=8000,cutoff=6000,stepMs=125,depth=1,mix=.5f,mode=0,stutterMs=60,stutter=0;std::array<float,6>steps{{0,.5f,-.5f,1,0,-1}};bool enabled=false,pitch=false;};
+ void prepare(double rate){fs=std::isfinite(rate)?std::clamp(rate,8000.,192000.):48000.;pitchShift.prepare(fs);for(auto& b:history)b.assign(std::size_t(fs*.3)+4,0);write=0;holdPhase=stepPhase=0;step=0;held.fill(0);filtered.fill(0);mix=0;stutterPhase=0;captured=0;previousEnabled=false;}
  void configure(Parameters p)noexcept{cfg=p;cfg.bits=trackingLimit(p.bits,1,24,8);cfg.rate=trackingLimit(p.rate,48,48000,8000);cfg.cutoff=trackingLimit(p.cutoff,60,18000,6000);cfg.stepMs=trackingLimit(p.stepMs,25,12000,125);cfg.depth=trackingLimit(p.depth,0,1,1);cfg.mix=trackingLimit(p.mix,0,1,.5f);cfg.mode=std::round(trackingLimit(p.mode,0,2,0));cfg.stutterMs=trackingLimit(p.stutterMs,5,250,60);cfg.stutter=trackingLimit(p.stutter,0,1,0);for(auto& s:cfg.steps)s=trackingLimit(s,-1,1,0);if(cfg.enabled&&!previousEnabled){step=0;stepPhase=0;captured=0;stutterPhase=0;}previousEnabled=cfg.enabled;}
  std::array<float,2> process(float l,float r)noexcept{
   std::array<float,2>out{{std::isfinite(l)?l:0,std::isfinite(r)?r:0}};
   if(history[0].empty()||(!cfg.enabled&&mix<1.e-7f)){mix=0;return out;}
   const auto length=std::clamp(std::size_t(fs*cfg.stutterMs*.001),std::size_t(2),history[0].size()-1);
   const float modulation=cfg.steps[step]*cfg.depth;
-  const float rate=std::clamp(cfg.rate*(cfg.mode==0?std::pow(2.f,modulation*4):1.f),48.f,float(fs));
-  const float cutoff=std::clamp(cfg.cutoff*(cfg.mode==1?std::pow(2.f,modulation*4):1.f),60.f,float(fs*.45));
-  const int bits=std::clamp(int(std::lround(cfg.bits+(cfg.mode==2?modulation*12:0))),1,24);
+  const float rate=std::clamp(cfg.rate*(cfg.mode==0&&!cfg.pitch?std::pow(2.f,modulation*4):1.f),48.f,float(fs));
+  const float cutoff=std::clamp(cfg.cutoff*(cfg.mode==1&&!cfg.pitch?std::pow(2.f,modulation*4):1.f),60.f,float(fs*.45));
+  const int bits=std::clamp(int(std::lround(cfg.bits+(cfg.mode==2&&!cfg.pitch?modulation*12:0))),1,24);
   const float levels=std::pow(2.f,float(bits))-1,alpha=float(1.-std::exp(-6.283185307179586*cutoff/fs));
   holdPhase+=rate/fs;const bool update=holdPhase>=1;if(update)holdPhase-=std::floor(holdPhase);
   mix+=float(1.-std::exp(-1./(fs*.01)))*((cfg.enabled?cfg.mix:0)-mix);
-  // Capture one short stereo slice, repeat it until the next sequence step.
-  for(int ch=0;ch<2;++ch){float x=out[ch];if(captured<length)history[ch][captured]=x;else{x=x*(1-cfg.stutter)+history[ch][stutterPhase%length]*cfg.stutter;}
-   if(update){const float bounded=std::clamp(x,-1.f,1.f);held[ch]=bounded==0?0:2*std::round((bounded+1)*.5f*levels)/levels-1;}
-   filtered[ch]+=alpha*(held[ch]-filtered[ch]);out[ch]=out[ch]*(1-mix)+filtered[ch]*mix;
+  // Capture before pitch, then shift the repeated slice before quantization.
+  const auto dry=out;std::array<float,2>slice=out;
+  for(int ch=0;ch<2;++ch){if(captured<length)history[ch][captured]=slice[ch];else slice[ch]=slice[ch]*(1-cfg.stutter)+history[ch][stutterPhase%length]*cfg.stutter;}
+  slice=pitchShift.process(slice[0],slice[1],modulation*12,cfg.pitch);
+  for(int ch=0;ch<2;++ch){if(update){const float bounded=std::clamp(slice[ch],-1.f,1.f);held[ch]=bounded==0?0:2*std::round((bounded+1)*.5f*levels)/levels-1;}
+   filtered[ch]+=alpha*(held[ch]-filtered[ch]);out[ch]=dry[ch]*(1-mix)+filtered[ch]*mix;
   }
   if(captured<length)++captured;else stutterPhase=(stutterPhase+1)%length;
   stepPhase+=1000./(fs*cfg.stepMs);if(stepPhase>=1){stepPhase-=std::floor(stepPhase);step=(step+1)%6;captured=stutterPhase=0;}
@@ -105,6 +108,6 @@ public:
  }
  int currentStep()const noexcept{return step;}
 private:
- Parameters cfg;double fs=48000,holdPhase=0,stepPhase=0;int step=0;std::array<std::vector<float>,2>history;std::size_t write=0,captured=0,stutterPhase=0;std::array<float,2>held{},filtered{};float mix=0;bool previousEnabled=false;
+ StereoSequencePitch pitchShift;Parameters cfg;double fs=48000,holdPhase=0,stepPhase=0;int step=0;std::array<std::vector<float>,2>history;std::size_t write=0,captured=0,stutterPhase=0;std::array<float,2>held{},filtered{};float mix=0;bool previousEnabled=false;
 };
 } // namespace vc

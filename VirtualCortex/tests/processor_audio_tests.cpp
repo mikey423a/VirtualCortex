@@ -63,6 +63,13 @@ int runProcessorAudioTests(){
    const auto manual=render(false,.25f,120,false),fallback=render(true,.25f,120,false),hosted=render(true,.25f,60,true),slower=render(true,.5f,120,false);
    double difference=0;for(std::size_t i=0;i<manual.size();++i){check(std::abs(manual[i]-fallback[i])<1.e-6f,"Fallback sync timing differs");check(std::abs(manual[i]-hosted[i])<1.e-6f,"Host BPM did not override fallback");difference+=std::abs(manual[i]-slower[i]);}check(difference>1,"Beat division did not alter sequence");
   }
+  // New pitch mode remains allocation-free with prepared buffers and recalls state.
+  {
+   auto p=std::make_unique<VirtualCortexProcessor>();layout(*p,1,2);grid(*p,vc::BlockType::Empty);prepare(*p);set(*p,"scOn",1);set(*p,"scPitch",1);set(*p,"scMix",1);set(*p,"scRate",48000);set(*p,"scBits",24);for(auto id:{"scStep1","scStep2","scStep3","scStep4","scStep5","scStep6"})set(*p,id,1);
+   juce::AudioBuffer<float>b(2,128);juce::MidiBuffer midi;int crossings=0;float previous=0;
+   for(int block=0;block<750;++block){for(int i=0;i<128;++i)b.setSample(0,i,.2f*std::sin(float(6.283185307179586*220*(block*128+i)/48000.)));allocationProbe::count=0;allocationProbe::enabled=true;p->processBlock(b,midi);allocationProbe::enabled=false;check(allocationProbe::count==0,"Pitch sequencer allocated on audio thread");for(int i=0;i<128;++i){const float x=b.getSample(0,i);check(std::isfinite(x),"Pitch processor nonfinite");if(block>=375&&previous<=0&&x>0)++crossings;previous=x;}}
+   check(std::abs(crossings-440)<12,"Native pitch processor did not shift octave");auto saved=state(*p);auto q=std::make_unique<VirtualCortexProcessor>();restore(*q,saved);check(q->parameters.getRawParameterValue("scPitch")->load()>.5f,"Pitch switch recall failed");
+  }
   // Monophonic audio-to-MIDI is emitted at valid sample offsets, never a stuck note.
   {
    auto p=std::make_unique<VirtualCortexProcessor>();layout(*p,1,2);serialDry(*p);prepare(*p);set(*p,"syOn",1);set(*p,"syMidi",1);set(*p,"scOn",1);

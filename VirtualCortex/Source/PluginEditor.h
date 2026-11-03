@@ -45,7 +45,7 @@ private:
  struct Switch {juce::ToggleButton button;std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> attachment;};
  juce::TextButton trackingPageButton{"MORE"};int trackingPage=0;bool lastIntervalSync=false,lastCrusherSync=false;
  std::array<Knob,111> knobs;
- std::array<Switch,25> switches;
+ std::array<Switch,26> switches;
  std::array<std::array<CortexBlockButton,8>,4> gridCells;
  std::array<juce::TextButton,4> laneButtons;
  std::array<CortexBlockButton,8> stomps;
