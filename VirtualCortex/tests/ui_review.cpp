@@ -198,7 +198,6 @@ int main(int argc,char** argv){
   }
   category->setSelectedId(29,juce::sendNotificationSync);editor->setEditorsVisible(true);
   {auto* page=dynamic_cast<juce::Button*>(editor->findChildWithID("tracking-page"));auto* pitch=dynamic_cast<juce::ToggleButton*>(editor->findChildWithID("crusher-pitch"));if(!pitch->isVisible())page->onClick();require(pitch->isVisible(),"Pitch switch hidden");pitch->setToggleState(true,juce::sendNotificationSync);require(processor->parameters.getRawParameterValue("scPitch")->load()>.5f,"Pitch switch unbound");capture("crusher-pitch-2560x1440.png",2560,1440);capture("crusher-pitch-822x600.png",822,600);}
-  editor.reset();processor->releaseResources();
   {
    auto* a=dynamic_cast<juce::Button*>(editor->findChildWithID("quick-0"));
    auto* b=dynamic_cast<juce::Button*>(editor->findChildWithID("quick-1"));
@@ -210,6 +209,7 @@ int main(int argc,char** argv){
    b->onClick();require(processor->parameters.getRawParameterValue("ieA")->load()==-5.f&&b->getToggleState()&&!a->getToggleState(),"Scene B control failed");
    capture("stored-scenes-2560x1440.png",2560,1440);
   }
+  editor.reset();processor->releaseResources();
   std::cout<<"PASS: native editor snapshots at three sizes, control binding, insertion and bypass\n";
   return 0;
  }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}
