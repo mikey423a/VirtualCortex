@@ -55,6 +55,14 @@ int runProcessorAudioTests(){
   auto folder=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("VirtualCortexAudio",{},false);
   check(folder.createDirectory().wasOk(),"Fixture directory failed");
   struct Cleanup {juce::File dir;~Cleanup(){dir.deleteRecursively();}} cleanup{folder};
+  // Host BPM wins over manual fallback; synchronized output matches equal manual ms.
+  {
+   struct TempoHead:juce::AudioPlayHead {juce::Optional<PositionInfo> getPosition() const override {PositionInfo p;p.setBpm(120.);return p;}} host;
+   auto render=[&](bool sync,float beats,float bpm,bool useHost){auto p=std::make_unique<VirtualCortexProcessor>();layout(*p,1,2);grid(*p,vc::BlockType::Empty);prepare(*p);set(*p,"scOn",1);set(*p,"scMix",1);set(*p,"scMode",2);set(*p,"scBits",8);set(*p,"scStepMs",125);set(*p,"scSync",sync?1:0);set(*p,"scBpm",bpm);set(*p,"scBeats",beats);if(useHost)p->setPlayHead(&host);juce::AudioBuffer<float>b(2,128);juce::MidiBuffer midi;std::vector<float>out;out.reserve(25600);
+    for(int block=0;block<200;++block){for(int i=0;i<128;++i)b.setSample(0,i,.2f*std::sin((block*128+i)*.057f));p->processBlock(b,midi);for(int i=0;i<128;++i)out.push_back(b.getSample(0,i));}p->setPlayHead(nullptr);return out;};
+   const auto manual=render(false,.25f,120,false),fallback=render(true,.25f,120,false),hosted=render(true,.25f,60,true),slower=render(true,.5f,120,false);
+   double difference=0;for(std::size_t i=0;i<manual.size();++i){check(std::abs(manual[i]-fallback[i])<1.e-6f,"Fallback sync timing differs");check(std::abs(manual[i]-hosted[i])<1.e-6f,"Host BPM did not override fallback");difference+=std::abs(manual[i]-slower[i]);}check(difference>1,"Beat division did not alter sequence");
+  }
   // Monophonic audio-to-MIDI is emitted at valid sample offsets, never a stuck note.
   {
    auto p=std::make_unique<VirtualCortexProcessor>();layout(*p,1,2);serialDry(*p);prepare(*p);set(*p,"syOn",1);set(*p,"syMidi",1);set(*p,"scOn",1);

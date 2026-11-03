@@ -8,7 +8,8 @@ Interval Echo: stereo filtered feedback delay, two intervals (-12 to +12 semiton
 and a free-running three-step sequence (unshifted, A, B), adjustable step time,
 base delay and mix. Two overlapping read windows shift pitch. The shifter adds
 up to 60 ms of read-window delay. This is digital pitch shifting, not BBD clock
-modeling. No MIDI clock, tap or manual step yet.
+modeling. No MIDI clock, tap or manual step yet. Version 6.18 adds optional host-BPM
+following with manual tempo fallback; see SEQUENCER-TEMPO.md.
 
 Layer Loom: stereo 16-second capture, eight independent layers, record/end-record,
 one-pass overdubs, stop/play, undo/redo/clear, reverse, 0.5-2x playback, low-pass

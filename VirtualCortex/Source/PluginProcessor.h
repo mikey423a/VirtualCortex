@@ -11,6 +11,7 @@
 #include "DSP/MultiHeadEcho.h"
 #include "DSP/CreativeEffects.h"
 #include "DSP/TrackingEffects.h"
+#include "DSP/SequenceTempo.h"
 #include "DSP/StereoReverb.h"
 #include "DSP/PendingIRQueue.h"
 #include "DSP/PendingNeuralQueue.h"
@@ -53,6 +54,8 @@ public:
  unsigned loopStatus()const noexcept{return loopState.load();}
 private:
  void processTracking(juce::AudioBuffer<float>&,juce::MidiBuffer&,bool bypass);
+ std::array<std::atomic<float>*,6> sequenceTempo{};
+ float sequencerStep(float manual,std::size_t offset) const;
  vc::TrackingSynth trackingSynth;vc::SequenceCrusher sequenceCrusher;
  std::array<std::atomic<float>*,25> trackingParameters{};
  std::array<std::atomic<float>*,3> trackingFlags{};

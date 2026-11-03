@@ -9,7 +9,7 @@ public:
  struct Parameters {float time=350,feedback=.4f,a=7,b=-5,step=500,cutoff=5000,mix=.3f;bool enabled=false;};
  void prepare(double rate){fs=std::clamp(rate,8000.,192000.);for(auto& v:buffer)v.assign((std::size_t)(fs*4.1)+4,0);index=0;drain=0;phase=0;clock=0;stage=0;low={};mix=0;ratio=1;delay=350;feedback=0;smooth=std::exp(-1./(fs*.02));}
  bool active()const noexcept{return cfg.enabled||drain>0;}
- void configure(Parameters p){auto safe=[](float x,float lo,float hi,float d){return std::isfinite(x)?std::clamp(x,lo,hi):d;};p.time=safe(p.time,1,4000,350);p.feedback=safe(p.feedback,0,.9f,.4f);p.a=safe(p.a,-12,12,7);p.b=safe(p.b,-12,12,-5);p.step=safe(p.step,100,4000,500);p.cutoff=safe(p.cutoff,200,18000,5000);p.mix=safe(p.mix,0,1,.3f);cfg=p;filter=std::exp(-6.283185307179586*std::min((double)p.cutoff,fs*.45)/fs);}
+ void configure(Parameters p){auto safe=[](float x,float lo,float hi,float d){return std::isfinite(x)?std::clamp(x,lo,hi):d;};p.time=safe(p.time,1,4000,350);p.feedback=safe(p.feedback,0,.9f,.4f);p.a=safe(p.a,-12,12,7);p.b=safe(p.b,-12,12,-5);p.step=safe(p.step,25,12000,500);p.cutoff=safe(p.cutoff,200,18000,5000);p.mix=safe(p.mix,0,1,.3f);cfg=p;filter=std::exp(-6.283185307179586*std::min((double)p.cutoff,fs*.45)/fs);}
  std::array<float,2> process(float l,float r){if(!active()||buffer[0].empty())return {l,r};
   if(cfg.enabled)drain=(std::size_t)(fs*4.3);else if(drain)--drain;
   if(++clock>=fs*cfg.step*.001){clock=0;stage=(stage+1)%3;}

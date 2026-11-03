@@ -1,7 +1,17 @@
 #include "DSP/TrackingEffects.h"
+#include "DSP/SequenceTempo.h"
+#include <limits>
 #include <cassert>
 #include <iostream>
 int main(){
+ assert(vc::sequenceStepMilliseconds(321,120,1,false)==321);
+ assert(vc::sequenceStepMilliseconds(321,120,.25f,true)==125);
+ assert(vc::sequenceStepMilliseconds(0,20,4,true)==12000);
+ assert(vc::sequenceStepMilliseconds(0,300,.125f,true)==25);
+ assert(vc::sequenceStepMilliseconds(0,std::numeric_limits<float>::quiet_NaN(),1,true)==500);
+ vc::SequenceCrusher longStep;longStep.prepare(48000);vc::SequenceCrusher::Parameters lp;lp.enabled=true;lp.stepMs=6000;longStep.configure(lp);
+ for(int i=0;i<287999;++i)longStep.process(0,0);assert(longStep.currentStep()==0);longStep.process(0,0);longStep.process(0,0);assert(longStep.currentStep()==1);
+
  for(double fs:{44100.,48000.,96000.,192000.}){
   for(double hz:{82.4069,110.,220.,440.,987.767}){
    vc::TrackingSynth synth;synth.prepare(fs);vc::TrackingSynth::Parameters p;p.enabled=true;synth.configure(p);int note=-1;double energy=0;

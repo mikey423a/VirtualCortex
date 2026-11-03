@@ -193,6 +193,9 @@ int main(int argc,char** argv){
    require(editor->findChildWithID(type==28?"syAttack":"scStep6")->isVisible(),"Tracking second page incomplete");capture(type==28?"prism-envelopes-2560x1440.png":"step-crush-sequence-2560x1440.png",2560,1440);
    capture(type==28?"prism-synth-822x600.png":"step-crush-822x600.png",822,600);editor->setEditorsVisible(false);require(!page->isVisible(),"Tracking pages over hidden editor");
   }
+  for(int type:{26,29}){category->setSelectedId(type,juce::sendNotificationSync);editor->setEditorsVisible(true);const char* prefix=type==26?"ie":"sc";auto* toggle=dynamic_cast<juce::ToggleButton*>(editor->findChildWithID(type==26?"interval-sync":"crusher-sync"));require(toggle&&toggle->isVisible(),"Sequencer tempo toggle missing");toggle->setToggleState(true,juce::sendNotificationSync);
+   auto* manual=editor->findChildWithID(type==26?"ieStep":"scStepMs");auto* beats=dynamic_cast<juce::Slider*>(editor->findChildWithID(juce::String(prefix)+"Beats"));if(!beats->isVisible()){auto* page=dynamic_cast<juce::Button*>(editor->findChildWithID("tracking-page"));page->onClick();}beats->setValue(.5,juce::sendNotificationSync);editor->setEditorsVisible(true);require(!manual->isEnabled(),"Manual time enabled during sync");require(std::abs(processor->parameters.getRawParameterValue(juce::String(prefix)+"Beats")->load()-.5f)<.001,"Beat control unbound");capture(type==26?"interval-tempo-2560x1440.png":"crusher-tempo-2560x1440.png",2560,1440);
+  }
   editor.reset();processor->releaseResources();
   std::cout<<"PASS: native editor snapshots at three sizes, control binding, insertion and bypass\n";
   return 0;

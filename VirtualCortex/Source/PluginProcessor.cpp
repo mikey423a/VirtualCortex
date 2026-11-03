@@ -41,6 +41,7 @@ VirtualCortexProcessor::VirtualCortexProcessor()
  for(std::size_t i=0;i<stereoFlags.size();++i)stereoFlags[i]=parameters.getRawParameterValue(vc::stereoDelayFlagIDs[i]);
  for(std::size_t i=0;i<reverbParameters.size();++i)reverbParameters[i]=parameters.getRawParameterValue(vc::stereoReverbIDs[i]);
  const char* mhIDs[]={"mh1Time","mh1Level","mh1Pan","mh1Feedback","mh2Time","mh2Level","mh2Pan","mh2Feedback","mh3Time","mh3Level","mh3Pan","mh3Feedback","mh4Time","mh4Level","mh4Pan","mh4Feedback","mhMix"};for(std::size_t i=0;i<17;++i)mhParameters[i]=parameters.getRawParameterValue(mhIDs[i]);mhEnabled=parameters.getRawParameterValue("mhOn");
+ const char* tempoIDs[]={"ieBpm","ieBeats","ieSync","scBpm","scBeats","scSync"};for(std::size_t i=0;i<6;++i)sequenceTempo[i]=parameters.getRawParameterValue(tempoIDs[i]);
  const char* trackingIDs[]={"syMix","syTranspose","syDetune","syCutoff","syResonance","syAttack","syRelease","syGlide","syWave","syGate","scBits","scRate","scCutoff","scStepMs","scDepth","scMix","scMode","scStutterMs","scStutter","scStep1","scStep2","scStep3","scStep4","scStep5","scStep6"};for(std::size_t i=0;i<25;++i)trackingParameters[i]=parameters.getRawParameterValue(trackingIDs[i]);
  const char* trackingFlagIDs[]={"syOn","syMidi","scOn"};for(std::size_t i=0;i<3;++i)trackingFlags[i]=parameters.getRawParameterValue(trackingFlagIDs[i]);
  const char* creativeIDs[]={"ieTime","ieFeedback","ieA","ieB","ieStep","ieCutoff","ieMix","llLevel","llRate","llCutoff"};for(std::size_t i=0;i<10;++i)creativeParameters[i]=parameters.getRawParameterValue(creativeIDs[i]);
@@ -242,6 +243,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout VirtualCortexProcessor::make
  addBool("syOn","syOn",false);
  addBool("syMidi","syMidi",false);
  addBool("scOn","scOn",false);
+ addFloat("ieBpm","Interval tempo (BPM)",20.f,300.f,120.f);
+ addFloat("ieBeats","Interval step beats",0.125f,4.f,1.f);
+ addBool("ieSync","Interval tempo sync",false);
+ addFloat("scBpm","Crusher tempo (BPM)",20.f,300.f,120.f);
+ addFloat("scBeats","Crusher step beats",0.125f,4.f,0.25f);
+ addBool("scSync","Crusher tempo sync",false);
  return p;
 }
 
@@ -425,11 +432,16 @@ double VirtualCortexProcessor::getTailLengthSeconds() const {
  const double feedback=std::isfinite(rawFeedback)?juce::jlimit(0.,.95,rawFeedback):0.;
  return juce::jlimit(3.,3600.,reverbTail+ms*.001*(feedback>1.e-6?1.+std::log(.001)/std::log(feedback):1.));
 }
+float VirtualCortexProcessor::sequencerStep(float manual,std::size_t offset) const {
+ const bool sync=sequenceTempo[offset+2]->load()>.5f;float bpm=sequenceTempo[offset]->load();
+ if(sync)if(auto* playhead=getPlayHead())if(auto position=playhead->getPosition())if(auto hostBpm=position->getBpm())if(std::isfinite(*hostBpm)&&*hostBpm>0)bpm=(float)*hostBpm;
+ return vc::sequenceStepMilliseconds(manual,bpm,sequenceTempo[offset+1]->load(),sync);
+}
 void VirtualCortexProcessor::processTracking(juce::AudioBuffer<float>& b,juce::MidiBuffer& midi,bool bypass){
  midi.clear();
  auto v=[this](std::size_t i){return trackingParameters[i]->load(std::memory_order_relaxed);};
  vc::TrackingSynth::Parameters p;p.mix=v(0);p.transpose=v(1);p.detune=v(2);p.cutoff=v(3);p.resonance=v(4);p.attack=v(5);p.release=v(6);p.glide=v(7);p.wave=v(8);p.gate=v(9);p.enabled=!bypass&&trackingFlags[0]->load()>.5f;trackingSynth.configure(p);
- vc::SequenceCrusher::Parameters c;c.bits=v(10);c.rate=v(11);c.cutoff=v(12);c.stepMs=v(13);c.depth=v(14);c.mix=v(15);c.mode=v(16);c.stutterMs=v(17);c.stutter=v(18);for(std::size_t j=0;j<6;++j)c.steps[j]=v(19+j);c.enabled=!bypass&&trackingFlags[2]->load()>.5f;sequenceCrusher.configure(c);
+ vc::SequenceCrusher::Parameters c;c.bits=v(10);c.rate=v(11);c.cutoff=v(12);c.stepMs=sequencerStep(v(13),3);c.depth=v(14);c.mix=v(15);c.mode=v(16);c.stutterMs=v(17);c.stutter=v(18);for(std::size_t j=0;j<6;++j)c.steps[j]=v(19+j);c.enabled=!bypass&&trackingFlags[2]->load()>.5f;sequenceCrusher.configure(c);
  const bool sendMidi=p.enabled&&trackingFlags[1]->load()>.5f;
  // JUCE's host-owned MidiBuffer may grow when MIDI export is enabled. Audio DSP
  // uses fixed/prepared storage; MIDI allocation behavior depends on the host.
@@ -451,7 +463,7 @@ void VirtualCortexProcessor::processStereoDelay(juce::AudioBuffer<float>& b){
  auto rv=[this](std::size_t i){return reverbParameters[i]->load(std::memory_order_relaxed);};
  vc::StereoReverbParameters rp;rp.decay=rv(0);rp.size=rv(1);rp.preDelay=rv(2);rp.diffusion=rv(3);rp.early=rv(4);rp.mix=rv(5);rp.lowDecay=rv(6);rp.highDecay=rv(7);rp.lowFreq=rv(8);rp.highFreq=rv(9);rp.modRate=rv(10);rp.modDepth=rv(11);rp.width=rv(12);rp.ducking=rv(13);rp.release=rv(14);rp.wetLevel=rv(15);rp.inputHP=rv(16);rp.inputLP=rv(17);rp.enabled=reverbEnabled->load(std::memory_order_relaxed)>.5f;rp.preGlide=reverbPreGlide->load(std::memory_order_relaxed)>.5f;stereoReverb.configure(rp);
  std::array<vc::MultiHeadEcho::Head,4> heads;for(std::size_t i=0;i<4;++i)heads[i]={mhParameters[i*4]->load(),mhParameters[i*4+1]->load(),mhParameters[i*4+2]->load(),mhParameters[i*4+3]->load()};const bool mhOn=mhEnabled->load()>.5f;if(!mhOn)for(auto& h:heads)h.feedback=0;multiHead.configure(heads);const float mixTarget=mhOn?mhParameters[16]->load():0.f;const float mixCoefficient=(float)std::exp(-1./(fs*.01));
- vc::IntervalEcho::Parameters ip;ip.time=creativeParameters[0]->load();ip.feedback=creativeParameters[1]->load();ip.a=creativeParameters[2]->load();ip.b=creativeParameters[3]->load();ip.step=creativeParameters[4]->load();ip.cutoff=creativeParameters[5]->load();ip.mix=creativeParameters[6]->load();ip.enabled=creativeFlags[0]->load()>.5f;intervalEcho.configure(ip);
+ vc::IntervalEcho::Parameters ip;ip.time=creativeParameters[0]->load();ip.feedback=creativeParameters[1]->load();ip.a=creativeParameters[2]->load();ip.b=creativeParameters[3]->load();ip.step=sequencerStep(creativeParameters[4]->load(),0);ip.cutoff=creativeParameters[5]->load();ip.mix=creativeParameters[6]->load();ip.enabled=creativeFlags[0]->load()>.5f;intervalEcho.configure(ip);
  layerLoom.configure(creativeParameters[7]->load(),creativeParameters[8]->load(),creativeParameters[9]->load(),creativeFlags[2]->load()>.5f,creativeFlags[1]->load()>.5f);layerLoom.command(loopCommands.exchange(0));
  stereoDelay.configure(p);const int count=juce::jmin(2,b.getNumChannels());const float trim=cached.outputTrim->load(std::memory_order_relaxed);
  for(int i=0;i<b.getNumSamples();++i){const float l=b.getSample(0,i),r=count>1?b.getSample(1,i):l;const auto delayed=stereoDelay.process(l,r);auto frame=stereoReverb.process(delayed[0],delayed[1]);if(mhOn)mhDrain=(std::size_t)(fs*4.1);else if(mhDrain)--mhDrain;const auto echo=multiHead.process(mhOn?(frame[0]+frame[1])*.5f:0);mhMix=mixTarget+mixCoefficient*(mhMix-mixTarget);if(std::abs(mhMix-mixTarget)<1.e-7f)mhMix=mixTarget;for(int ch=0;ch<2;++ch)frame[ch]=frame[ch]*(1-mhMix)+echo[ch]*mhMix;
@@ -594,6 +606,7 @@ void VirtualCortexProcessor::setStateInformation(const void* data,int size){
   }
   const auto current=parameters.copyState();
   auto addDefault=[&](const char* id){if(restored.getChildWithProperty("id",id).isValid())return;auto node=current.getChildWithProperty("id",id).createCopy();if(node.isValid())if(auto* parameter=parameters.getParameter(id)){node.setProperty("value",parameter->convertFrom0to1(parameter->getDefaultValue()),nullptr);restored.addChild(node,-1,nullptr);}};
+  for(auto id:{"ieBpm","ieBeats","ieSync","scBpm","scBeats","scSync"})addDefault(id);
   const char* trackingIDs[]={"syMix","syTranspose","syDetune","syCutoff","syResonance","syAttack","syRelease","syGlide","syWave","syGate","scBits","scRate","scCutoff","scStepMs","scDepth","scMix","scMode","scStutterMs","scStutter","scStep1","scStep2","scStep3","scStep4","scStep5","scStep6","syOn","syMidi","scOn"};for(auto id:trackingIDs)addDefault(id);
   const char* creativeIDs[]={"ieTime","ieFeedback","ieA","ieB","ieStep","ieCutoff","ieMix","llLevel","llRate","llCutoff","ieOn","llOn","llReverse"};for(auto id:creativeIDs)addDefault(id);
   const char* mhIDs[]={"mh1Time","mh1Level","mh1Pan","mh1Feedback","mh2Time","mh2Level","mh2Pan","mh2Feedback","mh3Time","mh3Level","mh3Pan","mh3Feedback","mh4Time","mh4Level","mh4Pan","mh4Feedback","mhMix","mhOn"};for(auto id:mhIDs)addDefault(id);

@@ -32,7 +32,7 @@ allocates only during prepare. The processor regression reserves MIDI capacity.
 ## Step Crush
 
 Stereo pre-chain bit/sample-rate reducer, followed by a one-pole low-pass filter.
-Six editable bipolar step values, free-running step time (30–2000 ms), depth,
+Six editable bipolar step values, manual step time (30–2000 ms), depth,
 rate/filter/bit-depth target, and wet mix. Filter/rate steps span ±4 octaves at
 full depth; bit-depth steps span ±12 bits. Base resolution 1–24 bits and sample
 rate 48 Hz–48 kHz, clamped to the actual processing sample rate. Quantization and
@@ -41,8 +41,9 @@ sample-hold aliasing are intentional. Zero input remains zero.
 Stutter captures a 5–250 ms stereo slice at the start of each step, then repeats it
 until the next step, with adjustable mix. Step duration must exceed slice length
 for repetitions to occur. This is a free-running slice repeater, not Ottobit's
-complete triggered/random/hold mode system. Pitch sequencing, tap/MIDI clock,
-host-transport sync, random steps and pattern save slots are not implemented.
+complete triggered/random/hold mode system. Pitch sequencing, tap/MIDI clock, transport-position locking, random steps and
+pattern save slots are not implemented. Version 6.18 adds optional host-BPM
+following with manual fallback; see SEQUENCER-TEMPO.md.
 
 ## Placement and compatibility
 
