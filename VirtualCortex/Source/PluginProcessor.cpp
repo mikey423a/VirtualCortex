@@ -40,6 +40,7 @@ VirtualCortexProcessor::VirtualCortexProcessor()
  for(std::size_t i=0;i<stereoParameters.size();++i)stereoParameters[i]=parameters.getRawParameterValue(vc::stereoDelayIDs[i]);
  for(std::size_t i=0;i<stereoFlags.size();++i)stereoFlags[i]=parameters.getRawParameterValue(vc::stereoDelayFlagIDs[i]);
  for(std::size_t i=0;i<reverbParameters.size();++i)reverbParameters[i]=parameters.getRawParameterValue(vc::stereoReverbIDs[i]);
+ const char* mhIDs[]={"mh1Time","mh1Level","mh1Pan","mh1Feedback","mh2Time","mh2Level","mh2Pan","mh2Feedback","mh3Time","mh3Level","mh3Pan","mh3Feedback","mh4Time","mh4Level","mh4Pan","mh4Feedback","mhMix"};for(std::size_t i=0;i<17;++i)mhParameters[i]=parameters.getRawParameterValue(mhIDs[i]);mhEnabled=parameters.getRawParameterValue("mhOn");
  reverbEnabled=parameters.getRawParameterValue("stereoReverbOn");
  reverbPreGlide=parameters.getRawParameterValue("srPreGlide");
 
@@ -178,6 +179,24 @@ juce::AudioProcessorValueTreeState::ParameterLayout VirtualCortexProcessor::make
  addBool("stereoReverbOn","Post-chain stereo reverb",false);
  addBool("srPreGlide","Reverb pre-delay pitch glide",true);
  addFloat("sdDiffusion","Delay loop diffusion",0.0f,1.0f,0.0f);
+ addFloat("mh1Time","mh1Time",1.0f,4000.0f,100.0f);
+ addFloat("mh1Level","mh1Level",0.0f,1.0f,0.5f);
+ addFloat("mh1Pan","mh1Pan",-1.0f,1.0f,0.0f);
+ addFloat("mh1Feedback","mh1Feedback",0.0f,0.95f,0.15f);
+ addFloat("mh2Time","mh2Time",1.0f,4000.0f,200.0f);
+ addFloat("mh2Level","mh2Level",0.0f,1.0f,0.5f);
+ addFloat("mh2Pan","mh2Pan",-1.0f,1.0f,0.0f);
+ addFloat("mh2Feedback","mh2Feedback",0.0f,0.95f,0.15f);
+ addFloat("mh3Time","mh3Time",1.0f,4000.0f,300.0f);
+ addFloat("mh3Level","mh3Level",0.0f,1.0f,0.5f);
+ addFloat("mh3Pan","mh3Pan",-1.0f,1.0f,0.0f);
+ addFloat("mh3Feedback","mh3Feedback",0.0f,0.95f,0.15f);
+ addFloat("mh4Time","mh4Time",1.0f,4000.0f,400.0f);
+ addFloat("mh4Level","mh4Level",0.0f,1.0f,0.5f);
+ addFloat("mh4Pan","mh4Pan",-1.0f,1.0f,0.0f);
+ addFloat("mh4Feedback","mh4Feedback",0.0f,0.95f,0.15f);
+ addFloat("mhMix","mhMix",0.0f,1.0f,0.3f);
+ addBool("mhOn","Four-head echo",false);
  return p;
 }
 
@@ -194,6 +213,7 @@ void VirtualCortexProcessor::prepareToPlay(double sampleRate,int samplesPerBlock
  // Routing changes are published through atomic row snapshots.
  updateGridRouting();
  gridAudio.prepare(fs);
+ multiHead.prepare(fs);mhMix=0;mhDrain=0;
  stereoDelay.prepare(fs);
  stereoReverb.prepare(fs);
  cabinetConvolution.prepare({fs, (juce::uint32)juce::jmax(1, samplesPerBlock), (juce::uint32)juce::jmax(1,getTotalNumOutputChannels())});
@@ -242,7 +262,7 @@ void VirtualCortexProcessor::processBlock(juce::AudioBuffer<float>& b,juce::Midi
    gridAudio.setSlotParameters(row,col,slotControls[row][col].load());
  }
  const float outputTrim=cached.outputTrim->load(std::memory_order_relaxed);
- const bool useStereo=stereoFlags[0]->load(std::memory_order_relaxed)>.5f||stereoDelay.active()||reverbEnabled->load(std::memory_order_relaxed)>.5f||stereoReverb.active();
+ const bool useStereo=mhDrain>0||mhEnabled->load()>.5f||mhMix>1.e-7f||stereoFlags[0]->load(std::memory_order_relaxed)>.5f||stereoDelay.active()||reverbEnabled->load(std::memory_order_relaxed)>.5f||stereoReverb.active();
  if (cached.gridMode->load(std::memory_order_relaxed)>0.5f && gridAudioReady) {
   // JUCE provides planar audio; portable engine expects interleaved frames.
   // Fixed-size stack chunks keep the audio callback allocation-free.
@@ -344,6 +364,7 @@ void VirtualCortexProcessor::processBlock(juce::AudioBuffer<float>& b,juce::Midi
  if(useStereo)processStereoDelay(b);
 }
 double VirtualCortexProcessor::getTailLengthSeconds() const {
+ if(mhEnabled&&mhEnabled->load()>.5f)return 900.;
  const double reverbTail=reverbEnabled&&reverbEnabled->load()>.5f?juce::jlimit(3.,90.,(double)reverbParameters[0]->load()*juce::jmax(1.f,reverbParameters[6]->load())+1.):3.;
  if(!stereoFlags[0]||stereoFlags[0]->load()<=.5f)return reverbTail;
  double ms=juce::jmax(stereoParameters[0]->load(),stereoParameters[1]->load());
@@ -364,8 +385,9 @@ void VirtualCortexProcessor::processStereoDelay(juce::AudioBuffer<float>& b){
  }
  auto rv=[this](std::size_t i){return reverbParameters[i]->load(std::memory_order_relaxed);};
  vc::StereoReverbParameters rp;rp.decay=rv(0);rp.size=rv(1);rp.preDelay=rv(2);rp.diffusion=rv(3);rp.early=rv(4);rp.mix=rv(5);rp.lowDecay=rv(6);rp.highDecay=rv(7);rp.lowFreq=rv(8);rp.highFreq=rv(9);rp.modRate=rv(10);rp.modDepth=rv(11);rp.width=rv(12);rp.ducking=rv(13);rp.release=rv(14);rp.wetLevel=rv(15);rp.inputHP=rv(16);rp.inputLP=rv(17);rp.enabled=reverbEnabled->load(std::memory_order_relaxed)>.5f;rp.preGlide=reverbPreGlide->load(std::memory_order_relaxed)>.5f;stereoReverb.configure(rp);
+ std::array<vc::MultiHeadEcho::Head,4> heads;for(std::size_t i=0;i<4;++i)heads[i]={mhParameters[i*4]->load(),mhParameters[i*4+1]->load(),mhParameters[i*4+2]->load(),mhParameters[i*4+3]->load()};const bool mhOn=mhEnabled->load()>.5f;if(!mhOn)for(auto& h:heads)h.feedback=0;multiHead.configure(heads);const float mixTarget=mhOn?mhParameters[16]->load():0.f;const float mixCoefficient=(float)std::exp(-1./(fs*.01));
  stereoDelay.configure(p);const int count=juce::jmin(2,b.getNumChannels());const float trim=cached.outputTrim->load(std::memory_order_relaxed);
- for(int i=0;i<b.getNumSamples();++i){const float l=b.getSample(0,i),r=count>1?b.getSample(1,i):l;const auto delayed=stereoDelay.process(l,r);const auto frame=stereoReverb.process(delayed[0],delayed[1]);
+ for(int i=0;i<b.getNumSamples();++i){const float l=b.getSample(0,i),r=count>1?b.getSample(1,i):l;const auto delayed=stereoDelay.process(l,r);auto frame=stereoReverb.process(delayed[0],delayed[1]);if(mhOn)mhDrain=(std::size_t)(fs*4.1);else if(mhDrain)--mhDrain;const auto echo=multiHead.process(mhOn?(frame[0]+frame[1])*.5f:0);mhMix=mixTarget+mixCoefficient*(mhMix-mixTarget);if(std::abs(mhMix-mixTarget)<1.e-7f)mhMix=mixTarget;for(int ch=0;ch<2;++ch)frame[ch]=frame[ch]*(1-mhMix)+echo[ch]*mhMix;
   for(int ch=0;ch<count;++ch){const float x=count==1?(frame[0]+frame[1])*.5f:frame[(std::size_t)ch];b.setSample(ch,i,juce::jlimit(-1.f,1.f,x*channels[(std::size_t)ch].outputSmoother.process(trim)));}
  }
 }
@@ -503,6 +525,7 @@ void VirtualCortexProcessor::setStateInformation(const void* data,int size){
   }
   const auto current=parameters.copyState();
   auto addDefault=[&](const char* id){if(restored.getChildWithProperty("id",id).isValid())return;auto node=current.getChildWithProperty("id",id).createCopy();if(node.isValid())if(auto* parameter=parameters.getParameter(id)){node.setProperty("value",parameter->convertFrom0to1(parameter->getDefaultValue()),nullptr);restored.addChild(node,-1,nullptr);}};
+  const char* mhIDs[]={"mh1Time","mh1Level","mh1Pan","mh1Feedback","mh2Time","mh2Level","mh2Pan","mh2Feedback","mh3Time","mh3Level","mh3Pan","mh3Feedback","mh4Time","mh4Level","mh4Pan","mh4Feedback","mhMix","mhOn"};for(auto id:mhIDs)addDefault(id);
   for(const auto* id:vc::stereoDelayIDs)addDefault(id);for(const auto* id:vc::stereoDelayFlagIDs)addDefault(id);
   for(const auto* id:vc::stereoReverbIDs)addDefault(id);addDefault("stereoReverbOn");addDefault("srPreGlide");
   parameters.replaceState(restored);

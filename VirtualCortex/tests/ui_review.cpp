@@ -25,7 +25,7 @@ int main(int argc,char** argv){
    auto* openCatalog=dynamic_cast<juce::Button*>(editor->findChildWithID("catalog-toggle"));
    auto* catalog=dynamic_cast<DeviceCatalogPanel*>(editor->findChildWithID("device-catalog-panel"));
    require(openCatalog&&catalog&&!catalog->isVisible(),"Catalog must start hidden");
-   openCatalog->onClick();require(catalog->isVisible()&&catalog->visibleEntryCount()==712,"Catalog is incomplete");
+   openCatalog->onClick();require(catalog->isVisible()&&catalog->visibleEntryCount()==713,"Catalog is incomplete");
    auto* search=dynamic_cast<juce::TextEditor*>(catalog->findChildWithID("catalog-search"));
    auto* availability=dynamic_cast<juce::ComboBox*>(catalog->findChildWithID("catalog-availability"));
    auto* section=dynamic_cast<juce::ComboBox*>(catalog->findChildWithID("catalog-section"));
@@ -37,7 +37,7 @@ int main(int argc,char** argv){
    action->onClick();require(chosen==-1,"Unavailable model invoked insertion");
    capture("catalog-reference-1184x864.png",1184,864);
    query("Marshall JCM800");require(catalog->visibleEntryCount()>0&&catalog->selectedPlayableType()==0,"Gear search requires trademark symbols");
-   query("");availability->setSelectedId(2,juce::sendNotificationSync);require(catalog->visibleEntryCount()==23,"Original count incorrect");
+   query("");availability->setSelectedId(2,juce::sendNotificationSync);require(catalog->visibleEntryCount()==24,"Original count incorrect");
    query("Bit-crusher");require(catalog->visibleEntryCount()==1&&action->isEnabled(),"Working original cannot be selected");
    action->onClick();require(chosen==15,"Original action routed to wrong processor");
    query("Stereo Reverb");action->onClick();require(chosen==24,"Post-chain action routed to wrong processor");
@@ -138,7 +138,7 @@ int main(int argc,char** argv){
   require(processor->getEditableGrid().get(3,6)->type==vc::BlockType::Chorus,"Chorus browser selection inserted wrong block");
   require(std::abs(processor->getGridSlotParameters(3,6).rate-.04f)<1.e-5f,"Chorus preset parameters not applied");
   editor->setEditorsVisible(true);capture("chorus-browser-preset.png",1184,864);
-  auto* category=dynamic_cast<juce::ComboBox*>(editor->findChildWithID("device-category"));require(category&&category->getNumItems()==24,"Expanded category selector missing");
+  auto* category=dynamic_cast<juce::ComboBox*>(editor->findChildWithID("device-category"));require(category&&category->getNumItems()==25,"Expanded category selector missing");
   for(int type:{16,17,18,19,20,21}){
    editor->selectSlot(1,type-16);category->setSelectedId(type,juce::sendNotificationSync);
    auto* entry=dynamic_cast<juce::Button*>(editor->findChildWithID("device-0"));require(entry&&entry->isVisible(),"New category has no selectable device");entry->onClick();
@@ -171,6 +171,14 @@ int main(int argc,char** argv){
   for(int page=0;page<3;++page){auto* button=dynamic_cast<juce::Button*>(editor->findChildWithID("stereo-page-reverb-"+juce::String(page)));require(button&&button->isVisible(),"Stereo reverb page missing");button->onClick();const auto name=juce::String("stereo-reverb-page-")+juce::String(page)+".png";capture(name.toRawUTF8(),1184,864);}
   auto* width=dynamic_cast<juce::Slider*>(editor->findChildWithID("srWidth"));require(width&&width->isVisible(),"Reverb width missing");width->setValue(.5,juce::sendNotificationSync);require(std::abs(processor->parameters.getRawParameterValue("srWidth")->load()-.5f)<.001,"Reverb control not bound");editor->setEditorsVisible(false);for(int i=0;i<3;++i)require(!editor->findChildWithID("stereo-page-reverb-"+juce::String(i))->isVisible(),"Reverb page over grid view");capture("stereo-reverb-grid-only.png",1184,864);
 
+  category->setSelectedId(25,juce::sendNotificationSync);editor->setEditorsVisible(true);
+  auto* echoPreset=dynamic_cast<juce::Button*>(editor->findChildWithID("device-0"));echoPreset->onClick();
+  require(processor->parameters.getRawParameterValue("mhOn")->load()>.5f,"Echo preset did not enable");
+  for(int page=0;page<4;++page){auto* b=dynamic_cast<juce::Button*>(editor->findChildWithID("echo-head-"+juce::String(page)));require(b&&b->isVisible(),"Echo page missing");b->onClick();
+   auto* slider=dynamic_cast<juce::Slider*>(editor->findChildWithID("mh"+juce::String(page+1)+"Time"));require(slider&&slider->isVisible(),"Echo time hidden");slider->setValue(456,juce::sendNotificationSync);
+   require(std::abs(processor->parameters.getRawParameterValue("mh"+juce::String(page+1)+"Time")->load()-456)<.01f,"Echo time not bound");}
+  capture("four-head-echo-2560x1440.png",2560,1440);capture("four-head-echo-822x600.png",822,600);
+  editor->setEditorsVisible(false);require(!editor->findChildWithID("echo-head-0")->isVisible(),"Echo controls remain over hidden editor");
   editor.reset();processor->releaseResources();
   std::cout<<"PASS: native editor snapshots at three sizes, control binding, insertion and bypass\n";
   return 0;

@@ -8,6 +8,7 @@
 #include "DSP/CoreDSP.h"
 #include "DSP/PortableAudioEngine.h"
 #include "DSP/StereoDelay.h"
+#include "DSP/MultiHeadEcho.h"
 #include "DSP/StereoReverb.h"
 #include "DSP/PendingIRQueue.h"
 #include "DSP/PendingNeuralQueue.h"
@@ -52,6 +53,9 @@ private:
  std::array<std::atomic<float>*,19> stereoParameters{};
  std::array<std::atomic<float>*,4> stereoFlags{};
  vc::StereoDelay stereoDelay;
+ vc::MultiHeadEcho multiHead;
+ std::array<std::atomic<float>*,17> mhParameters{};
+ std::atomic<float>* mhEnabled=nullptr;float mhMix=0;std::size_t mhDrain=0;
  vc::StereoReverb stereoReverb;
  std::array<std::atomic<float>*,18> reverbParameters{};
  std::atomic<float>* reverbEnabled=nullptr;

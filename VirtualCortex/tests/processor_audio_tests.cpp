@@ -157,6 +157,12 @@ int runProcessorAudioTests(){
    for(int step=0;step<100;++step){set(*p,"sdDiffusion",step%2?0:1);b.clear();b.setSample(0,0,.1f);allocationProbe::count=0;allocationProbe::enabled=true;p->processBlock(b,midi);allocationProbe::enabled=false;
     check(allocationProbe::count==0,"Diffusion automation allocated in callback");for(int i=0;i<128;++i)check(std::isfinite(b.getSample(0,i)),"Non-finite diffusion output");}
   }
+  {
+   auto p=std::make_unique<VirtualCortexProcessor>();grid(*p,vc::BlockType::Empty);prepare(*p);set(*p,"mhOn",1);set(*p,"mhMix",.7f);set(*p,"mh4Time",789);
+   auto saved=state(*p);auto restored=std::make_unique<VirtualCortexProcessor>();prepare(*restored);restore(*restored,saved);check(std::abs(restored->parameters.getRawParameterValue("mh4Time")->load()-789)<.01f,"Echo state lost");
+   juce::AudioBuffer<float> b(2,128);juce::MidiBuffer midi;
+   for(int step=0;step<100;++step){set(*p,"mh1Time",step%2?1:4000);set(*p,"mh1Pan",step%2?-1:1);set(*p,"mhOn",step%3?1:0);b.clear();b.setSample(0,0,.1f);allocationProbe::count=0;allocationProbe::enabled=true;p->processBlock(b,midi);allocationProbe::enabled=false;check(allocationProbe::count==0,"Echo allocated in callback");for(int i=0;i<128;++i)check(std::isfinite(b.getSample(0,i)),"Echo non-finite output");}
+  }
   std::cout<<"PASS: mono/stereo, trim, callback allocations, UTF-8 assets, preset clearing, and rate/buffer matrix\n";return 0;
  }catch(const std::exception& e){allocationProbe::enabled=false;std::cerr<<e.what()<<'\n';return 1;}
 }
