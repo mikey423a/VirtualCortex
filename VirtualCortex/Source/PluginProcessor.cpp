@@ -296,8 +296,10 @@ void VirtualCortexProcessor::processBlock(juce::AudioBuffer<float>& b,juce::Midi
  // Process only the supported main bus channels; clear unexpected extra channels.
  for (int ch = getTotalNumInputChannels(); ch < b.getNumChannels(); ++ch)
   b.clear(ch, 0, b.getNumSamples());
+ const int route=routingMode.load();
+ const bool dual=route==2 && cached.gridMode->load()>.5f;
  // A mono guitar input feeds both sides of a stereo effects chain.
- if(getTotalNumInputChannels()==1 && getTotalNumOutputChannels()==2 && b.getNumChannels()>=2)
+ if(!dual && getTotalNumInputChannels()==1 && getTotalNumOutputChannels()==2 && b.getNumChannels()>=2)
   b.copyFrom(1,0,b,0,0,b.getNumSamples());
  // Stop non-finite device/host samples before they enter stateful filters.
  for(int ch=0;ch<b.getNumChannels();++ch){auto* samples=b.getWritePointer(ch);
@@ -310,7 +312,7 @@ void VirtualCortexProcessor::processBlock(juce::AudioBuffer<float>& b,juce::Midi
  commitPendingGridIR();
  commitPendingNeuralModels();
  const bool bypass=cached.bypass->load(std::memory_order_relaxed)>0.5f;
- processTracking(b,midi,bypass);
+ processTracking(b,midi,bypass||dual);
  if(bypass)return; // Dry passthrough; tracking sends note-off.
  if (cached.gridMode->load(std::memory_order_relaxed)>0.5f) {
   // No heap allocation: snapshot controls before processing this audio block.
@@ -318,7 +320,7 @@ void VirtualCortexProcessor::processBlock(juce::AudioBuffer<float>& b,juce::Midi
    gridAudio.setSlotParameters(row,col,slotControls[row][col].load());
  }
  const float outputTrim=cached.outputTrim->load(std::memory_order_relaxed);
- const bool useStereo=creativeFlags[0]->load()>.5f||creativeFlags[1]->load()>.5f||intervalEcho.active()||loopCommands.load()!=0||loopState.load()!=0||mhDrain>0||mhEnabled->load()>.5f||mhMix>1.e-7f||stereoFlags[0]->load(std::memory_order_relaxed)>.5f||stereoDelay.active()||reverbEnabled->load(std::memory_order_relaxed)>.5f||stereoReverb.active();
+ const bool useStereo=!dual&&(creativeFlags[0]->load()>.5f||creativeFlags[1]->load()>.5f||intervalEcho.active()||loopCommands.load()!=0||loopState.load()!=0||mhDrain>0||mhEnabled->load()>.5f||mhMix>1.e-7f||stereoFlags[0]->load(std::memory_order_relaxed)>.5f||stereoDelay.active()||reverbEnabled->load(std::memory_order_relaxed)>.5f||stereoReverb.active());
  if (cached.gridMode->load(std::memory_order_relaxed)>0.5f && gridAudioReady) {
   // JUCE provides planar audio; portable engine expects interleaved frames.
   // Fixed-size stack chunks keep the audio callback allocation-free.
@@ -330,7 +332,7 @@ void VirtualCortexProcessor::processBlock(juce::AudioBuffer<float>& b,juce::Midi
    for(int i=0;i<frames;++i)
     for(int ch=0;ch<count;++ch)
      interleaved[static_cast<size_t>(i*count+ch)]=b.getSample(ch,offset+i);
-   if(!gridAudio.process(interleaved.data(),static_cast<size_t>(frames),static_cast<size_t>(count))){
+   if(!gridAudio.process(interleaved.data(),static_cast<size_t>(frames),static_cast<size_t>(count),static_cast<vc::ParallelGrid::Mode>(route))){
     b.clear();return;
    }
    for(int i=0;i<frames;++i)
@@ -600,6 +602,7 @@ bool VirtualCortexProcessor::recallScene(int index) {
 }
 void VirtualCortexProcessor::getStateInformation(juce::MemoryBlock& dest){
  auto state=parameters.copyState();
+ state.setProperty("routingMode",getRoutingMode(),nullptr);
  state.removeChild(state.getChildWithName("ScenesV1"),nullptr);
  juce::ValueTree bank("ScenesV1");
  {std::lock_guard<std::mutex> lock(sceneMutex);
@@ -630,6 +633,7 @@ void VirtualCortexProcessor::setStateInformation(const void* data,int size){
  std::unique_ptr<juce::XmlElement> xml(getXmlFromBinary(data,size));
  if(xml&&xml->hasTagName(parameters.state.getType())){
   auto restored=juce::ValueTree::fromXml(*xml);
+  setRoutingMode((int)restored.getProperty("routingMode",0));
   const auto bank=restored.getChildWithName("ScenesV1");
   {std::lock_guard<std::mutex> lock(sceneMutex);scenes={};activeScene.store(-1);
    if(bank.isValid()){

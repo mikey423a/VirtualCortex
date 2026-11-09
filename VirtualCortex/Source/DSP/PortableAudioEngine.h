@@ -114,19 +114,14 @@ public:
   }
  }
  // Interleaved audio. Channels 1 or 2, prepared before calling process.
- bool process(float* samples, std::size_t frames, std::size_t channels) noexcept {
+ bool process(float* samples, std::size_t frames, std::size_t channels, ParallelGrid::Mode mode=ParallelGrid::Mode::Parallel) noexcept {
   if (!samples || (channels != 1 && channels != 2) || !ready()) return false;
   for (std::size_t i=0;i<frames;++i) {
-   for(std::size_t c=0;c<channels;++c) {
-   auto& sample=samples[i*channels+c];
-   // Sanitize before stateful DSP so NaN/Inf cannot poison filter histories.
-   if (!std::isfinite(sample)) sample=0.f;
-   sample=routing_.processSampleIndexed(sample,[&](std::size_t row,std::size_t col,BlockType block,float x) noexcept {
-    return apply((*state_)[row][col][c],parameters_[row][col],(*irs_)[row][col],(*neural_)[row][col],block,x);
-   });
-   if (!std::isfinite(sample)) sample=0.f;
-   sample=std::clamp(sample,-1.f,1.f);
-   }
+   const auto result=routing_.processFrame({samples[i*channels],channels==2?samples[i*channels+1]:0.f},mode,
+    [&](std::size_t c,std::size_t row,std::size_t col,BlockType block,float x) noexcept {
+     return apply((*state_)[row][col][c],parameters_[row][col],(*irs_)[row][col],(*neural_)[row][col],block,x);
+    });
+   for(std::size_t c=0;c<channels;++c)samples[i*channels+c]=std::isfinite(result[c])?std::clamp(result[c],-1.f,1.f):0.f;
    for (auto& lane:*neural_) for (auto& slot:lane) if(slot.transition) {
     if(++slot.fade>=neuralFadeSamples) slot.transition=false;
    }

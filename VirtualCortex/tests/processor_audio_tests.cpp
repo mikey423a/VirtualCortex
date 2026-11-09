@@ -230,6 +230,14 @@ int runProcessorAudioTests(){
    juce::AudioProcessor::copyXmlToBinary(*legacyXml,legacy);restore(*q,legacy);
    check(q->selectedScene()==-1&&!q->hasScene(0)&&!q->hasScene(7),"Old preset retained unrelated scenes");
   }
+  {
+   auto p=std::make_unique<VirtualCortexProcessor>();prepare(*p);grid(*p,vc::BlockType::Empty);
+   p->setRoutingMode(2);auto saved=state(*p);auto q=std::make_unique<VirtualCortexProcessor>();prepare(*q);restore(*q,saved);check(q->getRoutingMode()==2,"Routing mode not saved");
+   set(*q,"stereoDelayOn",1);set(*q,"sdPingPong",1);set(*q,"syOn",1);
+   juce::AudioBuffer<float> audio(2,128);juce::MidiBuffer midi;
+   for(int block=0;block<20;++block){audio.clear();for(int i=0;i<128;++i)audio.setSample(0,i,.1f);q->processBlock(audio,midi);for(int i=0;i<128;++i)check(audio.getSample(1,i)==0.f,"Dual routing crossed channels");}
+   auto xml=juce::AudioProcessor::getXmlFromBinary(saved.getData(),(int)saved.getSize());auto tree=juce::ValueTree::fromXml(*xml);tree.removeProperty("routingMode",nullptr);auto old=tree.createXml();juce::MemoryBlock legacy;juce::AudioProcessor::copyXmlToBinary(*old,legacy);restore(*q,legacy);check(q->getRoutingMode()==0,"Legacy preset not parallel");
+  }
   std::cout<<"PASS: mono/stereo, trim, callback allocations, UTF-8 assets, preset clearing, and rate/buffer matrix\n";return 0;
  }catch(const std::exception& e){allocationProbe::enabled=false;std::cerr<<e.what()<<'\n';return 1;}
 }

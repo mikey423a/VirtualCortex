@@ -14,3 +14,7 @@ Not integrated into the app or released. Required next:
 - Native UI, processor and Windows installer validation.
 
 Current installer remains 6.20.0.
+
+Live integration now staged: header selector, state persistence and frame routing.
+Dual mode bypasses global tracking/post effects and suppresses mono duplication.
+Windows validation pending. Routing is preset-wide, not scene-specific.

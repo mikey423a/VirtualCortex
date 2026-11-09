@@ -51,6 +51,8 @@ public:
  juce::String getGridCabinetIRName(std::size_t row, std::size_t col) const;
  juce::String getCabinetIRName() const;
  void loopCommand(unsigned command)noexcept{loopCommands.fetch_or(command);}
+ void setRoutingMode(int mode) noexcept {routingMode.store(juce::jlimit(0,2,mode));}
+ int getRoutingMode() const noexcept {return routingMode.load();}
  unsigned loopStatus()const noexcept{return loopState.load();}
  // Message/control-thread operations; never call from processBlock.
  bool storeScene(int index);
@@ -58,6 +60,7 @@ public:
  bool hasScene(int index) const;
  int selectedScene() const noexcept {return activeScene.load();}
 private:
+ std::atomic<int> routingMode{0};
  mutable std::mutex sceneMutex;
  std::array<juce::ValueTree,8> scenes{};
  std::atomic<int> activeScene{-1};

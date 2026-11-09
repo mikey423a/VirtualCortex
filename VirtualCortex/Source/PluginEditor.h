@@ -59,7 +59,7 @@ private:
  DeviceCatalogPanel catalogPanel;
  juce::TextButton catalogButton{"CATALOG"};
  juce::TextButton editorsButton{"SHOW EDITORS"};
- juce::ComboBox rowSelector,categoryBox;
+ juce::ComboBox rowSelector,categoryBox,routingSelector;
  std::array<juce::TextButton,3> stereoPages,reverbPages;
  std::array<juce::TextButton,4> echoPages;int echoPage=0;
  std::array<juce::TextButton,6> loopButtons;
