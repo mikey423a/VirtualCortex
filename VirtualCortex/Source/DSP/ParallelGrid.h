@@ -61,6 +61,33 @@ public:
   }
   return active==0?dry:(std::isfinite(sum)?sum/static_cast<float>(active):0.f);
  }
+ enum class Mode { Parallel, Series, DualMono };
+ // DualMono: input/output L uses rows 1->2; R uses rows 3->4.
+ // Callback carries channel and physical slot; no signal crosses chains.
+ template<class DSP>
+ std::array<float,2> processFrame(std::array<float,2> input,Mode mode,DSP&& dsp) const noexcept {
+  for(auto& x:input)if(!std::isfinite(x))x=0.f;
+  std::array<float,2> output{};
+  for(std::size_t channel=0;channel<2;++channel){
+   if(mode==Mode::Parallel){
+    output[channel]=processSampleIndexed(input[channel],[&](std::size_t r,std::size_t c,BlockType b,float x) noexcept {return dsp(channel,r,c,b,x);});
+    continue;
+   }
+   float x=input[channel];
+   const std::size_t first=mode==Mode::DualMono?channel*2:0;
+   const std::size_t end=mode==Mode::DualMono?first+2:4;
+   for(std::size_t row=first;row<end;++row){
+    if(!enabled_[row])continue;
+    const auto& plan=lanes_[row].plan();
+    for(std::size_t i=0;i<plan.count;++i){
+     x=dsp(channel,row,plan.columns[i],plan.blocks[i],x);
+     if(!std::isfinite(x)){x=0.f;break;}
+    }
+   }
+   output[channel]=x;
+  }
+  return output;
+ }
  template<class DSP>
  void processBuffer(float* data,std::size_t count,DSP&& dsp) const noexcept {
   if (!data) return;
