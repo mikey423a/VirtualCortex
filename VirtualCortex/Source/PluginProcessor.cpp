@@ -9,6 +9,7 @@ VirtualCortexProcessor::VirtualCortexProcessor()
  : AudioProcessor(BusesProperties().withInput("Input",juce::AudioChannelSet::stereo(),true)
                                   .withOutput("Output",juce::AudioChannelSet::stereo(),true)),
    parameters(*this,nullptr,"PARAMETERS",makeLayout()) {
+ gridNotes.fill(-1);
  cached.gate=parameters.getRawParameterValue("gate");
  cached.drive=parameters.getRawParameterValue("drive");
  cached.ampBias=parameters.getRawParameterValue("ampBias");
@@ -79,6 +80,11 @@ bool VirtualCortexProcessor::swapGridSlots(int ar,int ac,int br,int bc){
  const auto pa=getGridSlotParameters(ar,ac),pb=getGridSlotParameters(br,bc);
  gridAudio.swapSlots(ar,ac,br,bc);
  setGridSlotParameters(ar,ac,pb);setGridSlotParameters(br,bc,pa);
+ auto& aa=advancedControls[ar][ac];auto& ab=advancedControls[br][bc];
+ const auto va=aa.load();aa.store(ab.load());ab.store(va);
+ const int ta=aa.type.load();aa.type=ab.type.load();ab.type=ta;
+ const unsigned ca=aa.commands.exchange(0),cb=ab.commands.exchange(0);aa.commands=cb;ab.commands=ca;
+ const unsigned sa=aa.status.load();aa.status=ab.status.load();ab.status=sa;
  std::swap(gridIRPaths[ar][ac],gridIRPaths[br][bc]);std::swap(gridNeuralPaths[ar][ac],gridNeuralPaths[br][bc]);
  setGridBlock(ar,ac,b);setGridBlock(br,bc,a);
  {std::lock_guard<std::mutex> lock(sceneMutex);
@@ -96,8 +102,10 @@ bool VirtualCortexProcessor::swapGridSlots(int ar,int ac,int br,int bc){
 }
 bool VirtualCortexProcessor::setGridBlock(std::size_t row,std::size_t col,vc::BlockSlot slot) noexcept {
  if(!vc::SignalGrid::valid(row,col)||!vc::SignalGrid::validType(slot.type))return false;
- if(slot.type==vc::BlockType::GridStereoReverb){std::lock_guard<std::recursive_mutex> lock(gridMoveMutex);try{gridAudio.prepareReverbSlot(row,col);}catch(...){return false;}}
- if(slot.type==vc::BlockType::GridStereoDelay){std::lock_guard<std::recursive_mutex> lock(gridMoveMutex);try{gridAudio.prepareStereoSlot(row,col);}catch(...){return false;}}
+ std::lock_guard<std::recursive_mutex> lock(gridMoveMutex);
+ try{gridAudio.prepareAdvancedSlot(row,col,(int)slot.type);}catch(...){return false;}
+ auto& controls=advancedControls[row][col];
+ if(controls.type.load()!=(int)slot.type){controls.store(vc::advancedDefaults((int)slot.type));controls.commands=0;controls.status=0;controls.type=(int)slot.type;}
  const std::uint64_t shift=col*8;const std::uint64_t mask=std::uint64_t(255)<<shift;
  const std::uint64_t value=std::uint64_t(static_cast<std::uint8_t>(slot.type)|(slot.enabled?128:0))<<shift;
  auto previous=gridRows[row].load(std::memory_order_relaxed);
@@ -118,6 +126,42 @@ bool VirtualCortexProcessor::setGridSlotParameters(std::size_t row,std::size_t c
 }
 vc::SlotParameters VirtualCortexProcessor::getGridSlotParameters(std::size_t row,std::size_t col) const noexcept {
  return vc::SignalGrid::valid(row,col) ? slotControls[row][col].load() : vc::SlotParameters{};
+}
+vc::AdvancedValues VirtualCortexProcessor::getAdvancedValues(int row,int col)const noexcept {
+ return vc::SignalGrid::valid(row,col)?advancedControls[row][col].load():vc::AdvancedValues{};
+}
+bool VirtualCortexProcessor::setAdvancedValue(int row,int col,int index,float value) noexcept {
+ if(!vc::SignalGrid::valid(row,col))return false;auto& c=advancedControls[row][col];const int type=c.type.load();
+ if(!vc::isAdvanced(type)||index<0||index>=vc::advancedDefinitions[type-30].count)return false;
+ const auto& d=vc::advancedDefinitions[type-30].controls[index];if(!std::isfinite(value)||value<d.low||value>d.high)return false;
+ c.values[index].store(d.toggle?(value>.5f?1.f:0.f):value);return true;
+}
+void VirtualCortexProcessor::gridLoopCommand(int row,int col,unsigned command)noexcept {
+ if(vc::SignalGrid::valid(row,col)&&advancedControls[row][col].type.load()==34)advancedControls[row][col].commands.fetch_or(command&63u);
+}
+unsigned VirtualCortexProcessor::gridLoopStatus(int row,int col)const noexcept{return vc::SignalGrid::valid(row,col)?advancedControls[row][col].status.load():0;}
+void VirtualCortexProcessor::saveAdvanced(juce::ValueTree& tree,int row,int col,const juce::String& prefix)const {
+ const int type=advancedControls[row][col].type.load();if(!vc::isAdvanced(type))return;
+ const auto& d=vc::advancedDefinitions[type-30];const auto v=getAdvancedValues(row,col);
+ tree.setProperty(prefix+"advancedVersion",1,nullptr);
+ for(int i=0;i<d.count;++i)tree.setProperty(prefix+d.controls[i].id,v[i],nullptr);
+}
+void VirtualCortexProcessor::loadAdvanced(const juce::ValueTree& tree,int row,int col,const juce::String& prefix){
+ const int type=advancedControls[row][col].type.load();if(!vc::isAdvanced(type))return;
+ const auto& d=vc::advancedDefinitions[type-30];auto v=vc::advancedDefaults(type);
+ if(!tree.hasProperty(prefix+"advancedVersion")){
+  // Preserve the six-control 6.22 sound when opening legacy slots/scenes.
+  const auto p=getGridSlotParameters(row,col);
+  if(type==30){v[0]=1+3999*p.time;v[1]=1+3999*p.rate;v[2]=.95f*p.feedback;v[3]=p.depth;v[6]=p.mix;v[17]=0;v[18]=p.drive;}
+  if(type==31){v[0]=.2f+19.8f*p.time;v[1]=.5f+1.5f*p.drive;v[2]=500*p.rate;v[3]=p.depth;v[5]=p.mix;v[12]=1.5f*p.feedback;v[18]=0;}
+ }else for(int i=0;i<d.count;++i){const float x=tree.getProperty(prefix+d.controls[i].id,v[i]);if(std::isfinite(x))v[i]=juce::jlimit(d.controls[i].low,d.controls[i].high,x);}
+ advancedControls[row][col].store(v);advancedControls[row][col].commands=0;
+}
+void VirtualCortexProcessor::emitGridNote(juce::MidiBuffer& midi,int slot,int note,float velocity,int sample){
+ const int previous=gridNotes[slot];if(note==previous)return;const int channel=slot%15;
+ if(previous>=0){auto& owners=gridNoteOwners[channel][previous];if(owners&&--owners==0)midi.addEvent(juce::MidiMessage::noteOff(channel+2,previous),sample);}
+ if(note>=0&&note<128){auto& owners=gridNoteOwners[channel][note];if(owners++==0)midi.addEvent(juce::MidiMessage::noteOn(channel+2,note,(juce::uint8)juce::jlimit(1,127,int(velocity*127))),sample);}
+ gridNotes[slot]=note;
 }
 void VirtualCortexProcessor::updateGridRouting() noexcept {
  std::array<std::uint64_t,4> current{};bool changed=false;
@@ -343,11 +387,20 @@ void VirtualCortexProcessor::processBlock(juce::AudioBuffer<float>& b,juce::Midi
  commitPendingNeuralModels();
  const bool bypass=cached.bypass->load(std::memory_order_relaxed)>0.5f;
  processTracking(b,midi,bypass||dual);
- if(bypass)return; // Dry passthrough; tracking sends note-off.
+ const auto liveGrid=getEditableGrid();const bool gridActive=!bypass&&cached.gridMode->load()>.5f;
+ for(int r=0;r<4;++r)for(int c=0;c<8;++c){const auto block=*liveGrid.get(r,c);
+  if(!gridActive||!isGridLaneEnabled(r)||!block.enabled||(int)block.type!=35||advancedControls[r][c].values[10].load()<=.5f)
+   emitGridNote(midi,r*8+c,-1,0,0);
+ }
+ if(bypass)return; // Dry passthrough; all trackers send note-off.
  if (cached.gridMode->load(std::memory_order_relaxed)>0.5f) {
   // No heap allocation: snapshot controls before processing this audio block.
-  for(std::size_t row=0;row<4;++row) for(std::size_t col=0;col<8;++col)
+  float hostTempo=0;if(auto* playhead=getPlayHead())if(auto position=playhead->getPosition())if(auto bpm=position->getBpm())if(std::isfinite(*bpm)&&*bpm>0)hostTempo=(float)*bpm;
+  for(std::size_t row=0;row<4;++row) for(std::size_t col=0;col<8;++col){
    gridAudio.setSlotParameters(row,col,slotControls[row][col].load());
+   auto& controls=advancedControls[row][col];
+   gridAudio.configureAdvancedSlot(row,col,controls.load(),hostTempo,controls.commands.exchange(0));
+  }
  }
  const float outputTrim=cached.outputTrim->load(std::memory_order_relaxed);
  const bool useStereo=!dual&&(creativeFlags[0]->load()>.5f||creativeFlags[1]->load()>.5f||intervalEcho.active()||loopCommands.load()!=0||loopState.load()!=0||mhDrain>0||mhEnabled->load()>.5f||mhMix>1.e-7f||stereoFlags[0]->load(std::memory_order_relaxed)>.5f||stereoDelay.active()||reverbEnabled->load(std::memory_order_relaxed)>.5f||stereoReverb.active());
@@ -362,13 +415,16 @@ void VirtualCortexProcessor::processBlock(juce::AudioBuffer<float>& b,juce::Midi
    for(int i=0;i<frames;++i)
     for(int ch=0;ch<count;++ch)
      interleaved[static_cast<size_t>(i*count+ch)]=b.getSample(ch,offset+i);
-   if(!gridAudio.process(interleaved.data(),static_cast<size_t>(frames),static_cast<size_t>(count),static_cast<vc::ParallelGrid::Mode>(route))){
+   struct Context{VirtualCortexProcessor* self;juce::MidiBuffer* midi;int offset;};Context context{this,&midi,offset};
+   const auto sink=+[](void* opaque,std::size_t row,std::size_t col,int note,float velocity,std::size_t sample){auto& ctx=*static_cast<Context*>(opaque);ctx.self->emitGridNote(*ctx.midi,(int)(row*8+col),note,velocity,ctx.offset+(int)sample);};
+   if(!gridAudio.process(interleaved.data(),static_cast<size_t>(frames),static_cast<size_t>(count),static_cast<vc::ParallelGrid::Mode>(route),sink,&context)){
     b.clear();return;
    }
    for(int i=0;i<frames;++i)
     for(int ch=0;ch<count;++ch)
      b.setSample(ch,offset+i,juce::jlimit(-1.f,1.f,interleaved[static_cast<size_t>(i*count+ch)]*(useStereo?1.f:channels[(size_t)ch].outputSmoother.process(outputTrim))));
   }
+  for(int r=0;r<4;++r)for(int c=0;c<8;++c)advancedControls[r][c].status=gridAudio.advancedStatus(r,c);
   if(useStereo)processStereoDelay(b);
   return;
  }
@@ -452,6 +508,7 @@ void VirtualCortexProcessor::processBlock(juce::AudioBuffer<float>& b,juce::Midi
  if(useStereo)processStereoDelay(b);
 }
 double VirtualCortexProcessor::getTailLengthSeconds() const {
+ if(cached.gridMode&&cached.gridMode->load()>.5f){const auto grid=getEditableGrid();for(int r=0;r<4;++r)if(isGridLaneEnabled(r))for(int c=0;c<8;++c){const auto slot=*grid.get(r,c);if(slot.enabled&&(int)slot.type>=30&&(int)slot.type<=34)return 3600.;}}
  if(creativeFlags[1]&&creativeFlags[1]->load()>.5f)return 3600.;
  if(creativeFlags[0]&&creativeFlags[0]->load()>.5f)return 900.;
  if(mhEnabled&&mhEnabled->load()>.5f)return 900.;
@@ -582,6 +639,7 @@ bool VirtualCortexProcessor::hasScene(int index) const {
  std::lock_guard<std::mutex> lock(sceneMutex);return scenes[(std::size_t)index].isValid();
 }
 bool VirtualCortexProcessor::storeScene(int index) {
+ std::lock_guard<std::recursive_mutex> move(gridMoveMutex);
  if(index<0||index>=8)return false;
  juce::ValueTree snapshot("Scene");
  for(auto* base:getParameters())if(auto* p=dynamic_cast<juce::RangedAudioParameter*>(base)){
@@ -598,12 +656,13 @@ bool VirtualCortexProcessor::storeScene(int index) {
    slot.setProperty("drive",p.drive,nullptr);slot.setProperty("mix",p.mix,nullptr);
    slot.setProperty("time",p.time,nullptr);slot.setProperty("feedback",p.feedback,nullptr);
    slot.setProperty("rate",p.rate,nullptr);slot.setProperty("depth",p.depth,nullptr);
-   slot.setProperty("repeatFx",p.repeatFx,nullptr);snapshot.addChild(slot,-1,nullptr);
+   slot.setProperty("repeatFx",p.repeatFx,nullptr);saveAdvanced(slot,(int)r,(int)c,"advanced_");snapshot.addChild(slot,-1,nullptr);
   }
  }
  std::lock_guard<std::mutex> lock(sceneMutex);scenes[(std::size_t)index]=snapshot;activeScene.store(index);return true;
 }
 bool VirtualCortexProcessor::recallScene(int index) {
+ std::lock_guard<std::recursive_mutex> move(gridMoveMutex);
  if(index<0||index>=8)return false;
  juce::ValueTree snapshot;
  {std::lock_guard<std::mutex> lock(sceneMutex);snapshot=scenes[(std::size_t)index];}
@@ -623,7 +682,7 @@ bool VirtualCortexProcessor::recallScene(int index) {
    p.drive=value.getProperty("drive",p.drive);p.mix=value.getProperty("mix",p.mix);
    p.time=value.getProperty("time",p.time);p.feedback=value.getProperty("feedback",p.feedback);
    p.rate=value.getProperty("rate",p.rate);p.depth=value.getProperty("depth",p.depth);
-   p.repeatFx=value.getProperty("repeatFx",false);setGridSlotParameters(r,c,p);
+   p.repeatFx=value.getProperty("repeatFx",false);setGridSlotParameters(r,c,p);loadAdvanced(value,r,c,"advanced_");
    block.enabled=value.getProperty("enabled",true);setGridBlock(r,c,block);
   }
  }
@@ -631,6 +690,7 @@ bool VirtualCortexProcessor::recallScene(int index) {
  activeScene.store(index);return true;
 }
 void VirtualCortexProcessor::getStateInformation(juce::MemoryBlock& dest){
+ std::lock_guard<std::recursive_mutex> move(gridMoveMutex);
  auto state=parameters.copyState();
  state.setProperty("routingMode",getRoutingMode(),nullptr);
  state.removeChild(state.getChildWithName("ScenesV1"),nullptr);
@@ -653,13 +713,14 @@ void VirtualCortexProcessor::getStateInformation(juce::MemoryBlock& dest){
   state.setProperty(key+"drive",p.drive,nullptr);state.setProperty(key+"mix",p.mix,nullptr);
   state.setProperty(key+"time",p.time,nullptr);state.setProperty(key+"feedback",p.feedback,nullptr);
   state.setProperty(key+"rate",p.rate,nullptr);state.setProperty(key+"depth",p.depth,nullptr);
-  state.setProperty(key+"repeatFx",p.repeatFx,nullptr);
+  state.setProperty(key+"repeatFx",p.repeatFx,nullptr);saveAdvanced(state,(int)row,(int)col,key+"advanced_");
   state.setProperty(key+"irPath",gridIRPaths[row][col],nullptr);
   state.setProperty(key+"neuralPath",gridNeuralPaths[row][col],nullptr);
  }
  std::unique_ptr<juce::XmlElement> xml(state.createXml());copyXmlToBinary(*xml,dest);
 }
 void VirtualCortexProcessor::setStateInformation(const void* data,int size){
+ std::lock_guard<std::recursive_mutex> move(gridMoveMutex);
  std::unique_ptr<juce::XmlElement> xml(getXmlFromBinary(data,size));
  if(xml&&xml->hasTagName(parameters.state.getType())){
   auto restored=juce::ValueTree::fromXml(*xml);
@@ -700,7 +761,7 @@ void VirtualCortexProcessor::setStateInformation(const void* data,int size){
    if(restored.hasProperty(key+"rate"))p.rate=static_cast<float>(restored.getProperty(key+"rate"));
    if(restored.hasProperty(key+"depth"))p.depth=static_cast<float>(restored.getProperty(key+"depth"));
    p.repeatFx=static_cast<bool>(restored.getProperty(key+"repeatFx",false));
-   setGridSlotParameters(row,col,p);
+   setGridSlotParameters(row,col,p);loadAdvanced(restored,(int)row,(int)col,key+"advanced_");
    const auto neuralPath=restored.getProperty(key+"neuralPath").toString();
    if(neuralPath.isEmpty() || !loadGridNeuralModel(juce::File(neuralPath),row,col)){
     std::lock_guard<std::mutex> guard(assetMutex);

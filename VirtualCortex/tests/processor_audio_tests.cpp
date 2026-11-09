@@ -251,6 +251,53 @@ int runProcessorAudioTests(){
    auto saved=state(*p);auto q=std::make_unique<VirtualCortexProcessor>();prepare(*q);restore(*q,saved);
    check(q->getEditableGrid().get(3,7)->type==vc::BlockType::Delay,"Moved device not saved");
   }
+  {
+   for(int type=30;type<=36;++type){
+    auto p=std::make_unique<VirtualCortexProcessor>();prepare(*p);grid(*p,(vc::BlockType)type);
+    p->setGridBlock(0,1,{(vc::BlockType)type,true});const auto untouched=p->getAdvancedValues(0,1);
+    const auto& def=vc::advancedDefinitions[type-30];
+    for(int i=0;i<def.count;++i){
+     auto* global=p->parameters.getParameter(def.controls[i].id);check(global!=nullptr,"Advanced control metadata missing");
+     check(std::abs(global->convertFrom0to1(global->getDefaultValue())-def.controls[i].initial)<.01f,"Advanced default differs from existing effect");
+     const float v=def.controls[i].toggle?1.f:def.controls[i].low+.37f*(def.controls[i].high-def.controls[i].low);
+     check(p->setAdvancedValue(0,0,i,v),"Full advanced parameter write rejected");
+    }
+    check(p->getAdvancedValues(0,1)==untouched,"Advanced instances share controls");
+    const auto values=p->getAdvancedValues(0,0);p->storeScene(0);
+    check(p->swapGridSlots(0,0,2,7),"Advanced move rejected");
+    check(p->getAdvancedValues(2,7)==values,"Advanced move lost controls");
+    p->setAdvancedValue(2,7,0,def.controls[0].initial);p->recallScene(0);
+    check(p->getAdvancedValues(2,7)==values,"Advanced scene did not follow move");
+    auto saved=state(*p);auto q=std::make_unique<VirtualCortexProcessor>();prepare(*q);restore(*q,saved);
+    for(int i=0;i<def.count;++i)check(std::abs(q->getAdvancedValues(2,7)[i]-values[i])<.01f,"Advanced preset lost full settings");
+    q->setGridLaneEnabled(2,true); // Exercise all parameters and callbacks, including MIDI with preallocated output.
+    juce::AudioBuffer<float> b(2,128);juce::MidiBuffer midi;midi.ensureSize(16384);
+    for(int block=0;block<10;++block){b.clear();b.setSample(0,0,.1f);allocationProbe::count=0;allocationProbe::enabled=true;q->processBlock(b,midi);allocationProbe::enabled=false;check(allocationProbe::count==0,"Advanced callback allocated");for(int ch=0;ch<2;++ch)for(int i=0;i<128;++i)check(std::isfinite(b.getSample(ch,i)),"Advanced callback nonfinite");}
+   }
+  }
+  {
+   auto p=std::make_unique<VirtualCortexProcessor>();prepare(*p);grid(*p,vc::BlockType::GridLayerLoom);p->gridLoopCommand(0,0,vc::LayerLoom::Record);settle(*p,.1f,20);
+   p->gridLoopCommand(0,0,vc::LayerLoom::Record);settle(*p,0,1);check((p->gridLoopStatus(0,0)&255)==1,"Grid loop recording failed");
+   p->swapGridSlots(0,0,0,7);settle(*p,0,1);check((p->gridLoopStatus(0,7)&255)==1,"Grid loop audio lost on move");
+   p->gridLoopCommand(0,7,vc::LayerLoom::Undo);settle(*p,0,1);check((p->gridLoopStatus(0,7)&255)==0,"Grid loop undo failed");
+   p->gridLoopCommand(0,7,vc::LayerLoom::Redo);settle(*p,0,1);check((p->gridLoopStatus(0,7)&255)==1,"Grid loop redo failed");
+  }
+  {
+   auto p=std::make_unique<VirtualCortexProcessor>();prepare(*p);grid(*p,vc::BlockType::GridStereoDelay);
+   auto legacy=state(*p);auto xml=juce::AudioProcessor::getXmlFromBinary(legacy.getData(),(int)legacy.getSize());auto tree=juce::ValueTree::fromXml(*xml);
+   tree.removeProperty("slot_0_0_advanced_advancedVersion",nullptr);tree.setProperty("slot_0_0_time",.25f,nullptr);tree.setProperty("slot_0_0_depth",.7f,nullptr);
+   auto old=tree.createXml();juce::AudioProcessor::copyXmlToBinary(*old,legacy);restore(*p,legacy);auto v=p->getAdvancedValues(0,0);
+   check(std::abs(v[0]-1000.75f)<.01f&&std::abs(v[3]-.7f)<.001f&&v[17]==0,"6.22 grid delay migration changed sound");
+  }
+  {
+   auto p=std::make_unique<VirtualCortexProcessor>();prepare(*p);grid(*p,vc::BlockType::GridPrismSynth);p->setAdvancedValue(0,0,10,1);
+   juce::AudioBuffer<float>b(2,128);juce::MidiBuffer midi;midi.ensureSize(8192);int ons=0,offs=0;
+   for(int block=0;block<160;++block){for(int i=0;i<128;++i){b.setSample(0,i,.2f*std::sin(float(6.283185307*220*(block*128+i)/48000.)));b.setSample(1,i,0);}p->processBlock(b,midi);
+    for(const auto m:midi){auto msg=m.getMessage();if(msg.isNoteOn()){check(msg.getChannel()==2&&msg.getNoteNumber()==57,"Grid synth wrong MIDI channel/note");++ons;}}
+   }
+   p->setGridBlock(0,0,{vc::BlockType::GridPrismSynth,false});b.clear();p->processBlock(b,midi);for(const auto m:midi)if(m.getMessage().isNoteOff())++offs;
+   check(ons>0&&offs>0,"Grid synth missing MIDI or bypass note-off");
+  }
   std::cout<<"PASS: mono/stereo, trim, callback allocations, UTF-8 assets, preset clearing, and rate/buffer matrix\n";return 0;
  }catch(const std::exception& e){allocationProbe::enabled=false;std::cerr<<e.what()<<'\n';return 1;}
 }

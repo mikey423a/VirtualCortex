@@ -37,6 +37,10 @@ public:
  void getStateInformation(juce::MemoryBlock&) override;
  void setStateInformation(const void*,int) override;
  juce::AudioProcessorValueTreeState parameters;
+ vc::AdvancedValues getAdvancedValues(int row,int col) const noexcept;
+ bool setAdvancedValue(int row,int col,int index,float value) noexcept;
+ void gridLoopCommand(int row,int col,unsigned command) noexcept;
+ unsigned gridLoopStatus(int row,int col)const noexcept;
  bool swapGridSlots(int ar,int ac,int br,int bc);
  vc::SignalGrid getEditableGrid() const noexcept;
  bool setGridBlock(std::size_t row,std::size_t col,vc::BlockSlot slot) noexcept;
@@ -61,6 +65,18 @@ public:
  bool hasScene(int index) const;
  int selectedScene() const noexcept {return activeScene.load();}
 private:
+ struct AdvancedControls {
+  std::atomic<int> type{0};std::array<std::atomic<float>,vc::advancedCapacity> values{};
+  std::atomic<unsigned> commands{0},status{0};
+  vc::AdvancedValues load()const noexcept {vc::AdvancedValues v{};for(int i=0;i<vc::advancedCapacity;++i)v[i]=values[i].load();return v;}
+  void store(const vc::AdvancedValues& v)noexcept{for(int i=0;i<vc::advancedCapacity;++i)values[i].store(v[i]);}
+ };
+ std::array<std::array<AdvancedControls,8>,4> advancedControls{};
+ std::array<int,32> gridNotes{};
+ std::array<std::array<unsigned,128>,15> gridNoteOwners{};
+ void emitGridNote(juce::MidiBuffer&,int slot,int note,float velocity,int sample);
+ void saveAdvanced(juce::ValueTree&,int row,int col,const juce::String& prefix)const;
+ void loadAdvanced(const juce::ValueTree&,int row,int col,const juce::String& prefix);
  std::recursive_mutex gridMoveMutex;
  std::atomic<int> routingMode{0};
  mutable std::mutex sceneMutex;

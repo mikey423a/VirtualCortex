@@ -1,5 +1,6 @@
 #pragma once
 #include "ParallelGrid.h"
+#include "AdvancedGridEffect.h"
 #include "StereoDelay.h"
 #include "StereoReverb.h"
 #include "OriginalEffects.h"
@@ -39,6 +40,7 @@ public:
   std::swap((*irs_)[ar][ac],(*irs_)[br][bc]);
   std::swap((*state_)[ar][ac],(*state_)[br][bc]);
   std::swap((*neural_)[ar][ac],(*neural_)[br][bc]);
+  std::swap(advancedSlots_[ar][ac],advancedSlots_[br][bc]);
   std::swap(reverbSlots_[ar][ac],reverbSlots_[br][bc]);
   std::swap(stereoSlots_[ar][ac],stereoSlots_[br][bc]);
   std::swap(parameters_[ar][ac],parameters_[br][bc]);return true;
@@ -50,6 +52,17 @@ public:
  void prepareReverbSlot(std::size_t row,std::size_t col){
   if(!reverbSlots_[row][col]){auto effect=std::make_unique<StereoReverb>();effect->prepare(rate_);reverbSlots_[row][col]=std::move(effect);}
  }
+ void prepareAdvancedSlot(std::size_t row,std::size_t col,int type){
+  auto& slot=advancedSlots_[row][col];if(slot&&slot->kind()==type)return;
+  std::unique_ptr<AdvancedGridEffect> next;
+  if(isAdvanced(type)){next=std::make_unique<AdvancedGridEffect>(type);next->prepare(rate_);next->configure(advancedDefaults(type));}
+  slot=std::move(next);
+ }
+ void configureAdvancedSlot(std::size_t row,std::size_t col,const AdvancedValues& v,float tempo,unsigned commands=0)noexcept{
+  if(auto* effect=advancedSlots_[row][col].get()){effect->configure(v,tempo);effect->command(commands);}
+ }
+ unsigned advancedStatus(std::size_t row,std::size_t col)const noexcept {const auto* e=advancedSlots_[row][col].get();return e?e->status():0;}
+ using MidiSink=void(*)(void*,std::size_t,std::size_t,int,float,std::size_t);
  static constexpr std::size_t maxIrTaps = 4096;
  // May be called at a block boundary by the audio callback. Coefficients are
  // copied into fixed-size storage; both old and new FIRs run for 128 samples.
@@ -128,6 +141,7 @@ public:
    slot.previousEnabled=false;
   }
   rate_ = std::isfinite(sampleRate) ? std::clamp(sampleRate,8000.0,192000.0) : 48000.0;
+  for(auto& row:advancedSlots_)for(auto& effect:row)if(effect)effect->prepare(rate_);
   for(auto& row:reverbSlots_)for(auto& effect:row)if(effect)effect->prepare(rate_);
   for(auto& row:stereoSlots_)for(auto& effect:row)if(effect)effect->prepare(rate_);
   const auto n = maxDelaySamples ? maxDelaySamples : static_cast<std::size_t>(rate_ * 0.6);
@@ -138,17 +152,20 @@ public:
   }
  }
  // Interleaved audio. Channels 1 or 2, prepared before calling process.
- bool process(float* samples, std::size_t frames, std::size_t channels, ParallelGrid::Mode mode=ParallelGrid::Mode::Parallel) noexcept {
+ bool process(float* samples, std::size_t frames, std::size_t channels, ParallelGrid::Mode mode=ParallelGrid::Mode::Parallel, MidiSink midi=nullptr,void* midiContext=nullptr) noexcept {
   if (!samples || (channels != 1 && channels != 2) || !ready()) return false;
   for (std::size_t i=0;i<frames;++i) {
    const std::array<float,2> input{samples[i*channels],channels==2?samples[i*channels+1]:0.f};
+   auto advanced=[&](std::size_t row,std::size_t col,float l,float r){auto& e=*advancedSlots_[row][col];auto frame=e.process(l,r);if(midi&&e.kind()==35)midi(midiContext,row,col,e.midiNote(),e.midiVelocity(),i);return frame;};
    auto mono=[&](std::size_t c,std::size_t row,std::size_t col,BlockType block,float x) noexcept {
+    if(isAdvanced((int)block)&&advancedSlots_[row][col]){auto frame=advanced(row,col,x,x);return (frame[0]+frame[1])*.5f;}
     if(block==BlockType::GridStereoReverb&&reverbSlots_[row][col]){auto frame=reverbSlots_[row][col]->process(x,x);return (frame[0]+frame[1])*.5f;}
     if(block==BlockType::GridStereoDelay&&stereoSlots_[row][col]){auto frame=stereoSlots_[row][col]->process(x,x);return (frame[0]+frame[1])*.5f;}
     return apply((*state_)[row][col][c],parameters_[row][col],(*irs_)[row][col],(*neural_)[row][col],block,x);
    };
    const auto result=mode==ParallelGrid::Mode::DualMono?routing_.processFrame(input,mode,mono):
     routing_.processStereoFrame(input,mode,[&](std::size_t row,std::size_t col,BlockType block,std::array<float,2> frame) noexcept {
+     if(isAdvanced((int)block)&&advancedSlots_[row][col])return advanced(row,col,frame[0],frame[1]);
      if(block==BlockType::GridStereoReverb&&reverbSlots_[row][col])return reverbSlots_[row][col]->process(frame[0],frame[1]);
      if(block==BlockType::GridStereoDelay&&stereoSlots_[row][col])return stereoSlots_[row][col]->process(frame[0],frame[1]);
      for(std::size_t c=0;c<channels;++c)frame[c]=mono(c,row,col,block,frame[c]);return frame;
@@ -165,6 +182,7 @@ public:
   return true;
  }
 private:
+ std::array<std::array<std::unique_ptr<AdvancedGridEffect>,8>,4> advancedSlots_{};
  std::array<std::array<std::unique_ptr<StereoReverb>,8>,4> reverbSlots_{};
  std::array<std::array<std::unique_ptr<StereoDelay>,8>,4> stereoSlots_{};
  struct FIR { std::array<float,maxIrTaps> taps{}; std::size_t count=0; };

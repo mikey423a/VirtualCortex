@@ -61,12 +61,13 @@ juce::Colour CortexBlockButton::colourFor(int type){
  return juce::Colour(values[juce::jlimit(0,29,type)]);
 }
 juce::String CortexBlockButton::nameFor(int type){
- if(type==31)return "Grid Stereo Reverb";
+ if(vc::isAdvanced(type))return vc::advancedDefinitions[type-30].name;
  if(type==30)return "Grid Stereo Delay";
  const char* names[]={"Empty","Gate","Amp","Cabinet","EQ","Delay","Reverb","Tremolo","Compressor","Overdrive","Distortion","Chorus","Flanger","Phaser","Wah","Bit-crusher","Vibrato","Ring modulator","Gain","Low / High Cut","Tone EQ","Room Reverb","Output","Stereo Delay","Stereo Reverb","Four-head Echo","Chase Pitch Delay","Layer Loom","Prism Synth","Ottocrush"};
  return names[juce::jlimit(0,29,type)];
 }
 void CortexBlockButton::drawIcon(juce::Graphics& g,juce::Rectangle<float> r,int type,juce::Colour colour){
+ if(type>=32&&type<=36){const int icons[]={5,5,15,17,15};type=icons[type-32];}
  if(type==30)type=5;else if(type==31)type=6;
  g.setColour(colour);const auto cx=r.getCentreX(),cy=r.getCentreY();const auto u=r.getWidth()/24.f;
  juce::Path p;
@@ -196,7 +197,8 @@ VirtualCortexEditor::VirtualCortexEditor(VirtualCortexProcessor& p):AudioProcess
  for(int r=0;r<4;++r)rowSelector.addItem("ROW "+juce::String(r+1),r+1);rowSelector.setSelectedId(1,juce::dontSendNotification);rowSelector.onChange=[this]{selectSlot(rowSelector.getSelectedId()-1,selectedColumn);};addAndMakeVisible(rowSelector);
  editorsButton.setComponentID("editors-toggle");editorsButton.onClick=[this]{setEditorsVisible(!editorsVisible);};addAndMakeVisible(editorsButton);
  trackingPageButton.setComponentID("tracking-page");trackingPageButton.onClick=[this]{trackingPage=1-trackingPage;lastView=-1;updateView();};addAndMakeVisible(trackingPageButton);
- categoryBox.setComponentID("device-category");for(int type=1;type<=31;++type)categoryBox.addItem(CortexBlockButton::nameFor(type),type);categoryBox.setSelectedId(browserType,juce::dontSendNotification);categoryBox.onChange=[this]{browserType=categoryBox.getSelectedId();variant=0;masterPage=browserType>=22;lastView=-1;updateView();};addAndMakeVisible(categoryBox);
+ addChildComponent(advancedEditor);
+ categoryBox.setComponentID("device-category");for(int type=1;type<=36;++type)categoryBox.addItem(CortexBlockButton::nameFor(type),type);categoryBox.setSelectedId(browserType,juce::dontSendNotification);categoryBox.onChange=[this]{browserType=categoryBox.getSelectedId();variant=0;masterPage=browserType>=22;lastView=-1;updateView();};addAndMakeVisible(categoryBox);
  for(int i=0;i<4;++i){auto& b=echoPages[i];b.setButtonText("HEAD "+juce::String(i+1));b.setComponentID("echo-head-"+juce::String(i));b.onClick=[this,i]{echoPage=i;lastView=-1;updateView();};addChildComponent(b);}
  const char* loopNames[]={"REC / DUB","STOP","PLAY","UNDO","REDO","CLEAR"};const unsigned commands[]={1,2,4,8,16,32};for(int i=0;i<6;++i){auto& b=loopButtons[i];b.setButtonText(loopNames[i]);b.setComponentID("loop-command-"+juce::String(i));const auto command=commands[i];b.onClick=[this,command]{if(command==1||command==4)processor.parameters.getParameter("llOn")->setValueNotifyingHost(1.f);processor.loopCommand(command);};addChildComponent(b);}
  const char* reverbNames[]={"SPACE","TONE / MOD","OUTPUT / DYNAMICS"};for(int i=0;i<3;++i){auto& button=reverbPages[(std::size_t)i];button.setButtonText(reverbNames[i]);button.setComponentID("stereo-page-reverb-"+juce::String(i));button.onClick=[this,i]{reverbPage=i;lastView=-1;updateView();};addChildComponent(button);}
@@ -210,7 +212,7 @@ VirtualCortexEditor::VirtualCortexEditor(VirtualCortexProcessor& p):AudioProcess
  catalogButton.onClick=[this]{catalogPanel.setVisible(!catalogPanel.isVisible());if(catalogPanel.isVisible())catalogPanel.toFront(false);};
  addAndMakeVisible(catalogButton);addChildComponent(catalogPanel);
  catalogPanel.onChooseOriginal=[this](int type){
-  if(type<=21||type==30||type==31){if(!insertBlock(type))return;}
+  if(type<=21||vc::isAdvanced(type)){if(!insertBlock(type))return;}
   else {browserType=type;masterPage=true;lastView=-1;updateView();}
   setEditorsVisible(true);catalogPanel.setVisible(false);
  };
@@ -248,10 +250,10 @@ std::vector<int> VirtualCortexEditor::visibleKnobs() const{
  switch(currentType()){case 28:return trackingPage?std::vector<int>{87,88,89}:std::vector<int>{82,83,84,85,86,90,91};case 29:return trackingPage?std::vector<int>{99,100,101,102,103,104,105,106}:std::vector<int>{92,93,94,95,96,97,98,109,110};case 26:return {72,73,74,75,76,77,78,107,108};case 27:return {79,80,81};case 25:return {55+echoPage*4,56+echoPage*4,57+echoPage*4,58+echoPage*4,71};case 1:return {0,10};case 2:return {1,2,9,3};case 3:return {4,11};case 4:return {15,16,17};case 5:return {5,6,7};case 6:return {8};case 7:return {12,13};case 22:return {14};case 23:if(stereoPage==0)return {18,19,20,21,24,29};if(stereoPage==1)return {22,23,35,25,26,31,54};return {27,28,30,32,33,34};case 24:if(reverbPage==0)return {36,37,38,39,40,41};if(reverbPage==1)return {42,43,44,45,46,47};return {48,49,50,51,52,53};default:return {};}
 }
 std::vector<int> VirtualCortexEditor::visibleSlotControls() const{
- switch(currentType()){case 31:return {2,0,4,5,3,1};case 30:return {2,4,3,1,5,0};case 2:return {0};case 5:if(processor.getGridSlotParameters((size_t)selectedRow,(size_t)selectedColumn).repeatFx)return {2,3,1,0,5,4};return {1,2,3};case 6:return {1};case 7:return {4,5};case 8:return {0,3,4,5,2,1};case 9:case 10:return {0,4,5,1};case 11:case 12:case 13:return {4,5,2,3,1};case 14:return {0,2,3,4,5,1};case 15:return {0,2,5,1};case 16:return {4,5,2,1};case 17:return {4,5,1};case 18:return {0,3};case 19:return {0,2,1};case 20:return {0,2,3,4,5,1};case 21:return {2,3,4,5,1};default:return {};}
+ switch(currentType()){case 30:case 31:case 32:case 33:case 34:case 35:case 36:return {};case 2:return {0};case 5:if(processor.getGridSlotParameters((size_t)selectedRow,(size_t)selectedColumn).repeatFx)return {2,3,1,0,5,4};return {1,2,3};case 6:return {1};case 7:return {4,5};case 8:return {0,3,4,5,2,1};case 9:case 10:return {0,4,5,1};case 11:case 12:case 13:return {4,5,2,3,1};case 14:return {0,2,3,4,5,1};case 15:return {0,2,5,1};case 16:return {4,5,2,1};case 17:return {4,5,1};case 18:return {0,3};case 19:return {0,2,1};case 20:return {0,2,3,4,5,1};case 21:return {2,3,4,5,1};default:return {};}
 }
 void VirtualCortexEditor::selectSlot(int row,int col){if(!vc::SignalGrid::valid((size_t)row,(size_t)col))return;selectedRow=row;selectedColumn=col;rowBank=row/2;rowSelector.setSelectedId(row+1,juce::dontSendNotification);masterPage=false;const auto grid=processor.getEditableGrid();const int type=(int)grid.get((size_t)row,(size_t)col)->type;if(type)browserType=type;lastView=-1;refreshSlotControls();updateView();}
-bool VirtualCortexEditor::insertBlock(int type){if(type<0||(type>21&&type!=30&&type!=31))return false;bool ok=processor.setGridBlock((size_t)selectedRow,(size_t)selectedColumn,{(vc::BlockType)type,true});masterPage=false;if(type)browserType=type;lastView=-1;updateView();statusLabel.setText(gridMode()?"Block updated":"Block updated. Enable GRID ENGINE to hear the grid.",juce::dontSendNotification);return ok;}
+bool VirtualCortexEditor::insertBlock(int type){if(type<0||(type>21&&!vc::isAdvanced(type)))return false;bool ok=processor.setGridBlock((size_t)selectedRow,(size_t)selectedColumn,{(vc::BlockType)type,true});masterPage=false;if(type)browserType=type;lastView=-1;updateView();statusLabel.setText(gridMode()?"Block updated":"Block updated. Enable GRID ENGINE to hear the grid.",juce::dontSendNotification);return ok;}
 bool VirtualCortexEditor::toggleSelectedSlot(){const auto grid=processor.getEditableGrid();const auto slot=*grid.get((size_t)selectedRow,(size_t)selectedColumn);if(slot.type==vc::BlockType::Empty)return false;bool ok=processor.setGridBlock((size_t)selectedRow,(size_t)selectedColumn,{slot.type,!slot.enabled});refreshGridControls();return ok;}
 void VirtualCortexEditor::refreshGridControls(){const auto grid=processor.getEditableGrid();for(int r=0;r<4;++r){laneButtons[(size_t)r].setToggleState(processor.isGridLaneEnabled((size_t)r),juce::dontSendNotification);for(int c=0;c<8;++c){const auto slot=*grid.get((size_t)r,(size_t)c);auto& b=gridCells[(size_t)r][(size_t)c];b.type=(int)slot.type;b.blockEnabled=slot.enabled&&processor.isGridLaneEnabled((size_t)r);b.selected=r==selectedRow&&c==selectedColumn;b.caption=juce::String::charToString((juce::juce_wchar)('A'+c));b.repaint();}}
  for(int c=0;c<8;++c){const auto slot=*grid.get((size_t)selectedRow,(size_t)c);auto& b=stomps[(size_t)c];b.type=(int)slot.type;b.blockEnabled=slot.enabled;b.selected=c==selectedColumn;b.repaint();}
@@ -263,8 +265,8 @@ void VirtualCortexEditor::refreshSlotControls(){const auto p=processor.getGridSl
  for(size_t i=0;i<6;++i)if(!slotValues[i].isBeingEdited())slotValues[i].setText(slotSliders[i].getTextFromValue(slotSliders[i].getValue()),juce::dontSendNotification);
 }
 void VirtualCortexEditor::commitSlotControls(){auto p=processor.getGridSlotParameters((size_t)selectedRow,(size_t)selectedColumn);p.drive=(float)slotSliders[0].getValue();p.mix=(float)slotSliders[1].getValue();p.time=(float)slotSliders[2].getValue();p.feedback=(float)slotSliders[3].getValue();p.rate=(float)slotSliders[4].getValue();p.depth=(float)slotSliders[5].getValue();processor.setGridSlotParameters((size_t)selectedRow,(size_t)selectedColumn,p);}
-void VirtualCortexEditor::timerCallback(){routingSelector.setSelectedId(processor.getRoutingMode()+1,juce::dontSendNotification);updateView();refreshSlotControls();if(currentType()==27){const auto state=processor.loopStatus();loopButtons[0].setButtonText((state&256)?"END RECORD":"REC / DUB");statusLabel.setText(juce::String((state&256)?"Recording":(state&512)?"Playing":"Stopped")+" | Layers "+juce::String((int)(state&255))+" / 8 | 16-second maximum | Session-only audio",juce::dontSendNotification);}}
-void VirtualCortexEditor::updateView(){refreshGridControls();const int type=currentType();const bool gm=gridMode(),sync=processor.parameters.getRawParameterValue("sdSync")->load()>.5f,ping=processor.parameters.getRawParameterValue("sdPingPong")->load()>.5f; const bool intervalSync=processor.parameters.getRawParameterValue("ieSync")->load()>.5f,crusherSync=processor.parameters.getRawParameterValue("scSync")->load()>.5f;if(type==lastView&&intervalSync==lastIntervalSync&&crusherSync==lastCrusherSync&&gm==lastGridMode&&sync==lastStereoSync&&ping==lastStereoPing)return;lastIntervalSync=intervalSync;lastCrusherSync=crusherSync;lastStereoSync=sync;lastStereoPing=ping;if(gm!=lastGridMode)statusLabel.setText({},juce::dontSendNotification);lastView=type;lastGridMode=gm;for(auto& k:knobs){k.slider.setVisible(false);k.value.setVisible(false);}for(auto& s:slotSliders)s.setVisible(false);for(auto& value:slotValues)value.setVisible(false);for(auto& s:switches)s.button.setVisible(false);
+void VirtualCortexEditor::timerCallback(){advancedEditor.refresh();routingSelector.setSelectedId(processor.getRoutingMode()+1,juce::dontSendNotification);updateView();refreshSlotControls();if(currentType()==27){const auto state=processor.loopStatus();loopButtons[0].setButtonText((state&256)?"END RECORD":"REC / DUB");statusLabel.setText(juce::String((state&256)?"Recording":(state&512)?"Playing":"Stopped")+" | Layers "+juce::String((int)(state&255))+" / 8 | 16-second maximum | Session-only audio",juce::dontSendNotification);}}
+void VirtualCortexEditor::updateView(){refreshGridControls();const int type=currentType();advancedEditor.select(selectedRow,selectedColumn,type);advancedEditor.setVisible(editorsVisible&&gridMode()&&!masterPage&&vc::isAdvanced(type));const bool gm=gridMode(),sync=processor.parameters.getRawParameterValue("sdSync")->load()>.5f,ping=processor.parameters.getRawParameterValue("sdPingPong")->load()>.5f; const bool intervalSync=processor.parameters.getRawParameterValue("ieSync")->load()>.5f,crusherSync=processor.parameters.getRawParameterValue("scSync")->load()>.5f;if(type==lastView&&intervalSync==lastIntervalSync&&crusherSync==lastCrusherSync&&gm==lastGridMode&&sync==lastStereoSync&&ping==lastStereoPing)return;lastIntervalSync=intervalSync;lastCrusherSync=crusherSync;lastStereoSync=sync;lastStereoPing=ping;if(gm!=lastGridMode)statusLabel.setText({},juce::dontSendNotification);lastView=type;lastGridMode=gm;for(auto& k:knobs){k.slider.setVisible(false);k.value.setVisible(false);}for(auto& s:slotSliders)s.setVisible(false);for(auto& value:slotValues)value.setVisible(false);for(auto& s:switches)s.button.setVisible(false);
  switches[6].button.setVisible(true);switches[9].button.setVisible(true);
  slotLabels={"DRIVE","MIX","TIME","FEEDBACK","RATE","DEPTH"};
  if(type==31)slotLabels={"SIZE","MIX","DECAY","WIDTH","PRE DELAY","DIFFUSION"};
@@ -314,9 +316,10 @@ void VirtualCortexEditor::resized(){
  bankButtons[0].setVisible(false);bankButtons[1].setVisible(false);
  const int rowStep=editorsVisible?46:160,rowTop=editorsVisible?132:153;
  for(int r=0;r<4;++r){laneButtons[(size_t)r].setVisible(true);laneButtons[(size_t)r].setBounds(302,rowTop+r*rowStep+5,49,editorsVisible?39:84);for(int c=0;c<8;++c){auto& cell=gridCells[(size_t)r][(size_t)c];cell.setVisible(true);cell.setBounds(363+c*93,rowTop+r*rowStep,94,editorsVisible?44:92);}}
- routingSelector.setBounds(700,35,260,32);catalogButton.setBounds(511,35,115,32);catalogPanel.setBounds(53,78,1121,752);
+ routingSelector.setBounds(638,35,165,32);directoryButton.setVisible(false);catalogButton.setBounds(511,35,115,32);catalogPanel.setBounds(53,78,1121,752);
  fullScreenButton.setBounds(805,35,162,32);
  editorsButton.setButtonText(editorsVisible?"HIDE EDITORS":"SHOW EDITORS");editorsButton.setBounds(205,837,140,24);
+ advancedEditor.setBounds(302,354,872,236);advancedEditor.setVisible(editorsVisible&&gridMode()&&!masterPage&&vc::isAdvanced(currentType()));
  const auto indices=gridMode()&&!masterPage?visibleSlotControls():visibleKnobs();
  for(int j=0;j<(int)indices.size();++j){const int i=indices[(size_t)j];const int x=302+(j%5)*174,y=354+(j/5)*118;
   const auto knob=juce::Rectangle<int>(x+92,y+43,76,76),value=juce::Rectangle<int>(x+6,y+83,92,28);
@@ -367,13 +370,13 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
  if(editorsVisible){
  g.setColour(juce::Colour(0xff111111));g.fillRoundedRectangle(parameterArea.toFloat(),5);g.setColour(panel);g.fillRect(302,354,872,236);
  for(int i=0;i<3;++i){g.setColour(muted);g.fillEllipse(318.f,325.f+i*7.f,2.f,2.f);g.fillEllipse(318.f,605.f+i*7.f,2.f,2.f);}
- drawCaption(g,CortexBlockButton::nameFor(currentType()),{347,319,currentType()==26?195:135,33},18.f,muted);drawCaption(g,currentType()==2?"Original amplifier":currentType()==3?"Cabinet IR":currentType()>=30?"GRID DEVICE":currentType()>=28?"INPUT PROCESSOR":currentType()>=23?"POST CHAIN":currentType()==8?"Original peak compressor":currentType()==9?"Original soft clipping":currentType()==10?"Original hard clipping":"Original",{currentType()==26?545:485,319,currentType()==26?540:600,33},18.f,CortexBlockButton::colourFor(currentType()));
+ drawCaption(g,CortexBlockButton::nameFor(currentType()),{347,319,vc::isAdvanced(currentType())?350:currentType()==26?195:135,33},18.f,muted);drawCaption(g,currentType()==2?"Original amplifier":currentType()==3?"Cabinet IR":currentType()>=30?"GRID DEVICE":currentType()>=28?"INPUT PROCESSOR":currentType()>=23?"POST CHAIN":currentType()==8?"Original peak compressor":currentType()==9?"Original soft clipping":currentType()==10?"Original hard clipping":"Original",{vc::isAdvanced(currentType())?710:currentType()==26?545:485,319,vc::isAdvanced(currentType())?410:currentType()==26?540:600,33},18.f,CortexBlockButton::colourFor(currentType()));
  const auto indices=gridMode()&&!masterPage?visibleSlotControls():visibleKnobs();for(int j=0;j<10;++j){int x=302+(j%5)*174,y=354+(j/5)*118;g.setColour(juce::Colour(0xff070707));g.drawLine((float)x+174,(float)y+8,(float)x+174,(float)y+118,1.f);g.drawLine((float)x,(float)y+118,(float)x+174,(float)y+118,1.f);if(j<(int)indices.size()){int i=indices[(size_t)j];drawCaption(g,gridMode()&&!masterPage?slotLabels[(size_t)i]:knobs[(size_t)i].label,{x+9,y+6,156,23},15.f);}}
  if(indices.empty())drawCaption(g,currentType()==0?"Select a slot, then choose a device from the directory.":currentType()==3?"Load a cabinet impulse response.":"Fixed settings in the current grid engine.",{320,381,730,44},14.f,muted);
 
  g.setColour(panel);g.fillRect(302,598,172,232);g.setColour(juce::Colour(0xff070707));g.drawRect(302,598,172,36,1);drawCaption(g,"Gig view",{343,599,125,33},20.f,juce::Colours::white,juce::Justification::centredLeft,true);drawCaption(g,"Parameter Editor",{310,796,156,32},14.f,muted);
  }
- drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.22.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
+ drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.23.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
 }
 void VirtualCortexEditor::applyPreset(int index){auto set=[this](const char* id,float value){if(auto* p=processor.parameters.getParameter(id))p->setValueNotifyingHost(p->convertTo0to1(value));};if(index<2)return;set("gridMode",0.f);
  if(index==2){set("drive",.12f);set("tone",.7f);set("level",.65f);set("delayMix",.12f);set("reverbMix",.25f);set("ampBias",0.f);set("delayOn",1.f);set("reverbOn",1.f);}
@@ -408,6 +411,7 @@ juce::StringArray VirtualCortexEditor::deviceNames() const{
  case 28:return {"Prism lead","Sub bass"};
  case 29:return {"Digital staircase","Filter stutter","Octave steps"};
  case 26:return {"Interval staircase","Octave wander"};
+ case 32:case 33:case 34:case 35:case 36:return {"Place device in selected slot"};
  case 31:return {"Place stereo reverb in selected slot"};
  case 30:return {"Place stereo delay in selected slot"};
  case 27:return {"Session looper"};
@@ -422,7 +426,7 @@ void VirtualCortexEditor::refreshDeviceList(){categoryBox.setSelectedId(browserT
 void VirtualCortexEditor::applyDeviceVariant(int index){
  const auto names=deviceNames();if(index<0||index>=names.size())return;variant=index;
  auto set=[this](const char* id,float v){if(auto* p=processor.parameters.getParameter(id))p->setValueNotifyingHost(p->convertTo0to1(v));};
- if(browserType==31){set("gridMode",1);insertBlock(31);setEditorsVisible(true);return;}
+ if(vc::isAdvanced(browserType)){set("gridMode",1);insertBlock(browserType);setEditorsVisible(true);return;}
  if(browserType==30){set("gridMode",1);insertBlock(30);setEditorsVisible(true);return;}
  if(browserType==28){set("syOn",1);set("syTranspose",index?-12:0);set("syCutoff",index?600:1800);set("syMix",1);set("syWave",1);masterPage=true;lastView=-1;updateView();statusLabel.setText("Mono tracking | Left input | MIDI channel 1 (host routing)",juce::dontSendNotification);return;}
  if(browserType==29){set("scOn",1);set("scMode",index==1?1:0);set("scPitch",index==2?1:0);set("scStutter",index==1?.7f:0);set("scMix",.7f);masterPage=true;lastView=-1;updateView();statusLabel.setText("Six steps | Optional tempo sync | Rate / Filter / Bits / Pitch",juce::dontSendNotification);return;}

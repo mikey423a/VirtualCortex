@@ -13,7 +13,7 @@ int main(int argc,char** argv){
   auto editor=std::make_unique<VirtualCortexEditor>(*processor);
   juce::File dir(argc>1?juce::String(argv[1]):juce::File::getCurrentWorkingDirectory().getFullPathName());
   require(dir.createDirectory().wasOk(),"Cannot create screenshot directory");
-  auto capture=[&](const char* name,int w,int h){
+  auto capture=[&](const juce::String& name,int w,int h){
    editor->setSize(w,h);
    for(int i=0;i<editor->getNumChildComponents();++i){auto* child=editor->getChildComponent(i);if(child->isVisible())require(editor->getLocalBounds().contains(child->getBoundsInParent()),"A visible control is clipped by the window");}
    const auto image=editor->createComponentSnapshot(editor->getLocalBounds());
@@ -25,7 +25,7 @@ int main(int argc,char** argv){
    auto* openCatalog=dynamic_cast<juce::Button*>(editor->findChildWithID("catalog-toggle"));
    auto* catalog=dynamic_cast<DeviceCatalogPanel*>(editor->findChildWithID("device-catalog-panel"));
    require(openCatalog&&catalog&&!catalog->isVisible(),"Catalog must start hidden");
-   openCatalog->onClick();require(catalog->isVisible()&&catalog->visibleEntryCount()==719,"Catalog is incomplete");
+   openCatalog->onClick();require(catalog->isVisible()&&catalog->visibleEntryCount()==724,"Catalog is incomplete");
    auto* search=dynamic_cast<juce::TextEditor*>(catalog->findChildWithID("catalog-search"));
    auto* availability=dynamic_cast<juce::ComboBox*>(catalog->findChildWithID("catalog-availability"));
    auto* section=dynamic_cast<juce::ComboBox*>(catalog->findChildWithID("catalog-section"));
@@ -37,7 +37,7 @@ int main(int argc,char** argv){
    action->onClick();require(chosen==-1,"Unavailable model invoked insertion");
    capture("catalog-reference-1184x864.png",1184,864);
    query("Marshall JCM800");require(catalog->visibleEntryCount()>0&&catalog->selectedPlayableType()==0,"Gear search requires trademark symbols");
-   query("");availability->setSelectedId(2,juce::sendNotificationSync);require(catalog->visibleEntryCount()==30,"Original count incorrect");
+   query("");availability->setSelectedId(2,juce::sendNotificationSync);require(catalog->visibleEntryCount()==35,"Original count incorrect");
    query("Bit-crusher");require(catalog->visibleEntryCount()==1&&action->isEnabled(),"Working original cannot be selected");
    action->onClick();require(chosen==15,"Original action routed to wrong processor");
    query("Four-head Echo");action->onClick();require(chosen==25,"Post-chain action routed to wrong processor");
@@ -140,7 +140,7 @@ int main(int argc,char** argv){
   require(processor->getEditableGrid().get(3,6)->type==vc::BlockType::Chorus,"Chorus browser selection inserted wrong block");
   require(std::abs(processor->getGridSlotParameters(3,6).rate-.04f)<1.e-5f,"Chorus preset parameters not applied");
   editor->setEditorsVisible(true);capture("chorus-browser-preset.png",1184,864);
-  auto* category=dynamic_cast<juce::ComboBox*>(editor->findChildWithID("device-category"));require(category&&category->getNumItems()==31,"Expanded category selector missing");
+  auto* category=dynamic_cast<juce::ComboBox*>(editor->findChildWithID("device-category"));require(category&&category->getNumItems()==36,"Expanded category selector missing");
   for(int type:{16,17,18,19,20,21}){
    editor->selectSlot(1,type-16);category->setSelectedId(type,juce::sendNotificationSync);
    auto* entry=dynamic_cast<juce::Button*>(editor->findChildWithID("device-0"));require(entry&&entry->isVisible(),"New category has no selectable device");entry->onClick();
@@ -224,12 +224,34 @@ int main(int argc,char** argv){
    editor->selectSlot(0,7);menu->setSelectedId(30,juce::sendNotificationSync);
    auto* preset=dynamic_cast<juce::Button*>(editor->findChildWithID("device-0"));require(preset&&preset->isVisible(),"Grid stereo delay preset missing");preset->onClick();
    require(processor->getEditableGrid().get(0,7)->type==vc::BlockType::GridStereoDelay,"Grid delay not inserted");
-   require(editor->findChildWithID("slot-param-4")->isVisible(),"Grid delay right time hidden");
+   require(editor->findChildWithID("advanced-grid-editor")->findChildWithID("advanced-sdTimeR")->isVisible(),"Grid delay right time hidden");
    capture("grid-stereo-delay-2560x1440.png",2560,1440);
    editor->selectSlot(1,7);menu->setSelectedId(31,juce::sendNotificationSync);preset->onClick();
    require(processor->getEditableGrid().get(1,7)->type==vc::BlockType::GridStereoReverb,"Grid reverb not inserted");
-   require(editor->findChildWithID("slot-param-2")->isVisible(),"Grid reverb decay hidden");
+   require(editor->findChildWithID("advanced-grid-editor")->findChildWithID("advanced-srDecay")->isVisible(),"Grid reverb decay hidden");
    capture("grid-stereo-reverb-2560x1440.png",2560,1440);
+  }
+  {
+   auto* menu=dynamic_cast<juce::ComboBox*>(editor->findChildWithID("device-category"));
+   auto* panel=editor->findChildWithID("advanced-grid-editor");
+   for(int type=30;type<=36;++type){
+    editor->selectSlot(2,7);menu->setSelectedId(type,juce::sendNotificationSync);
+    dynamic_cast<juce::Button*>(editor->findChildWithID("device-0"))->onClick();
+    require((int)processor->getEditableGrid().get(2,7)->type==type,"Advanced insertion failed");
+    const auto& def=vc::advancedDefinitions[type-30];
+    for(int i=0;i<def.count;++i){
+     if(i&&i%8==0)dynamic_cast<juce::Button*>(panel->findChildWithID("advanced-next"))->onClick();
+     auto* control=panel->findChildWithID("advanced-"+juce::String(def.controls[i].id));
+     // Both slider and toggle carry the ID; select the visible component.
+     for(auto* child:panel->getChildren())if(child->getComponentID()=="advanced-"+juce::String(def.controls[i].id)&&child->isVisible())control=child;
+     require(control&&control->isVisible(),"Advanced full control missing");
+     const float value=def.controls[i].toggle?1.f:def.controls[i].low+.37f*(def.controls[i].high-def.controls[i].low);
+     if(auto* slider=dynamic_cast<juce::Slider*>(control))slider->setValue(value,juce::sendNotificationSync);
+     if(auto* button=dynamic_cast<juce::ToggleButton*>(control)){button->setToggleState(true,juce::dontSendNotification);button->onClick();}
+     require(std::abs(processor->getAdvancedValues(2,7)[i]-value)<.01f,"Advanced slot control unbound");
+     if(i%8==0)capture("advanced-"+juce::String(type)+"-page-"+juce::String(i/8+1)+"-2560x1440.png",2560,1440);
+    }
+   }
   }
   editor.reset();processor->releaseResources();
   std::cout<<"PASS: native editor snapshots at three sizes, control binding, insertion and bypass\n";

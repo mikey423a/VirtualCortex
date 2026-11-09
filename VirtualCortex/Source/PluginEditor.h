@@ -2,6 +2,7 @@
 #include "PluginProcessor.h"
 #include <array>
 #include "DeviceCatalogPanel.h"
+#include "AdvancedGridEditor.h"
 
 class CortexLookAndFeel final : public juce::LookAndFeel_V4 {
 public:
@@ -46,6 +47,7 @@ public:
 private:
  VirtualCortexProcessor& processor;
  CortexLookAndFeel look;
+ AdvancedGridEditor advancedEditor{processor};
  struct Knob {juce::Slider slider;std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attachment;juce::Label value;juce::String label;};
  struct Switch {juce::ToggleButton button;std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> attachment;};
  juce::TextButton trackingPageButton{"MORE"};int trackingPage=0;bool lastIntervalSync=false,lastCrusherSync=false;
