@@ -253,6 +253,15 @@ int main(int argc,char** argv){
     }
    }
   }
+#if VC_HAS_NAM
+  {
+   const auto fixture=dir.getChildFile("Native NAM test.nam");fixture.replaceWithText(R"({"version":"0.5.4","architecture":"Linear","config":{"receptive_field":1,"bias":false},"weights":[0.5],"sample_rate":48000,"metadata":{}})");
+   editor->selectSlot(0,0);editor->insertBlock(2);require(processor->loadGridNeuralModel(fixture,0,0),"UI NAM fixture failed");editor->selectSlot(0,0);editor->setEditorsVisible(true);
+   require(editor->findChildWithID("slot-param-1")->isVisible(),"NAM output gain hidden");
+   capture("live-nam-2560x1440.png",2560,1440);capture("live-nam-822x600.png",822,600);
+   auto* clear=dynamic_cast<juce::Button*>(editor->findChildWithID("clear-amp-model"));require(clear&&clear->isVisible(),"NAM removal missing");clear->onClick();require(!processor->isGridNAM(0,0)&&!editor->findChildWithID("slot-param-1")->isVisible(),"NAM removal unbound");
+  }
+#endif
   editor.reset();processor->releaseResources();
   std::cout<<"PASS: native editor snapshots at three sizes, control binding, insertion and bypass\n";
   return 0;

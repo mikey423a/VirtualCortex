@@ -1,6 +1,7 @@
 #pragma once
 #include "ParallelGrid.h"
 #include "AdvancedGridEffect.h"
+#include "LiveAmp.h"
 #include "StereoDelay.h"
 #include "StereoReverb.h"
 #include "OriginalEffects.h"
@@ -40,6 +41,7 @@ public:
   std::swap((*irs_)[ar][ac],(*irs_)[br][bc]);
   std::swap((*state_)[ar][ac],(*state_)[br][bc]);
   std::swap((*neural_)[ar][ac],(*neural_)[br][bc]);
+  std::swap(liveAmps_[ar][ac],liveAmps_[br][bc]);
   std::swap(advancedSlots_[ar][ac],advancedSlots_[br][bc]);
   std::swap(reverbSlots_[ar][ac],reverbSlots_[br][bc]);
   std::swap(stereoSlots_[ar][ac],stereoSlots_[br][bc]);
@@ -65,6 +67,9 @@ public:
  }
  unsigned advancedStatus(std::size_t row,std::size_t col)const noexcept {const auto* e=advancedSlots_[row][col].get();return e?e->status():0;}
  using MidiSink=void(*)(void*,std::size_t,std::size_t,int,float,std::size_t);
+ // Control thread only, with audio excluded. Old model is destroyed here.
+ void setLiveAmp(std::size_t row,std::size_t col,std::unique_ptr<LiveAmp> model){if(SignalGrid::valid(row,col))liveAmps_[row][col]=std::move(model);}
+ LiveAmpStatus liveAmpStatus(std::size_t row,std::size_t col)const noexcept {if(!SignalGrid::valid(row,col))return LiveAmpStatus::None;const auto* p=liveAmps_[row][col].get();return p?p->status():LiveAmpStatus::None;}
  static constexpr std::size_t maxIrTaps = 4096;
  // May be called at a block boundary by the audio callback. Coefficients are
  // copied into fixed-size storage; both old and new FIRs run for 128 samples.
@@ -120,6 +125,7 @@ public:
  bool setSlotParameters(std::size_t row,std::size_t col,const SlotParameters& p) noexcept {
   if (!SignalGrid::valid(row,col) || !SlotParameters::valid(p)) return false;
   parameters_[row][col]=p;
+  if(liveAmps_[row][col])liveAmps_[row][col]->setGains(-24+48*p.drive,-24+48*p.mix);
   if(reverbSlots_[row][col]){StereoReverbParameters d;d.enabled=true;d.decay=.2f+19.8f*p.time;d.mix=p.mix;d.size=.5f+1.5f*p.drive;d.preDelay=500*p.rate;d.diffusion=p.depth;d.width=1.5f*p.feedback;d.preGlide=false;reverbSlots_[row][col]->configure(d);}
   if(stereoSlots_[row][col]){StereoDelayParameters d;d.enabled=true;d.timeL=1+3999*p.time;d.timeR=1+3999*p.rate;d.feedback=.95f*p.feedback;d.mix=p.mix;d.cross=p.depth;d.diffusion=p.drive;d.filterMix=0;stereoSlots_[row][col]->configure(d);}
   return true;
@@ -143,6 +149,7 @@ public:
    slot.previousEnabled=false;
   }
   rate_ = std::isfinite(sampleRate) ? std::clamp(sampleRate,8000.0,192000.0) : 48000.0;
+  for(auto& row:liveAmps_)for(auto& model:row)if(model)model->prepare(sampleRate);
   for(auto& row:advancedSlots_)for(auto& effect:row)if(effect)effect->prepare(rate_);
   for(auto& row:reverbSlots_)for(auto& effect:row)if(effect)effect->prepare(rate_);
   for(auto& row:stereoSlots_)for(auto& effect:row)if(effect)effect->prepare(rate_);
@@ -160,6 +167,7 @@ public:
    const std::array<float,2> input{samples[i*channels],channels==2?samples[i*channels+1]:0.f};
    auto advanced=[&](std::size_t row,std::size_t col,float l,float r){auto& e=*advancedSlots_[row][col];auto frame=e.process(l,r);if(midi&&e.kind()==35)midi(midiContext,row,col,e.midiNote(),e.midiVelocity(),i);return frame;};
    auto mono=[&](std::size_t c,std::size_t row,std::size_t col,BlockType block,float x) noexcept {
+    if(block==BlockType::Amp&&liveAmps_[row][col])return liveAmps_[row][col]->process(c,x);
     if(isAdvanced((int)block)&&advancedSlots_[row][col]){auto frame=advanced(row,col,x,x);return (frame[0]+frame[1])*.5f;}
     if(block==BlockType::GridStereoReverb&&reverbSlots_[row][col]){auto frame=reverbSlots_[row][col]->process(x,x);return (frame[0]+frame[1])*.5f;}
     if(block==BlockType::GridStereoDelay&&stereoSlots_[row][col]){auto frame=stereoSlots_[row][col]->process(x,x);return (frame[0]+frame[1])*.5f;}
@@ -184,6 +192,7 @@ public:
   return true;
  }
 private:
+ std::array<std::array<std::unique_ptr<LiveAmp>,8>,4> liveAmps_{};
  std::array<std::array<std::unique_ptr<AdvancedGridEffect>,8>,4> advancedSlots_{};
  std::array<std::array<std::unique_ptr<StereoReverb>,8>,4> reverbSlots_{};
  std::array<std::array<std::unique_ptr<StereoDelay>,8>,4> stereoSlots_{};

@@ -78,7 +78,7 @@ bool VirtualCortexProcessor::swapGridSlots(int ar,int ac,int br,int bc){
  for(int i=0;i<32;++i){commitPendingGridIR();commitPendingNeuralModels();}
  const auto grid=getEditableGrid();const auto a=*grid.get(ar,ac),b=*grid.get(br,bc);
  const auto pa=getGridSlotParameters(ar,ac),pb=getGridSlotParameters(br,bc);
- gridAudio.swapSlots(ar,ac,br,bc);
+ gridAudio.swapSlots(ar,ac,br,bc);updateNamStatus();
  setGridSlotParameters(ar,ac,pb);setGridSlotParameters(br,bc,pa);
  auto& aa=advancedControls[ar][ac];auto& ab=advancedControls[br][bc];
  const auto va=aa.load();aa.store(ab.load());ab.store(va);
@@ -338,7 +338,7 @@ void VirtualCortexProcessor::prepareToPlay(double sampleRate,int samplesPerBlock
  assetSampleRate.store(fs,std::memory_order_release);
  // Routing changes are published through atomic row snapshots.
  updateGridRouting();
- gridAudio.prepare(fs);
+ gridAudio.prepare(fs);updateNamStatus();
  trackingSynth.prepare(fs);sequenceCrusher.prepare(fs);midiPanic=true;intervalEcho.prepare(fs);layerLoom.prepare(fs);loopCommands=0;loopState=0;
  multiHead.prepare(fs);mhMix=0;mhDrain=0;
  stereoDelay.prepare(fs);
@@ -425,6 +425,7 @@ void VirtualCortexProcessor::processBlock(juce::AudioBuffer<float>& b,juce::Midi
     for(int ch=0;ch<count;++ch)
      b.setSample(ch,offset+i,juce::jlimit(-1.f,1.f,interleaved[static_cast<size_t>(i*count+ch)]*(useStereo?1.f:channels[(size_t)ch].outputSmoother.process(outputTrim))));
   }
+  updateNamStatus();
   for(int r=0;r<4;++r)for(int c=0;c<8;++c)advancedControls[r][c].status=gridAudio.advancedStatus(r,c);
   if(useStereo)processStereoDelay(b);
   return;
@@ -575,25 +576,61 @@ void VirtualCortexProcessor::commitPendingNeuralModels() noexcept {
   gridAudio.setNeuralAmp(row,col,model);
  });
 }
-bool VirtualCortexProcessor::loadGridNeuralModel(const juce::File& file,
-                                                std::size_t row,std::size_t col) {
- if(!vc::SignalGrid::valid(row,col) || !file.existsAsFile()) return false;
- const auto grid=getEditableGrid();
- const auto slot=grid.get(row,col);
- if(!slot || slot->type!=vc::BlockType::Amp) return false;
- vc::NeuralAmpModel model;
- try { model=vc::loadNeuralAmpModel(file.getFullPathName().toStdString()); }
- catch(const std::exception&) { return false; }
- std::lock_guard<std::mutex> guard(assetMutex);
- if(!pendingNeuralModels.submit(row,col,&model)) return false;
- gridNeuralPaths[row][col]=file.getFullPathName();
- return true;
+void VirtualCortexProcessor::updateNamStatus()noexcept {
+ for(int r=0;r<4;++r)for(int c=0;c<8;++c)namStatus[r][c]=(int)gridAudio.liveAmpStatus(r,c);
 }
-juce::String VirtualCortexProcessor::getGridNeuralModelName(std::size_t row,std::size_t col) const {
- if(!vc::SignalGrid::valid(row,col)) return "Invalid slot";
- std::lock_guard<std::mutex> guard(assetMutex);
- const auto& path=gridNeuralPaths[row][col];
- return path.isEmpty()?"No neural model":juce::File(path).getFileName();
+bool VirtualCortexProcessor::loadGridNeuralModel(const juce::File& file,std::size_t row,std::size_t col,bool restoring){
+ auto fail=[&](juce::String message){std::lock_guard<std::mutex> lock(assetMutex);lastModelError=std::move(message);return false;};
+ if(!vc::SignalGrid::valid(row,col)||!file.existsAsFile())return fail("Model file is missing");
+ if(getEditableGrid().get(row,col)->type!=vc::BlockType::Amp)return fail("Select an Amp block in the grid first");
+ const bool nam=file.hasFileExtension("nam");
+ if(!nam&&!file.hasFileExtension("vcmlp;txt"))return fail("Choose a .nam or .vcmlp model");
+ vc::NeuralAmpModel legacy;std::unique_ptr<vc::LiveAmp> live;
+ const double rate=assetSampleRate.load();
+ try{
+  if(nam){
+#if VC_HAS_NAM
+   live=vc::loadLiveNamAmp(file.getFullPathName().toStdString(),rate,restoring);
+#else
+   return fail("This build does not include the NAM backend");
+#endif
+  }else legacy=vc::loadNeuralAmpModel(file.getFullPathName().toStdString());
+ }catch(const std::exception& e){return fail(juce::String::fromUTF8(e.what()));}
+ std::lock_guard<std::recursive_mutex> move(gridMoveMutex);
+ std::lock_guard<std::mutex> assets(assetMutex);
+ if(getEditableGrid().get(row,col)->type!=vc::BlockType::Amp){lastModelError="Selected slot changed while loading";return false;}
+ if(live&&std::abs(fs-rate)>.5){live->prepare(fs);if(live->status()!=vc::LiveAmpStatus::Ready&&!(restoring&&live->status()==vc::LiveAmpStatus::RateMismatch)){lastModelError="Audio sample rate changed while loading; match the model rate and retry";return false;}}
+ for(int i=0;i<32;++i)commitPendingNeuralModels();
+ gridAudio.setNeuralAmp(row,col,nam?nullptr:&legacy);
+ gridAudio.setLiveAmp(row,col,std::move(live));
+ if(nam&&!restoring&&!gridNeuralPaths[row][col].endsWithIgnoreCase(".nam")){
+  auto settings=getGridSlotParameters(row,col);settings.drive=settings.mix=.5f;setGridSlotParameters(row,col,settings);
+ }
+ gridNeuralPaths[row][col]=file.getFullPathName();lastModelError.clear();updateNamStatus();return true;
+}
+bool VirtualCortexProcessor::clearGridNeuralModel(std::size_t row,std::size_t col){
+ if(!vc::SignalGrid::valid(row,col))return false;
+ std::lock_guard<std::recursive_mutex> move(gridMoveMutex);std::lock_guard<std::mutex> assets(assetMutex);
+ for(int i=0;i<32;++i)commitPendingNeuralModels();
+ gridAudio.setLiveAmp(row,col,nullptr);gridAudio.setNeuralAmp(row,col,nullptr);gridNeuralPaths[row][col].clear();lastModelError.clear();updateNamStatus();return true;
+}
+bool VirtualCortexProcessor::isGridNAM(std::size_t row,std::size_t col)const {
+ if(!vc::SignalGrid::valid(row,col))return false;std::lock_guard<std::mutex> lock(assetMutex);return gridNeuralPaths[row][col].endsWithIgnoreCase(".nam");
+}
+juce::String VirtualCortexProcessor::getLastModelError()const {std::lock_guard<std::mutex> lock(assetMutex);return lastModelError;}
+juce::String VirtualCortexProcessor::getGridNeuralModelName(std::size_t row,std::size_t col)const {
+ if(!vc::SignalGrid::valid(row,col))return "Invalid slot";
+ std::lock_guard<std::mutex> guard(assetMutex);const auto& path=gridNeuralPaths[row][col];
+ if(path.isEmpty())return "No neural model";
+ juce::String suffix;
+ switch((vc::LiveAmpStatus)namStatus[row][col].load()){
+  case vc::LiveAmpStatus::Ready:suffix=" [NAM]";break;
+  case vc::LiveAmpStatus::RateMismatch:suffix=" [rate mismatch - muted]";break;
+  case vc::LiveAmpStatus::Fault:suffix=" [model fault - muted]";break;
+  case vc::LiveAmpStatus::Missing:suffix=" [unavailable NAM - muted]";break;
+  default:break;
+ }
+ return juce::File(path).getFileName()+suffix;
 }
 bool VirtualCortexProcessor::loadGridCabinetIR(const juce::File& file,
                                                 std::size_t row, std::size_t col) {
@@ -764,9 +801,15 @@ void VirtualCortexProcessor::setStateInformation(const void* data,int size){
    p.repeatFx=static_cast<bool>(restored.getProperty(key+"repeatFx",false));
    setGridSlotParameters(row,col,p);loadAdvanced(restored,(int)row,(int)col,key+"advanced_");
    const auto neuralPath=restored.getProperty(key+"neuralPath").toString();
-   if(neuralPath.isEmpty() || !loadGridNeuralModel(juce::File(neuralPath),row,col)){
-    std::lock_guard<std::mutex> guard(assetMutex);
-    pendingNeuralModels.submit(row,col,nullptr);gridNeuralPaths[row][col].clear();
+   if(neuralPath.isEmpty())clearGridNeuralModel(row,col);
+   else if(!loadGridNeuralModel(juce::File(neuralPath),row,col,true)){
+    clearGridNeuralModel(row,col);
+    if(neuralPath.endsWithIgnoreCase(".nam")){
+     // A missing/rejected NAM must not silently become the basic amp.
+     std::lock_guard<std::mutex> guard(assetMutex);
+     gridAudio.setLiveAmp(row,col,std::make_unique<vc::UnavailableLiveAmp>());
+     gridNeuralPaths[row][col]=neuralPath;updateNamStatus();
+    }
    }
    const auto gridPath=restored.getProperty(key+"irPath").toString();
    if(gridPath.isEmpty() || !loadGridCabinetIR(juce::File(gridPath),row,col)){

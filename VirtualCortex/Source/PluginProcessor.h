@@ -1,4 +1,7 @@
 #pragma once
+#ifndef VC_HAS_NAM
+#define VC_HAS_NAM 0
+#endif
 #include <JuceHeader.h>
 #include <array>
 #include <atomic>
@@ -51,7 +54,10 @@ public:
  bool loadCabinetIR(const juce::File& wavFile);
  // Loads and stages a WAV IR for the selected grid slot; audio thread commits it.
  bool loadGridCabinetIR(const juce::File& wavFile, std::size_t row, std::size_t col);
- bool loadGridNeuralModel(const juce::File& modelFile,std::size_t row,std::size_t col);
+ bool loadGridNeuralModel(const juce::File& modelFile,std::size_t row,std::size_t col,bool restoring=false);
+ bool clearGridNeuralModel(std::size_t row,std::size_t col);
+ bool isGridNAM(std::size_t row,std::size_t col)const;
+ juce::String getLastModelError()const;
  juce::String getGridNeuralModelName(std::size_t row,std::size_t col) const;
  juce::String getGridCabinetIRName(std::size_t row, std::size_t col) const;
  juce::String getCabinetIRName() const;
@@ -77,6 +83,9 @@ private:
  void emitGridNote(juce::MidiBuffer&,int slot,int note,float velocity,int sample);
  void saveAdvanced(juce::ValueTree&,int row,int col,const juce::String& prefix)const;
  void loadAdvanced(const juce::ValueTree&,int row,int col,const juce::String& prefix);
+ std::array<std::array<std::atomic<int>,8>,4> namStatus{};
+ juce::String lastModelError;
+ void updateNamStatus()noexcept;
  std::recursive_mutex gridMoveMutex;
  std::atomic<int> routingMode{0};
  mutable std::mutex sceneMutex;

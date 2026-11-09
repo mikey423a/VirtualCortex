@@ -298,6 +298,31 @@ int runProcessorAudioTests(){
    p->setGridBlock(0,0,{vc::BlockType::GridPrismSynth,false});b.clear();p->processBlock(b,midi);for(const auto m:midi)if(m.getMessage().isNoteOff())++offs;
    check(ons>0&&offs>0,"Grid synth missing MIDI or bypass note-off");
   }
+#if VC_HAS_NAM
+  {
+   const auto file=folder.getChildFile("live-amp.nam");check(file.replaceWithText(R"({"version":"0.5.4","architecture":"Linear","config":{"receptive_field":2,"bias":false},"weights":[0.5,0.25],"sample_rate":48000,"metadata":{}})"),"NAM fixture failed");
+   auto p=std::make_unique<VirtualCortexProcessor>();set(*p,"outputTrim",1);prepare(*p);grid(*p,vc::BlockType::Amp);
+   check(p->loadGridNeuralModel(file,0,0)&&p->isGridNAM(0,0),"Native NAM load failed");
+   juce::AudioBuffer<float>b(2,1);juce::MidiBuffer midi;b.clear();b.setSample(0,0,.2f);
+   allocationProbe::count=0;allocationProbe::enabled=true;p->processBlock(b,midi);allocationProbe::enabled=false;
+   check(allocationProbe::count==0,"Native NAM callback allocated");check(std::abs(b.getSample(0,0)-.1f)<2.e-6f&&b.getSample(1,0)==0,"Native NAM oracle/latency/channel isolation failed");
+   p->swapGridSlots(0,0,0,7);b.clear();p->processBlock(b,midi);check(std::abs(b.getSample(0,0)-.05f)<2.e-6f&&p->isGridNAM(0,7),"NAM move lost state/path");
+   auto settings=p->getGridSlotParameters(0,7);settings.drive=.625f;settings.mix=.375f;p->setGridSlotParameters(0,7,settings);
+   const auto saved=state(*p);auto q=std::make_unique<VirtualCortexProcessor>();prepare(*q);restore(*q,saved);
+   check(q->isGridNAM(0,7)&&q->getGridSlotParameters(0,7).drive==.625f&&q->getGridSlotParameters(0,7).mix==.375f,"NAM preset lost model/trims");
+   prepare(*q,44100);check(q->getGridNeuralModelName(0,7).contains("rate mismatch"),"NAM rate mismatch invisible");check(settle(*q,.1f,4)==0,"Wrong-rate NAM was audible");
+   prepare(*q,48000);check(q->getGridNeuralModelName(0,7).contains("[NAM]"),"NAM rate recovery failed");
+   const auto broken=folder.getChildFile("broken.nam");broken.replaceWithText("{}");check(!q->loadGridNeuralModel(broken,0,7)&&q->getGridNeuralModelName(0,7).startsWith("live-amp.nam"),"Invalid model replaced good NAM");
+   check(q->clearGridNeuralModel(0,7)&&!q->isGridNAM(0,7),"NAM unload failed");
+   file.deleteFile();restore(*q,saved);check(q->getGridNeuralModelName(0,7).contains("unavailable NAM")&&settle(*q,.1f,4)==0,"Missing NAM silently became basic amp");
+  }
+  {
+   const auto file=folder.getChildFile("96k.nam");file.replaceWithText(R"({"version":"0.5.4","architecture":"Linear","config":{"receptive_field":1,"bias":false},"weights":[0.5],"sample_rate":96000,"metadata":{}})");
+   auto p=std::make_unique<VirtualCortexProcessor>();prepare(*p,96000);grid(*p,vc::BlockType::Amp);check(p->loadGridNeuralModel(file,0,0),"96k load failed");const auto saved=state(*p);
+   auto q=std::make_unique<VirtualCortexProcessor>();restore(*q,saved);prepare(*q,96000);
+   check(q->getGridNeuralModelName(0,0).contains("[NAM]"),"State-before-prepare NAM recall failed");check(std::abs(settle(*q,.2f,10)-.1f)<.001f,"96k restored NAM output wrong");
+  }
+#endif
   std::cout<<"PASS: mono/stereo, trim, callback allocations, UTF-8 assets, preset clearing, and rate/buffer matrix\n";return 0;
  }catch(const std::exception& e){allocationProbe::enabled=false;std::cerr<<e.what()<<'\n';return 1;}
 }

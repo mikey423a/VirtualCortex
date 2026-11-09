@@ -1,6 +1,6 @@
-# Experimental NAM offline backend
+# NAM backend and offline renderer
 
-This separate command-line program renders audio through NeuralAmpModelerCore v0.5.4, pinned at commit 1f42f88535884450104b8711d7595019afa0495b. It is development groundwork, not the Virtual Cortex GUI's amp loader. The installed 6.13 app still accepts VCMLP1 models; NAM playback inside the GUI is not implemented by this change.
+The core is pinned at v0.5.4 commit 1f42f88535884450104b8711d7595019afa0495b. The 6.24 development candidate connects it to live Amp grid slots; see LIVE-NAM-PROGRESS.md for current verification status and limitations. The separate renderer remains available:
 
 ```
 virtualcortex_nam_render.exe model.nam input.wav output.wav
@@ -13,7 +13,7 @@ The probe renders a small synthetic signal and reports its peak plus total loadi
 
 Tests compare the rendered samples of an original two-tap Linear fixture against an independent FIR oracle, cover stereo isolation and partial chunks, reject mismatched sample rates and malformed JSON, and protect the input file from accidental overwrite. Additional smoke tests load and render the upstream LSTM and WaveNet example files. These smoke tests establish execution, not sonic equivalence or real-time safety. The existing offline WAV-format tests cover the shared reader/writer refactor.
 
-Before live integration: implement bounded real-time processing and CPU checks, off-thread loading, safe model handoff/retirement, rate conversion, latency handling, state recall, calibrated levels, UI controls and allocation tests. Retain the existing 21 Grid block types, post-chain delay/reverb, four-row GUI and fullscreen behavior.
+
 
 ## Upstream and licenses
 
