@@ -310,6 +310,7 @@ int runProcessorAudioTests(){
    auto settings=p->getGridSlotParameters(0,7);settings.drive=.625f;settings.mix=.375f;p->setGridSlotParameters(0,7,settings);
    const auto saved=state(*p);auto q=std::make_unique<VirtualCortexProcessor>();prepare(*q);restore(*q,saved);
    check(q->isGridNAM(0,7)&&q->getGridSlotParameters(0,7).drive==.625f&&q->getGridSlotParameters(0,7).mix==.375f,"NAM preset lost model/trims");
+   q->setGridBlock(0,7,{vc::BlockType::Empty,true});const auto dormant=state(*q);restore(*q,dormant);q->setGridBlock(0,7,{vc::BlockType::Amp,true});check(q->getGridNeuralModelName(0,7).contains("[NAM]"),"Dormant NAM lost on preset recall");
    prepare(*q,44100);check(q->getGridNeuralModelName(0,7).contains("rate mismatch"),"NAM rate mismatch invisible");check(settle(*q,.1f,4)==0,"Wrong-rate NAM was audible");
    prepare(*q,48000);check(q->getGridNeuralModelName(0,7).contains("[NAM]"),"NAM rate recovery failed");
    const auto broken=folder.getChildFile("broken.nam");broken.replaceWithText("{}");check(!q->loadGridNeuralModel(broken,0,7)&&q->getGridNeuralModelName(0,7).startsWith("live-amp.nam"),"Invalid model replaced good NAM");

@@ -582,7 +582,7 @@ void VirtualCortexProcessor::updateNamStatus()noexcept {
 bool VirtualCortexProcessor::loadGridNeuralModel(const juce::File& file,std::size_t row,std::size_t col,bool restoring){
  auto fail=[&](juce::String message){std::lock_guard<std::mutex> lock(assetMutex);lastModelError=std::move(message);return false;};
  if(!vc::SignalGrid::valid(row,col)||!file.existsAsFile())return fail("Model file is missing");
- if(getEditableGrid().get(row,col)->type!=vc::BlockType::Amp)return fail("Select an Amp block in the grid first");
+ if(!restoring&&getEditableGrid().get(row,col)->type!=vc::BlockType::Amp)return fail("Select an Amp block in the grid first");
  const bool nam=file.hasFileExtension("nam");
  if(!nam&&!file.hasFileExtension("vcmlp;txt"))return fail("Choose a .nam or .vcmlp model");
  vc::NeuralAmpModel legacy;std::unique_ptr<vc::LiveAmp> live;
@@ -598,7 +598,7 @@ bool VirtualCortexProcessor::loadGridNeuralModel(const juce::File& file,std::siz
  }catch(const std::exception& e){return fail(juce::String::fromUTF8(e.what()));}
  std::lock_guard<std::recursive_mutex> move(gridMoveMutex);
  std::lock_guard<std::mutex> assets(assetMutex);
- if(getEditableGrid().get(row,col)->type!=vc::BlockType::Amp){lastModelError="Selected slot changed while loading";return false;}
+ if(!restoring&&getEditableGrid().get(row,col)->type!=vc::BlockType::Amp){lastModelError="Selected slot changed while loading";return false;}
  if(live&&std::abs(fs-rate)>.5){live->prepare(fs);if(live->status()!=vc::LiveAmpStatus::Ready&&!(restoring&&live->status()==vc::LiveAmpStatus::RateMismatch)){lastModelError="Audio sample rate changed while loading; match the model rate and retry";return false;}}
  for(int i=0;i<32;++i)commitPendingNeuralModels();
  gridAudio.setNeuralAmp(row,col,nam?nullptr:&legacy);

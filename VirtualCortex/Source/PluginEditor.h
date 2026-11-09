@@ -82,6 +82,7 @@ private:
  std::unique_ptr<juce::FileChooser> irChooser,neuralChooser,presetChooser;
  juce::Label irName,gridIRName,neuralName,statusLabel;
  juce::ComboBox presetBox;
+ bool lastNam=false;
  int selectedRow=0,selectedColumn=1,browserType=2,lastView=-1,rowBank=0,variant=0;
  float designScale=1.f,designOffsetX=0.f,designOffsetY=0.f;
  juce::StringArray deviceNames() const;
