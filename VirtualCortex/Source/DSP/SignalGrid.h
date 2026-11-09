@@ -5,7 +5,7 @@
 
 namespace vc {
 // Portable, allocation-free routing *model*. used by the live and offline engines.
-enum class BlockType : std::uint8_t { Empty, Gate, Amp, Cabinet, EQ, Delay, Reverb, Tremolo, Compressor, Overdrive, Distortion, Chorus, Flanger, Phaser, Wah, BitCrusher, Vibrato, RingModulator, Gain, LowHighCut, ToneEQ, RoomReverb };
+enum class BlockType : std::uint8_t { Empty, Gate, Amp, Cabinet, EQ, Delay, Reverb, Tremolo, Compressor, Overdrive, Distortion, Chorus, Flanger, Phaser, Wah, BitCrusher, Vibrato, RingModulator, Gain, LowHighCut, ToneEQ, RoomReverb, GridStereoDelay=30 };
 struct BlockSlot { BlockType type = BlockType::Empty; bool enabled = true; };
 class SignalGrid {
 public:
@@ -29,7 +29,7 @@ public:
  }
  const Grid& snapshot() const noexcept { return slots_; }
  static constexpr bool valid(std::size_t row, std::size_t col) noexcept { return row < rows && col < columns; }
- static constexpr bool validType(BlockType type) noexcept { return static_cast<unsigned>(type) <= static_cast<unsigned>(BlockType::RoomReverb); }
+ static constexpr bool validType(BlockType type) noexcept { return static_cast<unsigned>(type) <= static_cast<unsigned>(BlockType::RoomReverb) || type==BlockType::GridStereoDelay; }
 private:
  Grid slots_{};
 };

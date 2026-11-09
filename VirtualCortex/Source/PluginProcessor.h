@@ -61,7 +61,7 @@ public:
  bool hasScene(int index) const;
  int selectedScene() const noexcept {return activeScene.load();}
 private:
- std::mutex gridMoveMutex;
+ std::recursive_mutex gridMoveMutex;
  std::atomic<int> routingMode{0};
  mutable std::mutex sceneMutex;
  std::array<juce::ValueTree,8> scenes{};

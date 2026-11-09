@@ -217,6 +217,14 @@ int main(int argc,char** argv){
    capture("dual-routing-822x600.png",822,600);
    routing->setSelectedId(1,juce::sendNotificationSync);
   }
+  {
+   auto* menu=dynamic_cast<juce::ComboBox*>(editor->findChildWithID("device-category"));
+   editor->selectSlot(0,7);menu->setSelectedId(30,juce::sendNotificationSync);
+   auto* preset=dynamic_cast<juce::Button*>(editor->findChildWithID("device-0"));require(preset&&preset->isVisible(),"Grid stereo delay preset missing");preset->onClick();
+   require(processor->getEditableGrid().get(0,7)->type==vc::BlockType::GridStereoDelay,"Grid delay not inserted");
+   require(editor->findChildWithID("slot-param-4")->isVisible(),"Grid delay right time hidden");
+   capture("grid-stereo-delay-2560x1440.png",2560,1440);
+  }
   editor.reset();processor->releaseResources();
   std::cout<<"PASS: native editor snapshots at three sizes, control binding, insertion and bypass\n";
   return 0;

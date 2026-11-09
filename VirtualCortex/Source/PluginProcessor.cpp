@@ -71,7 +71,7 @@ vc::SignalGrid VirtualCortexProcessor::getEditableGrid() const noexcept {
 bool VirtualCortexProcessor::swapGridSlots(int ar,int ac,int br,int bc){
  if(ar<0||ac<0||br<0||bc<0||!vc::SignalGrid::valid(ar,ac)||!vc::SignalGrid::valid(br,bc))return false;
  if(ar==br&&ac==bc)return true;
- std::lock_guard<std::mutex> move(gridMoveMutex);
+ std::lock_guard<std::recursive_mutex> move(gridMoveMutex);
  std::lock_guard<std::mutex> assets(assetMutex);
  // Drain queued updates before transferring their destination state.
  for(int i=0;i<32;++i){commitPendingGridIR();commitPendingNeuralModels();}
@@ -96,6 +96,7 @@ bool VirtualCortexProcessor::swapGridSlots(int ar,int ac,int br,int bc){
 }
 bool VirtualCortexProcessor::setGridBlock(std::size_t row,std::size_t col,vc::BlockSlot slot) noexcept {
  if(!vc::SignalGrid::valid(row,col)||!vc::SignalGrid::validType(slot.type))return false;
+ if(slot.type==vc::BlockType::GridStereoDelay){std::lock_guard<std::recursive_mutex> lock(gridMoveMutex);try{gridAudio.prepareStereoSlot(row,col);}catch(...){return false;}}
  const std::uint64_t shift=col*8;const std::uint64_t mask=std::uint64_t(255)<<shift;
  const std::uint64_t value=std::uint64_t(static_cast<std::uint8_t>(slot.type)|(slot.enabled?128:0))<<shift;
  auto previous=gridRows[row].load(std::memory_order_relaxed);
@@ -317,7 +318,7 @@ void VirtualCortexProcessor::prepareToPlay(double sampleRate,int samplesPerBlock
 }
 
 void VirtualCortexProcessor::processBlock(juce::AudioBuffer<float>& b,juce::MidiBuffer& midi){
- std::unique_lock<std::mutex> move(gridMoveMutex,std::try_to_lock);
+ std::unique_lock<std::recursive_mutex> move(gridMoveMutex,std::try_to_lock);
  if(!move.owns_lock()){b.clear();midi.clear();return;}
  juce::ScopedNoDenormals noDenormals;
  if (b.getNumChannels() == 0 || b.getNumSamples() == 0 || channels.empty()) return;
