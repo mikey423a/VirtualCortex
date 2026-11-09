@@ -67,6 +67,7 @@ juce::String CortexBlockButton::nameFor(int type){
  return names[juce::jlimit(0,29,type)];
 }
 void CortexBlockButton::drawIcon(juce::Graphics& g,juce::Rectangle<float> r,int type,juce::Colour colour){
+ if(type==30)type=5;else if(type==31)type=6;
  g.setColour(colour);const auto cx=r.getCentreX(),cy=r.getCentreY();const auto u=r.getWidth()/24.f;
  juce::Path p;
  if(type==0){g.drawLine(cx-5*u,cy,cx+5*u,cy,1.2f);g.drawLine(cx,cy-5*u,cx,cy+5*u,1.2f);return;}
@@ -209,7 +210,7 @@ VirtualCortexEditor::VirtualCortexEditor(VirtualCortexProcessor& p):AudioProcess
  catalogButton.onClick=[this]{catalogPanel.setVisible(!catalogPanel.isVisible());if(catalogPanel.isVisible())catalogPanel.toFront(false);};
  addAndMakeVisible(catalogButton);addChildComponent(catalogPanel);
  catalogPanel.onChooseOriginal=[this](int type){
-  if(type<=21){if(!insertBlock(type))return;}
+  if(type<=21||type==30||type==31){if(!insertBlock(type))return;}
   else {browserType=type;masterPage=true;lastView=-1;updateView();}
   setEditorsVisible(true);catalogPanel.setVisible(false);
  };

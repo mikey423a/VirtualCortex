@@ -11,8 +11,8 @@ assert collections.Counter(e['section'] for e in entries)==p['section_counts']
 assert sum(e['announced_only'] for e in entries)==57
 assert len({e['id'] for e in entries})==len(entries)
 assert all(e['availability']=='reference_only' and e['implementation_type']==0 for e in entries)
-assert len(ORIGINALS)==28 and len({t for t,_,_ in ORIGINALS})==28
-assert {t for t,_,_ in ORIGINALS}==set(range(1,22))|{23,24,25,26,27,28,29}
+assert len(ORIGINALS)==30 and len({t for t,_,_ in ORIGINALS})==30
+assert {t for t,_,_ in ORIGINALS}==set(range(1,22))|{23,24,25,26,27,28,29,30,31}
 # Shared display names remain distinct by plugin ownership.
 compressors=[e for e in entries if e['section']=='Plugin devices' and e['name']=='Compressor']
 assert len(compressors)==3 and len({e['metadata']['Required plugin'] for e in compressors})==3
@@ -26,4 +26,4 @@ for i in range(23):
 fixture=parse(''.join(tables).encode(),'2026-11-02')
 assert len(fixture['entries'])==23 and fixture['entries'][0]['name']=='A & B'
 assert fixture['source_html_sha256']==hashlib.sha256(''.join(tables).encode()).hexdigest()
-print('PASS: all 689 source rows, 23 source sections, 57 announced entries, distinct plugin identities, 28 playable originals, generated data and importer')
+print('PASS: all 689 source rows, 23 source sections, 57 announced entries, distinct plugin identities, 30 playable originals, generated data and importer')

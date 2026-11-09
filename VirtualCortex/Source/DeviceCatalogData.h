@@ -3,7 +3,7 @@
 namespace vc {
 struct CatalogRecord { const char* id, *section, *category, *name, *basedOn, *added, *previous, *updated, *replaces, *plugin; bool announced; int implementationType; };
 inline constexpr const char* catalogSnapshotDate = u8"2026-11-02";
-inline constexpr std::array<CatalogRecord, 717> deviceCatalog{{
+inline constexpr std::array<CatalogRecord, 719> deviceCatalog{{
  {u8"original-1", u8"Virtual Cortex originals", u8"Dynamics", u8"Gate", u8"", u8"", u8"", u8"", u8"", u8"", false, 1},
  {u8"original-2", u8"Virtual Cortex originals", u8"Amplifier", u8"Amp", u8"", u8"", u8"", u8"", u8"", u8"", false, 2},
  {u8"original-3", u8"Virtual Cortex originals", u8"Cabinet / IR", u8"Cabinet", u8"", u8"", u8"", u8"", u8"", u8"", false, 3},
@@ -32,6 +32,8 @@ inline constexpr std::array<CatalogRecord, 717> deviceCatalog{{
  {u8"original-27", u8"Virtual Cortex originals", u8"Post-chain", u8"Layer Loom", u8"", u8"", u8"", u8"", u8"", u8"", false, 27},
  {u8"original-28", u8"Virtual Cortex originals", u8"Input synth", u8"Prism Synth", u8"", u8"", u8"", u8"", u8"", u8"", false, 28},
  {u8"original-29", u8"Virtual Cortex originals", u8"Input effect", u8"Ottocrush", u8"", u8"", u8"", u8"", u8"", u8"", false, 29},
+ {u8"original-30", u8"Virtual Cortex originals", u8"Grid effect", u8"Grid Stereo Delay", u8"", u8"", u8"", u8"", u8"", u8"", false, 30},
+ {u8"original-31", u8"Virtual Cortex originals", u8"Grid effect", u8"Grid Stereo Reverb", u8"", u8"", u8"", u8"", u8"", u8"", false, 31},
  {u8"3c651c1472255c52", u8"Neural Captures V2", u8"Guitar amps", u8"Brit 2203 87", u8"Marshall\u00ae JCM800\u00ae 1987", u8"3.3.0", u8"", u8"", u8"", u8"", false, 0},
  {u8"3ce7c6c9f63bc3d9", u8"Neural Captures V2", u8"Guitar amps", u8"DC Heavy Crusader", u8"Dean Costello Audio\u00ae Heavy Metal Warfare\u00ae", u8"3.3.0", u8"", u8"", u8"", u8"", false, 0},
  {u8"7f431cbc83afae2e", u8"Neural Captures V2", u8"Guitar amps", u8"Dovre 50", u8"Dover Amplification\u00ae DA-50\u00ae", u8"3.3.0", u8"", u8"", u8"", u8"", false, 0},

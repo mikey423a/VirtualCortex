@@ -25,7 +25,7 @@ int main(int argc,char** argv){
    auto* openCatalog=dynamic_cast<juce::Button*>(editor->findChildWithID("catalog-toggle"));
    auto* catalog=dynamic_cast<DeviceCatalogPanel*>(editor->findChildWithID("device-catalog-panel"));
    require(openCatalog&&catalog&&!catalog->isVisible(),"Catalog must start hidden");
-   openCatalog->onClick();require(catalog->isVisible()&&catalog->visibleEntryCount()==717,"Catalog is incomplete");
+   openCatalog->onClick();require(catalog->isVisible()&&catalog->visibleEntryCount()==719,"Catalog is incomplete");
    auto* search=dynamic_cast<juce::TextEditor*>(catalog->findChildWithID("catalog-search"));
    auto* availability=dynamic_cast<juce::ComboBox*>(catalog->findChildWithID("catalog-availability"));
    auto* section=dynamic_cast<juce::ComboBox*>(catalog->findChildWithID("catalog-section"));
@@ -37,10 +37,12 @@ int main(int argc,char** argv){
    action->onClick();require(chosen==-1,"Unavailable model invoked insertion");
    capture("catalog-reference-1184x864.png",1184,864);
    query("Marshall JCM800");require(catalog->visibleEntryCount()>0&&catalog->selectedPlayableType()==0,"Gear search requires trademark symbols");
-   query("");availability->setSelectedId(2,juce::sendNotificationSync);require(catalog->visibleEntryCount()==28,"Original count incorrect");
+   query("");availability->setSelectedId(2,juce::sendNotificationSync);require(catalog->visibleEntryCount()==30,"Original count incorrect");
    query("Bit-crusher");require(catalog->visibleEntryCount()==1&&action->isEnabled(),"Working original cannot be selected");
    action->onClick();require(chosen==15,"Original action routed to wrong processor");
-   query("Stereo Reverb");action->onClick();require(chosen==24,"Post-chain action routed to wrong processor");
+   query("Four-head Echo");action->onClick();require(chosen==25,"Post-chain action routed to wrong processor");
+   query("Grid Stereo Delay");action->onClick();require(chosen==30,"Grid delay catalog insertion failed");
+   query("Grid Stereo Reverb");action->onClick();require(chosen==31,"Grid reverb catalog insertion failed");
    query("");availability->setSelectedId(4,juce::sendNotificationSync);require(catalog->visibleEntryCount()==57&&!action->isEnabled(),"Announced entries not isolated");
    availability->setSelectedId(3,juce::sendNotificationSync);require(catalog->visibleEntryCount()==632,"Released reference count incorrect");
    availability->setSelectedId(1,juce::sendNotificationSync);

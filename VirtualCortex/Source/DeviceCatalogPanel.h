@@ -76,10 +76,11 @@ private:
   const std::array<std::pair<const char*,const char*>,6> fields{{{"Based on",e->basedOn},{"Added in CorOS",e->added},{"Previous name",e->previous},{"Updated in CorOS",e->updated},{"Replaces",e->replaces},{"Required plugin",e->plugin}}};
   for(const auto& f:fields)if(text(f.second).isNotEmpty())info+=text(f.first)+": "+text(f.second)+"\n";
   if(e->announced)info+="\nSource status: announced, not yet released.\n";
-  if(e->implementationType>=23)info+="\nPlacement: global post-chain processor.\n";
+  if(e->implementationType==28||e->implementationType==29)info+="\nPlacement: global input processor.\n";
+  else if(e->implementationType>=23&&e->implementationType<=27)info+="\nPlacement: global post-chain processor.\n";
   else if(e->implementationType>0)info+="\nAction adds this original processor to the selected grid slot. Enable GRID ENGINE to hear grid processing.\n";
   details.setText(info,false);details.setCaretPosition(0);
-  action.setButtonText(e->implementationType>=23?"OPEN POST-CHAIN CONTROLS":e->implementationType>0?"ADD ORIGINAL TO SELECTED SLOT":"MODEL NOT AVAILABLE");
+  action.setButtonText((e->implementationType>=23&&e->implementationType<=29)?"OPEN GLOBAL CONTROLS":e->implementationType>0?"ADD ORIGINAL TO SELECTED SLOT":"MODEL NOT AVAILABLE");
  }
  void rebuild(){
   const auto query=search.getText().trim().removeCharacters(juce::String::fromUTF8(u8"\u00ae\u2122"));
