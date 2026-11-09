@@ -209,6 +209,14 @@ int main(int argc,char** argv){
    b->onClick();require(processor->parameters.getRawParameterValue("ieA")->load()==-5.f&&b->getToggleState()&&!a->getToggleState(),"Scene B control failed");
    capture("stored-scenes-2560x1440.png",2560,1440);
   }
+  {
+   auto* routing=dynamic_cast<juce::ComboBox*>(editor->findChildWithID("grid-routing"));
+   require(routing&&routing->isVisible(),"Routing selector missing");
+   for(int id=1;id<=3;++id){routing->setSelectedId(id,juce::sendNotificationSync);require(processor->getRoutingMode()==id-1,"Routing selector unbound");}
+   capture("dual-routing-2560x1440.png",2560,1440);
+   capture("dual-routing-822x600.png",822,600);
+   routing->setSelectedId(1,juce::sendNotificationSync);
+  }
   editor.reset();processor->releaseResources();
   std::cout<<"PASS: native editor snapshots at three sizes, control binding, insertion and bypass\n";
   return 0;
