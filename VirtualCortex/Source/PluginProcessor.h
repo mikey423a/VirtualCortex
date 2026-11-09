@@ -37,6 +37,7 @@ public:
  void getStateInformation(juce::MemoryBlock&) override;
  void setStateInformation(const void*,int) override;
  juce::AudioProcessorValueTreeState parameters;
+ bool swapGridSlots(int ar,int ac,int br,int bc);
  vc::SignalGrid getEditableGrid() const noexcept;
  bool setGridBlock(std::size_t row,std::size_t col,vc::BlockSlot slot) noexcept;
  bool setGridLaneEnabled(std::size_t row,bool enabled) noexcept;
@@ -60,6 +61,7 @@ public:
  bool hasScene(int index) const;
  int selectedScene() const noexcept {return activeScene.load();}
 private:
+ std::mutex gridMoveMutex;
  std::atomic<int> routingMode{0};
  mutable std::mutex sceneMutex;
  std::array<juce::ValueTree,8> scenes{};

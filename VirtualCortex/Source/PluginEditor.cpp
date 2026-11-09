@@ -130,7 +130,13 @@ VirtualCortexEditor::VirtualCortexEditor(VirtualCortexProcessor& p):AudioProcess
  slotEnabled.onClick=[this]{toggleSelectedSlot();};addAndMakeVisible(slotEnabled);
  repeatFxButton.setComponentID("repeat-fx");repeatFxButton.setTooltip("Filter the repeat return path; dry input and first repeat stay unfiltered. Grid Delay only.");repeatFxButton.onClick=[this]{auto p=processor.getGridSlotParameters((size_t)selectedRow,(size_t)selectedColumn);p.repeatFx=repeatFxButton.getToggleState();processor.setGridSlotParameters((size_t)selectedRow,(size_t)selectedColumn,p);lastView=-1;updateView();};addChildComponent(repeatFxButton);
  for(int r=0;r<4;++r){auto& lane=laneButtons[(size_t)r];lane.setButtonText("ROW "+juce::String(r+1));lane.setComponentID("lane-"+juce::String(r));lane.setTooltip("Enable parallel row: same input, averaged with other enabled rows in Grid mode");lane.setClickingTogglesState(true);lane.onClick=[this,r]{processor.setGridLaneEnabled((size_t)r,laneButtons[(size_t)r].getToggleState());refreshGridControls();};addAndMakeVisible(lane);
-  for(int c=0;c<8;++c){auto& b=gridCells[(size_t)r][(size_t)c];b.setComponentID("grid-"+juce::String(r)+"-"+juce::String(c));b.onClick=[this,r,c]{selectSlot(r,c);};addAndMakeVisible(b);}
+  for(int c=0;c<8;++c){auto& b=gridCells[(size_t)r][(size_t)c];b.setComponentID("grid-"+juce::String(r)+"-"+juce::String(c));b.onClick=[this,r,c]{selectSlot(r,c);};
+   b.onGridDrop=[this,r,c](const juce::MouseEvent& e){
+    const auto point=e.getEventRelativeTo(this).position;
+    for(int tr=0;tr<4;++tr)for(int tc=0;tc<8;++tc)if(gridCells[tr][tc].getBounds().toFloat().contains(point)){
+     if(processor.swapGridSlots(r,c,tr,tc)){selectSlot(tr,tc);refreshGridControls();refreshSlotControls();statusLabel.setText("Blocks moved with settings and assets. Save preset to keep changes.",juce::dontSendNotification);}return;
+    }
+   };b.setTooltip("Drag to move; dropping on another block swaps both devices.");addAndMakeVisible(b);}
  }
  for(int c=0;c<8;++c){auto& b=stomps[(size_t)c];b.stomp=true;b.caption=juce::String::charToString((juce::juce_wchar)('A'+c));b.onClick=[this,c]{selectSlot(selectedRow,c);toggleSelectedSlot();};addAndMakeVisible(b);}
  for(int i=0;i<6;++i){auto& s=slotSliders[(size_t)i];s.setRange(0.,1.,.001);s.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);s.setTextBoxStyle(juce::Slider::NoTextBox,false,0,0);s.setComponentID("slot-param-"+juce::String(i));s.valueFromTextFunction=[this,i](const juce::String& text){double v=text.getDoubleValue();if(i>=82)return (i==82||i==96||i==97||i==100)?v/100.:v;if(i>=72)return (i==73||i==78||i==79)?v/100.:v;if(i>=55)return ((i-55)%4==0&&i<71)?v:v/100.;

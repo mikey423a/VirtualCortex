@@ -238,6 +238,19 @@ int runProcessorAudioTests(){
    for(int block=0;block<20;++block){audio.clear();for(int i=0;i<128;++i)audio.setSample(0,i,.1f);q->processBlock(audio,midi);for(int i=0;i<128;++i)check(audio.getSample(1,i)==0.f,"Dual routing crossed channels");}
    auto xml=juce::AudioProcessor::getXmlFromBinary(saved.getData(),(int)saved.getSize());auto tree=juce::ValueTree::fromXml(*xml);tree.removeProperty("routingMode",nullptr);auto old=tree.createXml();juce::MemoryBlock legacy;juce::AudioProcessor::copyXmlToBinary(*old,legacy);restore(*q,legacy);check(q->getRoutingMode()==0,"Legacy preset not parallel");
   }
+  {
+   auto p=std::make_unique<VirtualCortexProcessor>();prepare(*p);grid(*p,vc::BlockType::Delay);
+   auto a=p->getGridSlotParameters(0,0);a.mix=.73f;p->setGridSlotParameters(0,0,a);
+   p->setGridBlock(3,7,{vc::BlockType::Empty,true});p->storeScene(0);
+   check(p->swapGridSlots(0,0,3,7),"Move rejected");
+   check(p->getEditableGrid().get(3,7)->type==vc::BlockType::Delay,"Moved type lost");
+   check(p->getEditableGrid().get(0,0)->type==vc::BlockType::Empty,"Source not emptied");
+   check(std::abs(p->getGridSlotParameters(3,7).mix-.73f)<1.e-6f,"Moved controls lost");
+   p->recallScene(0);check(std::abs(p->getGridSlotParameters(3,7).mix-.73f)<1.e-6f,"Scene failed to follow device");
+   check(!p->swapGridSlots(-1,0,0,0),"Invalid move accepted");
+   auto saved=state(*p);auto q=std::make_unique<VirtualCortexProcessor>();prepare(*q);restore(*q,saved);
+   check(q->getEditableGrid().get(3,7)->type==vc::BlockType::Delay,"Moved device not saved");
+  }
   std::cout<<"PASS: mono/stereo, trim, callback allocations, UTF-8 assets, preset clearing, and rate/buffer matrix\n";return 0;
  }catch(const std::exception& e){allocationProbe::enabled=false;std::cerr<<e.what()<<'\n';return 1;}
 }

@@ -30,6 +30,15 @@ struct SlotParameters {
 class PortableAudioEngine {
 public:
  PortableAudioEngine() : irs_(std::make_unique<IRStorage>()), state_(std::make_unique<StateStorage>()), neural_(std::make_unique<NeuralStorage>()) {}
+ // Caller excludes process() while moving complete slot state.
+ bool swapSlots(std::size_t ar,std::size_t ac,std::size_t br,std::size_t bc) noexcept {
+  if(!SignalGrid::valid(ar,ac)||!SignalGrid::valid(br,bc))return false;
+  if(ar==br&&ac==bc)return true;
+  std::swap((*irs_)[ar][ac],(*irs_)[br][bc]);
+  std::swap((*state_)[ar][ac],(*state_)[br][bc]);
+  std::swap((*neural_)[ar][ac],(*neural_)[br][bc]);
+  std::swap(parameters_[ar][ac],parameters_[br][bc]);return true;
+ }
  static constexpr std::size_t maxIrTaps = 4096;
  // May be called at a block boundary by the audio callback. Coefficients are
  // copied into fixed-size storage; both old and new FIRs run for 128 samples.

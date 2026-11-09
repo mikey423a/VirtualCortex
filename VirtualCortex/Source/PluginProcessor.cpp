@@ -68,6 +68,32 @@ vc::SignalGrid VirtualCortexProcessor::getEditableGrid() const noexcept {
  }
  vc::SignalGrid grid;vc::decodeGrid(bytes,grid);return grid;
 }
+bool VirtualCortexProcessor::swapGridSlots(int ar,int ac,int br,int bc){
+ if(ar<0||ac<0||br<0||bc<0||!vc::SignalGrid::valid(ar,ac)||!vc::SignalGrid::valid(br,bc))return false;
+ if(ar==br&&ac==bc)return true;
+ std::lock_guard<std::mutex> move(gridMoveMutex);
+ std::lock_guard<std::mutex> assets(assetMutex);
+ // Drain queued updates before transferring their destination state.
+ for(int i=0;i<32;++i){commitPendingGridIR();commitPendingNeuralModels();}
+ const auto grid=getEditableGrid();const auto a=*grid.get(ar,ac),b=*grid.get(br,bc);
+ const auto pa=getGridSlotParameters(ar,ac),pb=getGridSlotParameters(br,bc);
+ gridAudio.swapSlots(ar,ac,br,bc);
+ setGridSlotParameters(ar,ac,pb);setGridSlotParameters(br,bc,pa);
+ std::swap(gridIRPaths[ar][ac],gridIRPaths[br][bc]);std::swap(gridNeuralPaths[ar][ac],gridNeuralPaths[br][bc]);
+ setGridBlock(ar,ac,b);setGridBlock(br,bc,a);
+ {std::lock_guard<std::mutex> lock(sceneMutex);
+  for(auto& scene:scenes)if(scene.isValid()){
+   auto copy=scene.createCopy();
+   for(auto slot:copy)if(slot.hasType("Slot")){
+    const int row=slot.getProperty("row",-1),col=slot.getProperty("col",-1);
+    if(row==ar&&col==ac){slot.setProperty("row",br,nullptr);slot.setProperty("col",bc,nullptr);}
+    else if(row==br&&col==bc){slot.setProperty("row",ar,nullptr);slot.setProperty("col",ac,nullptr);}
+   }
+   scene=copy;
+  }
+ }
+ return true;
+}
 bool VirtualCortexProcessor::setGridBlock(std::size_t row,std::size_t col,vc::BlockSlot slot) noexcept {
  if(!vc::SignalGrid::valid(row,col)||!vc::SignalGrid::validType(slot.type))return false;
  const std::uint64_t shift=col*8;const std::uint64_t mask=std::uint64_t(255)<<shift;
@@ -291,6 +317,8 @@ void VirtualCortexProcessor::prepareToPlay(double sampleRate,int samplesPerBlock
 }
 
 void VirtualCortexProcessor::processBlock(juce::AudioBuffer<float>& b,juce::MidiBuffer& midi){
+ std::unique_lock<std::mutex> move(gridMoveMutex,std::try_to_lock);
+ if(!move.owns_lock()){b.clear();midi.clear();return;}
  juce::ScopedNoDenormals noDenormals;
  if (b.getNumChannels() == 0 || b.getNumSamples() == 0 || channels.empty()) return;
  // Process only the supported main bus channels; clear unexpected extra channels.

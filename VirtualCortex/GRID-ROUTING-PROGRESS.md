@@ -18,3 +18,8 @@ Current installer remains 6.20.0.
 Live integration now staged: header selector, state persistence and frame routing.
 Dual mode bypasses global tracking/post effects and suppresses mono duplication.
 Windows validation pending. Routing is preset-wide, not scene-specific.
+
+Drag movement staged: occupied destinations swap. Entire DSP slot state, paths,
+controls and scene coordinates follow the device. Callback uses a try-lock and
+outputs silence during a move; this is not seamless live rearrangement.
+Global advanced effects remain outside the grid. Native validation pending.
