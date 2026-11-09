@@ -12,5 +12,11 @@ int main(){try{
  check(left==480&&right==960&&lp>.09&&rp>.09);
  check(e->swapSlots(0,0,2,7));g.swap(0,0,2,7);check(e->configure(g,{false,false,true,false}));
  check(e->getSlotParameters(2,7)->time==p.time);auto bytes=vc::encodeGrid(g);vc::SignalGrid saved;check(vc::decodeGrid(bytes,saved)&&saved.get(2,7)->type==vc::BlockType::GridStereoDelay);
+ e->prepareReverbSlot(1,2);vc::SignalGrid rg;rg.set(1,2,{vc::BlockType::GridStereoReverb,true});check(e->configure(rg,{false,true,false,false}));
+ vc::SlotParameters rv;rv.mix=1;rv.rate=0;rv.time=.1f;rv.depth=.7f;e->setSlotParameters(1,2,rv);
+ for(int i=0;i<5000;++i){f[0]=f[1]=0;e->process(f,1,2);}
+ double energy=0;for(int i=0;i<24000;++i){f[0]=i==0?.1f:0;f[1]=0;e->process(f,1,2);check(std::isfinite(f[0])&&std::isfinite(f[1]));energy+=std::abs(f[0])+std::abs(f[1]);}check(energy>.01);
+ check(e->swapSlots(1,2,3,6));rg.swap(1,2,3,6);check(e->configure(rg,{false,false,false,true}));check(e->getSlotParameters(3,6)->mix==1);
+ auto rb=vc::encodeGrid(rg);vc::SignalGrid restored;check(vc::decodeGrid(rb,restored)&&restored.get(3,6)->type==vc::BlockType::GridStereoReverb);
  std::cout<<"PASS: separate stereo times, movable state and grid serialization\n";
 }catch(const std::exception& e){std::cerr<<e.what();return 1;}}

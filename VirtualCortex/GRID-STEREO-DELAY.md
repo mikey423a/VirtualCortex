@@ -13,3 +13,8 @@ Dual mono folds each device output to mono inside its own chain. Bypass pauses
 the slot rather than draining its tail. Device insertion allocates buffers while
 the audio callback uses the existing move guard; a brief mute can occur.
 Windows verification is required before release.
+
+Grid Stereo Reverb now follows the same per-slot ownership path, with decay,
+size, predelay, diffusion, width and mix controls. Other reverb parameters use
+the existing defaults. Both grid variants remain outside the catalog panel
+and are selected through the device dropdown. Full advanced controls pending.

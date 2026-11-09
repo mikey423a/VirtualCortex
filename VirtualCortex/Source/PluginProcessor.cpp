@@ -96,6 +96,7 @@ bool VirtualCortexProcessor::swapGridSlots(int ar,int ac,int br,int bc){
 }
 bool VirtualCortexProcessor::setGridBlock(std::size_t row,std::size_t col,vc::BlockSlot slot) noexcept {
  if(!vc::SignalGrid::valid(row,col)||!vc::SignalGrid::validType(slot.type))return false;
+ if(slot.type==vc::BlockType::GridStereoReverb){std::lock_guard<std::recursive_mutex> lock(gridMoveMutex);try{gridAudio.prepareReverbSlot(row,col);}catch(...){return false;}}
  if(slot.type==vc::BlockType::GridStereoDelay){std::lock_guard<std::recursive_mutex> lock(gridMoveMutex);try{gridAudio.prepareStereoSlot(row,col);}catch(...){return false;}}
  const std::uint64_t shift=col*8;const std::uint64_t mask=std::uint64_t(255)<<shift;
  const std::uint64_t value=std::uint64_t(static_cast<std::uint8_t>(slot.type)|(slot.enabled?128:0))<<shift;

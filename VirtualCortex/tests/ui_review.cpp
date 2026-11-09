@@ -138,7 +138,7 @@ int main(int argc,char** argv){
   require(processor->getEditableGrid().get(3,6)->type==vc::BlockType::Chorus,"Chorus browser selection inserted wrong block");
   require(std::abs(processor->getGridSlotParameters(3,6).rate-.04f)<1.e-5f,"Chorus preset parameters not applied");
   editor->setEditorsVisible(true);capture("chorus-browser-preset.png",1184,864);
-  auto* category=dynamic_cast<juce::ComboBox*>(editor->findChildWithID("device-category"));require(category&&category->getNumItems()==29,"Expanded category selector missing");
+  auto* category=dynamic_cast<juce::ComboBox*>(editor->findChildWithID("device-category"));require(category&&category->getNumItems()==31,"Expanded category selector missing");
   for(int type:{16,17,18,19,20,21}){
    editor->selectSlot(1,type-16);category->setSelectedId(type,juce::sendNotificationSync);
    auto* entry=dynamic_cast<juce::Button*>(editor->findChildWithID("device-0"));require(entry&&entry->isVisible(),"New category has no selectable device");entry->onClick();
@@ -224,6 +224,10 @@ int main(int argc,char** argv){
    require(processor->getEditableGrid().get(0,7)->type==vc::BlockType::GridStereoDelay,"Grid delay not inserted");
    require(editor->findChildWithID("slot-param-4")->isVisible(),"Grid delay right time hidden");
    capture("grid-stereo-delay-2560x1440.png",2560,1440);
+   editor->selectSlot(1,7);menu->setSelectedId(31,juce::sendNotificationSync);preset->onClick();
+   require(processor->getEditableGrid().get(1,7)->type==vc::BlockType::GridStereoReverb,"Grid reverb not inserted");
+   require(editor->findChildWithID("slot-param-2")->isVisible(),"Grid reverb decay hidden");
+   capture("grid-stereo-reverb-2560x1440.png",2560,1440);
   }
   editor.reset();processor->releaseResources();
   std::cout<<"PASS: native editor snapshots at three sizes, control binding, insertion and bypass\n";
