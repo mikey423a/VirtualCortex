@@ -88,6 +88,29 @@ public:
   }
   return output;
  }
+ // Stereo devices are invoked once per frame, not once per channel.
+ // DualMono deliberately remains on processFrame until each device has an
+ // explicit mono policy; calling this method in that mode is dry passthrough.
+ template<class DSP>
+ std::array<float,2> processStereoFrame(std::array<float,2> input,Mode mode,DSP&& dsp) const noexcept {
+  for(auto& x:input)if(!std::isfinite(x))x=0.f;
+  if(mode==Mode::DualMono)return input;
+  auto output=input;std::array<double,2> sum{};std::size_t active=0;
+  for(std::size_t row=0;row<SignalGrid::rows;++row){
+   if(!enabled_[row])continue;
+   ++active;auto frame=mode==Mode::Series?output:input;
+   const auto& plan=lanes_[row].plan();
+   for(std::size_t i=0;i<plan.count;++i){
+    frame=dsp(row,static_cast<std::size_t>(plan.columns[i]),plan.blocks[i],frame);
+    for(auto& x:frame)if(!std::isfinite(x))x=0.f;
+   }
+   if(mode==Mode::Series)output=frame;
+   else for(std::size_t c=0;c<2;++c)sum[c]+=frame[c];
+  }
+  if(mode==Mode::Parallel&&active)for(std::size_t c=0;c<2;++c)output[c]=static_cast<float>(sum[c]/active);
+  for(auto& x:output)if(!std::isfinite(x))x=0.f;
+  return output;
+ }
  template<class DSP>
  void processBuffer(float* data,std::size_t count,DSP&& dsp) const noexcept {
   if (!data) return;

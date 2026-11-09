@@ -126,9 +126,13 @@ public:
  bool process(float* samples, std::size_t frames, std::size_t channels, ParallelGrid::Mode mode=ParallelGrid::Mode::Parallel) noexcept {
   if (!samples || (channels != 1 && channels != 2) || !ready()) return false;
   for (std::size_t i=0;i<frames;++i) {
-   const auto result=routing_.processFrame({samples[i*channels],channels==2?samples[i*channels+1]:0.f},mode,
-    [&](std::size_t c,std::size_t row,std::size_t col,BlockType block,float x) noexcept {
-     return apply((*state_)[row][col][c],parameters_[row][col],(*irs_)[row][col],(*neural_)[row][col],block,x);
+   const std::array<float,2> input{samples[i*channels],channels==2?samples[i*channels+1]:0.f};
+   auto mono=[&](std::size_t c,std::size_t row,std::size_t col,BlockType block,float x) noexcept {
+    return apply((*state_)[row][col][c],parameters_[row][col],(*irs_)[row][col],(*neural_)[row][col],block,x);
+   };
+   const auto result=mode==ParallelGrid::Mode::DualMono?routing_.processFrame(input,mode,mono):
+    routing_.processStereoFrame(input,mode,[&](std::size_t row,std::size_t col,BlockType block,std::array<float,2> frame) noexcept {
+     for(std::size_t c=0;c<channels;++c)frame[c]=mono(c,row,col,block,frame[c]);return frame;
     });
    for(std::size_t c=0;c<channels;++c)samples[i*channels+c]=std::isfinite(result[c])?std::clamp(result[c],-1.f,1.f):0.f;
    for (auto& lane:*neural_) for (auto& slot:lane) if(slot.transition) {

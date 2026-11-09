@@ -12,5 +12,11 @@ int main(){try{
  d=engine.processFrame({1,0},vc::ParallelGrid::Mode::DualMono,gain);check(d[0]==2&&d[1]==0);
  check(engine.configure(grid,{false,false,true,true}));d=engine.processFrame({1,2},vc::ParallelGrid::Mode::DualMono,gain);check(d[0]==1&&d[1]==24);
  check(engine.configure(grid,{false,false,false,false}));for(auto mode:{vc::ParallelGrid::Mode::Parallel,vc::ParallelGrid::Mode::Series,vc::ParallelGrid::Mode::DualMono}){auto y=engine.processFrame({1,2},mode,gain);check(y[0]==1&&y[1]==2);}
+ check(engine.configure(grid,{true,true,true,true}));
+ int calls=0;
+ auto stereo=[&](std::size_t row,std::size_t col,vc::BlockType,std::array<float,2> x) noexcept {++calls;if(row!=col)return std::array<float,2>{-99,-99};return std::array<float,2>{x[1]*2,x[0]*3};};
+ auto pair=engine.processStereoFrame({1,2},vc::ParallelGrid::Mode::Parallel,stereo);check(pair[0]==4&&pair[1]==3&&calls==4);
+ calls=0;pair=engine.processStereoFrame({1,2},vc::ParallelGrid::Mode::Series,stereo);check(pair[0]==36&&pair[1]==72&&calls==4);
+ check(engine.configure(grid,{false,false,false,false}));pair=engine.processStereoFrame({1,2},vc::ParallelGrid::Mode::Parallel,stereo);check(pair[0]==1&&pair[1]==2);
  std::cout<<"PASS: series, parallel, dual isolation, disabled lanes and physical slot identity\n";
 }catch(const std::exception& e){std::cerr<<e.what();return 1;}}
