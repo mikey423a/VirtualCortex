@@ -52,25 +52,34 @@ void CortexLookAndFeel::drawRotarySlider(juce::Graphics& g,int x,int y,int w,int
  g.setColour(juce::Colour(0xff35383b));g.strokePath(track,juce::PathStrokeType(3.f));
  juce::Path arc;arc.addCentredArc(r.getCentreX(),r.getCentreY(),radius,radius,0,start,angle,true);
  g.setColour(s.findColour(juce::Slider::rotarySliderFillColourId));g.strokePath(arc,juce::PathStrokeType(3.f));
- juce::Path pointer;pointer.startNewSubPath(0,-radius+12.f);pointer.lineTo(0,-radius*.24f);
+ juce::Path pointer;pointer.startNewSubPath(0,-radius*.72f);pointer.lineTo(0,-radius*.18f);
  g.setColour(juce::Colours::white);g.strokePath(pointer,juce::PathStrokeType(2.f),juce::AffineTransform::rotation(angle).translated(r.getCentreX(),r.getCentreY()));
 }
 CortexBlockButton::CortexBlockButton():juce::Button("Signal slot"){}
 juce::Colour CortexBlockButton::colourFor(int type){
+ if(vc::isAdvanced(type))type-=7;
  const juce::uint32 values[]={0xff41454a,0xffd8a944,0xfff25562,0xff57d3bf,0xff4097ef,0xff43d8c9,0xff61fbd8,0xff9265ff,0xffe6ad55,0xffee8641,0xffe6546d,0xffb68af5,0xff829cff,0xffda88de,0xffd8bf55,0xff64bed6,0xffae81ed,0xffe28aaf,0xffa0b99c,0xff6fb8df,0xff75a5ec,0xff6bdbcb,0xffa0a7ad,0xff61fbd8,0xff61fbd8,0xffd8a944,0xffd8a944,0xff749bff,0xffeac967,0xff63dab5};
  return juce::Colour(values[juce::jlimit(0,29,type)]);
 }
 juce::String CortexBlockButton::nameFor(int type){
  if(vc::isAdvanced(type))return vc::advancedDefinitions[type-30].name;
- if(type==30)return "Grid Stereo Delay";
+
  const char* names[]={"Empty","Gate","Amp","Cabinet","EQ","Delay","Reverb","Tremolo","Compressor","Overdrive","Distortion","Chorus","Flanger","Phaser","Wah","Bit-crusher","Vibrato","Ring modulator","Gain","Low / High Cut","Tone EQ","Room Reverb","Output","Stereo Delay","Stereo Reverb","Four-head Echo","Chase Pitch Delay","Layer Loom","Prism Synth","Ottocrush"};
  return names[juce::jlimit(0,29,type)];
 }
 void CortexBlockButton::drawIcon(juce::Graphics& g,juce::Rectangle<float> r,int type,juce::Colour colour){
- if(type>=32&&type<=36){const int icons[]={5,5,15,17,15};type=icons[type-32];}
+ if(type==32||type==33)type=5;else if(type==35)type=7;
  if(type==30)type=5;else if(type==31)type=6;
  g.setColour(colour);const auto cx=r.getCentreX(),cy=r.getCentreY();const auto u=r.getWidth()/24.f;
  juce::Path p;
+ if(type==34){
+  g.drawRoundedRectangle(r.reduced(1*u,3*u),2*u,1.2f);
+  for(float offset:{-5.f,5.f}){g.drawEllipse(cx+(offset-3)*u,cy-5*u,6*u,6*u,1.2f);g.fillEllipse(cx+(offset-1)*u,cy-3*u,2*u,2*u);}
+  g.drawLine(cx-6*u,cy+5*u,cx+6*u,cy+5*u,1.2f);return;
+ }
+ if(type==36){
+  const float heights[]={4,12,7,17};for(int i=0;i<4;++i)g.drawRect(cx+(i*5-9)*u,cy+(9-heights[i])*u,3*u,heights[i]*u,1.2f);return;
+ }
  if(type==0){g.drawLine(cx-5*u,cy,cx+5*u,cy,1.2f);g.drawLine(cx,cy-5*u,cx,cy+5*u,1.2f);return;}
  if(type>=16&&type<=21){const char* symbols[]={"VI","RM","GN","CUT","EQ","RV"};drawCaption(g,symbols[type-16],r.toNearestInt(),r.getWidth()*.38f,colour,juce::Justification::centred,true);return;}
  if(type>=11&&type<=15){const char* symbols[]={"CH","FL","PH","WA","BC"};drawCaption(g,symbols[type-11],r.toNearestInt(),r.getWidth()*.45f,colour,juce::Justification::centred,true);return;}

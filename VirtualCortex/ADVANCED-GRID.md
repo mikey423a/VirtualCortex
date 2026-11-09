@@ -36,5 +36,6 @@ Moves are not guaranteed gapless. Each instance consumes its own buffers; many
 Verification added: all seven types retain sample-identical DSP state after a
 move; every GUI control is traversed and bound; native preset/scene/independence,
 legacy 6.22 migration, MIDI bypass note-off, loop move/undo/redo, and callback
-allocation checks. Windows build and validation results must be checked before
-shipping this version. Anubis hardware and listening tests remain user-side.
+allocation checks. Initial Windows run 42654272273 passed all 40 CTest tests, pluginval level 5,
+standalone startup and installer install/uninstall. A final rebuild covers the
+subsequent lifecycle guard and icon/knob readability fixes. Anubis hardware and listening tests remain user-side.

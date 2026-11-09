@@ -53,13 +53,15 @@ public:
   if(!reverbSlots_[row][col]){auto effect=std::make_unique<StereoReverb>();effect->prepare(rate_);reverbSlots_[row][col]=std::move(effect);}
  }
  void prepareAdvancedSlot(std::size_t row,std::size_t col,int type){
+  if(!SignalGrid::valid(row,col))return;
   auto& slot=advancedSlots_[row][col];if(slot&&slot->kind()==type)return;
   std::unique_ptr<AdvancedGridEffect> next;
   if(isAdvanced(type)){next=std::make_unique<AdvancedGridEffect>(type);next->prepare(rate_);next->configure(advancedDefaults(type));}
   slot=std::move(next);
  }
  void configureAdvancedSlot(std::size_t row,std::size_t col,const AdvancedValues& v,float tempo,unsigned commands=0)noexcept{
-  if(auto* effect=advancedSlots_[row][col].get()){effect->configure(v,tempo);effect->command(commands);}
+  if(!SignalGrid::valid(row,col))return;
+  if(auto* effect=advancedSlots_[row][col].get())if(validAdvanced(effect->kind(),v)){effect->configure(v,tempo);effect->command(commands);}
  }
  unsigned advancedStatus(std::size_t row,std::size_t col)const noexcept {const auto* e=advancedSlots_[row][col].get();return e?e->status():0;}
  using MidiSink=void(*)(void*,std::size_t,std::size_t,int,float,std::size_t);

@@ -16,6 +16,7 @@ int main(){try{
   for(int i=0;i<4000;++i){
    if(i==1000&&type==34){moved.configureAdvancedSlot(0,0,v,123,LayerLoom::Record);reference.configureAdvancedSlot(0,0,v,123,LayerLoom::Record);check(moved.advancedStatus(0,0)==reference.advancedStatus(0,0),"Loop status diverged");}
    if(i==1500){check(moved.swapSlots(0,0,0,7),"Move failed");g.swap(0,0,0,7);moved.configure(g,enabled);moved.configureAdvancedSlot(0,7,v,123);}
+   if(i==1600)moved.configureAdvancedSlot(0,7,invalid,123); // rejected without poisoning the live state
    const float x=i<1500?.15f*std::sin(i*.17f):0;float a[2]{x,-.5f*x},b[2]{x,-.5f*x};
    moved.process(a,1,2);reference.process(b,1,2);
    check(std::isfinite(a[0])&&std::isfinite(a[1]),"Nonfinite advanced output");

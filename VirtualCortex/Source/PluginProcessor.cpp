@@ -333,6 +333,7 @@ bool VirtualCortexProcessor::isBusesLayoutSupported(const BusesLayout& layout) c
 }
 
 void VirtualCortexProcessor::prepareToPlay(double sampleRate,int samplesPerBlock){
+ std::lock_guard<std::recursive_mutex> move(gridMoveMutex);
  fs=std::isfinite(sampleRate)?juce::jmax(8000.0,sampleRate):48000.0;
  assetSampleRate.store(fs,std::memory_order_release);
  // Routing changes are published through atomic row snapshots.
