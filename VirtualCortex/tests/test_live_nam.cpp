@@ -60,6 +60,8 @@ int main(int argc,char** argv){try{
  }
  model->prepare(44100);check(model->status()==vc::LiveAmpStatus::RateMismatch&&model->process(0,.1f)==0,"Rate mismatch did not mute");
  model->prepare(48000);check(model->status()==vc::LiveAmpStatus::Ready,"Matching rate did not recover");
+ probe::allocations=0;probe::enabled=true;const float resetOutput=model->process(0,0);probe::enabled=false;
+ check(probe::allocations==0&&resetOutput==0,"Restart left stale Linear history or deferred allocation");
  vc::PortableAudioEngine engine;engine.prepare(48000);vc::SignalGrid grid;grid.set(0,0,{vc::BlockType::Amp,true});engine.configure(grid,{true,false,false,false});
  engine.setLiveAmp(0,0,std::move(model));vc::SlotParameters settings;settings.drive=settings.mix=.5f;engine.setSlotParameters(0,0,settings);
  float frame[2]{.2f,0};engine.process(frame,1,2);check(std::abs(frame[0]-.1f)<1.e-6f,"NAM not integrated into graph");

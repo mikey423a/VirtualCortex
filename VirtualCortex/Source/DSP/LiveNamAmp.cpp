@@ -12,6 +12,7 @@ class NamAmp final:public LiveAmp {
  std::array<std::unique_ptr<nam::DSP>,2> models;
  std::atomic<LiveAmpStatus> state{LiveAmpStatus::None};
  double expected=0;
+ int warmSamples=1;
  float inputTarget=1,outputTarget=1,coefficient=0;
  std::array<float,2> inputGain{{1,1}},outputGain{{1,1}};
 public:
@@ -19,7 +20,8 @@ public:
   const auto file=std::filesystem::u8path(path);
   if(std::filesystem::file_size(file)>64u*1024u*1024u)throw std::runtime_error("NAM model exceeds 64 MiB");
   for(auto& model:models){
-   nam::DspLoadOptions options;options.prewarm=false;model=nam::get_dsp(file,options);
+   nam::DspLoadOptions options;options.prewarm=false;nam::dspData data;model=nam::get_dsp(file,data,options);
+   if(data.architecture=="Linear")warmSamples=std::max(warmSamples,data.config.at("receptive_field").get<int>());
    if(!model||model->NumInputChannels()!=1||model->NumOutputChannels()!=1)throw std::runtime_error("NAM needs a mono-input, mono-output model");
    const double sr=model->GetExpectedSampleRate();if(!std::isfinite(sr))throw std::runtime_error("NAM model has invalid sample rate");
    expected=sr>0?sr:0;
@@ -33,7 +35,14 @@ public:
   try{
    // Processing one sample adds no block-adapter latency. All model Reset /
    // prewarm allocations occur here, never in the normal processing callback.
-   for(auto& model:models){model->SetPrewarmOnReset(true);model->Reset(rate,1);}
+   for(auto& model:models){
+    model->SetPrewarmOnReset(true);model->Reset(rate,1);
+    // Some architectures declare no prewarm and lazily allocate on first
+    // process. Exercise that path here. Flush the complete Linear history
+    // on device restart as its upstream Reset does not clear the FIR buffer.
+    float input=0,output=0;float* ip=&input;float* op=&output;
+    for(int i=0;i<warmSamples;++i)model->process(&ip,&op,1);
+   }
    coefficient=(float)std::exp(-1./(rate*.01));inputGain.fill(inputTarget);outputGain.fill(outputTarget);state=LiveAmpStatus::Ready;
   }catch(...){state=LiveAmpStatus::Fault;}
  }
