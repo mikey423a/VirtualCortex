@@ -1,6 +1,6 @@
-# 6.25 routing and effects quality — development candidate
+# 6.25 routing and effects quality — verified Windows build
 
-New Custom row mixer routing complements the unchanged Parallel, Series and Dual mono modes. Click a row's ROUTE button or choose Custom row mixer in the routing selector.
+New Custom row mixer routing complements the unchanged Parallel, Series and Dual mono modes. Click a row's ROUTE button (OUT or BUS in Custom mode) or choose Custom row mixer in the routing selector.
 
 Each row receives any combination of the app input and earlier row outputs. Multiple consumers split a signal; multiple sources merge. Feed-forward order rejects self/backward connections. Each enabled row processes exactly once per sample, including stereo effects. Disabled rows are silent and excluded from averaging. A row with no sources still processes silence, so existing tails can run. No selected outputs means silence.
 
@@ -14,6 +14,6 @@ Effects quality fix: switching Stereo Delay into tape mode during a clean delay-
 
 Local validation passed: custom split/merge signal oracle, isolated channels, unity and sum levels, invalid routes, smooth polarity, existing routing, advanced effect state moves, Stereo Delay, Stereo Reverb and the 137-parameter binding contract. The existing reverb decay test measured about 1.10–1.13 seconds for a 1.2-second target across those four rates. These are technical checks, not listening verification or a claim of proprietary effect equivalence.
 
-Windows binary, native UI/preset tests, pluginval and installer verification are pending for this candidate. Anubis hardware and listening tests remain user-side.
+Windows verification passed for commit db1d12e74f864d4da6f74aa9dd0366149b8ba2e8, Actions run 42869930571 (Windows Server 2022, JUCE 8.0.10): standalone EXE and VST3 compiled; all 45 regression tests passed; pluginval strictness 5 passed; standalone remained running for 10 seconds; installer installation and complete uninstallation passed. Downloaded artifact archives and all four packaged binary checksums were verified. Anubis hardware, Windows 11 device behavior and listening tests remain user-side.
 
-GUI polish: named blocks and visible empty-slot targets in expanded grid view, slightly larger compact blocks, keyboard focus outlines, per-slot tooltips, explicit custom row source/output captions, correct custom-mode header synchronization, NAM model names in the amp editor heading, mint source-selection buttons, and readable left/right balance values. Effect blocks retain rounded-square silhouettes and the four-row layout. Final Windows screenshot review is required for this UI revision.
+GUI polish: named blocks and visible empty-slot targets in expanded grid view, slightly larger compact blocks, keyboard focus outlines, per-slot tooltips, explicit custom row source/output captions, correct custom-mode header synchronization, NAM model names in the amp editor heading, mint source-selection buttons, and readable left/right balance values. Effect blocks retain rounded-square silhouettes and the four-row layout. Native Windows screenshots reviewed at 2560x1440 and 822x600, including the corrected initial CENTER balance label. The existing aspect-preserving layout remains centered with side margins on a 16:9 screen; this is not a full-width responsive redesign.
