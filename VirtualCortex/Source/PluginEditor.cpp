@@ -16,6 +16,9 @@ CortexLookAndFeel::CortexLookAndFeel(){
  setColour(juce::PopupMenu::highlightedBackgroundColourId,juce::Colour(0xff28483f));
  setColour(juce::ToggleButton::textColourId,juce::Colours::white);
  setColour(juce::ToggleButton::tickColourId,mint);
+ setColour(juce::Slider::thumbColourId,mint);
+ setColour(juce::Slider::trackColourId,mint);
+ setColour(juce::Slider::backgroundColourId,juce::Colour(0xff303639));
  setColour(juce::Slider::textBoxOutlineColourId,juce::Colours::transparentBlack);
  setColour(juce::Slider::textBoxTextColourId,juce::Colours::white);
  setColour(juce::Slider::textBoxBackgroundColourId,juce::Colours::transparentBlack);
@@ -32,13 +35,19 @@ void CortexLookAndFeel::drawButtonText(juce::Graphics& g,juce::TextButton& b,boo
  if(id=="pedal"){g.setColour(juce::Colours::white);juce::Path foot;foot.startNewSubPath(20,23);foot.lineTo(25,15);foot.lineTo(35,12);foot.lineTo(38,7);foot.lineTo(43,10);foot.lineTo(45,18);foot.lineTo(36,22);foot.lineTo(33,26);foot.lineTo(20,26);foot.closeSubPath();g.strokePath(foot,juce::PathStrokeType(1.f));g.drawLine(17,29,46,29,1.f);return;}
  if(id=="save"){g.setColour(muted);auto box=r.toFloat().reduced(9.f);g.drawRect(box,1.5f);g.drawRect(box.reduced(4.f,0).withHeight(7.f),1.f);g.drawRect(box.reduced(4.f,0).withY(box.getBottom()-8).withHeight(8.f),1.f);return;}
  if(id=="open"){drawCaption(g,"...",r,21.f,muted,juce::Justification::centred);return;}
- const auto c=id.startsWith("stereo-page-")&&b.getToggleState()?mint:b.getToggleState()&&id.startsWith("quick-")?juce::Colours::black:(id.startsWith("device-")&&b.getToggleState()?juce::Colour(0xff8bf879):(id=="directory"?muted:juce::Colours::white));
+ const auto c=id.startsWith("row-route-")&&b.getToggleState()?mint:id.startsWith("stereo-page-")&&b.getToggleState()?mint:b.getToggleState()&&id.startsWith("quick-")?juce::Colours::black:(id.startsWith("device-")&&b.getToggleState()?juce::Colour(0xff8bf879):(id=="directory"?muted:juce::Colours::white));
  drawCaption(g,b.getButtonText(),id.startsWith("device-")?r.reduced(9,0):r,id.startsWith("quick-")?16.f:(id.startsWith("device-")?15.f:14.f),c,id.startsWith("device-")?juce::Justification::centredLeft:juce::Justification::centred);
 }
 void CortexLookAndFeel::drawToggleButton(juce::Graphics& g,juce::ToggleButton& b,bool over,bool){
  if(b.getComponentID()=="power"||b.getComponentID()=="bypass"){
   const auto r=b.getLocalBounds().toFloat().reduced(8.f);const auto c=b.getToggleState()?mint:muted;
   g.setColour(c);juce::Path arc;arc.addCentredArc(r.getCentreX(),r.getCentreY(),r.getWidth()*.4f,r.getWidth()*.4f,0,.55f,5.73f,true);g.strokePath(arc,juce::PathStrokeType(1.4f));g.drawLine(r.getCentreX(),r.getY()+1,r.getCentreX(),r.getCentreY(),1.4f);return;
+ }
+ if(b.getComponentID().startsWith("route-")&&b.getComponentID()!="route-average"){
+  const auto r=b.getLocalBounds().toFloat().reduced(3.f,2.f);const bool on=b.getToggleState(),enabled=b.isEnabled();
+  g.setColour(on?juce::Colour(0xff183c34):juce::Colour(over?0xff292e2d:0xff202524));g.fillRoundedRectangle(r,5.f);
+  g.setColour(enabled?(on?mint:juce::Colour(0xff46504d)):juce::Colour(0xff2a302e));g.drawRoundedRectangle(r,5.f,on?1.5f:1.f);
+  drawCaption(g,b.getButtonText(),r.toNearestInt(),13.f,enabled?(on?mint:juce::Colour(0xffb6bfbc)):juce::Colour(0xff505855),juce::Justification::centred);return;
  }
  juce::LookAndFeel_V4::drawToggleButton(g,b,over,false);
 }
@@ -55,7 +64,7 @@ void CortexLookAndFeel::drawRotarySlider(juce::Graphics& g,int x,int y,int w,int
  juce::Path pointer;pointer.startNewSubPath(0,-radius*.72f);pointer.lineTo(0,-radius*.18f);
  g.setColour(juce::Colours::white);g.strokePath(pointer,juce::PathStrokeType(2.f),juce::AffineTransform::rotation(angle).translated(r.getCentreX(),r.getCentreY()));
 }
-CortexBlockButton::CortexBlockButton():juce::Button("Signal slot"){}
+CortexBlockButton::CortexBlockButton():juce::Button("Signal slot"){setWantsKeyboardFocus(true);}
 juce::Colour CortexBlockButton::colourFor(int type){
  if(vc::isAdvanced(type))type-=7;
  const juce::uint32 values[]={0xff41454a,0xffd8a944,0xfff25562,0xff57d3bf,0xff4097ef,0xff43d8c9,0xff61fbd8,0xff9265ff,0xffe6ad55,0xffee8641,0xffe6546d,0xffb68af5,0xff829cff,0xffda88de,0xffd8bf55,0xff64bed6,0xffae81ed,0xffe28aaf,0xffa0b99c,0xff6fb8df,0xff75a5ec,0xff6bdbcb,0xffa0a7ad,0xff61fbd8,0xff61fbd8,0xffd8a944,0xffd8a944,0xff749bff,0xffeac967,0xff63dab5};
@@ -109,14 +118,17 @@ void CortexBlockButton::paintButton(juce::Graphics& g,bool over,bool){
   auto box=juce::Rectangle<float>(48,48).withCentre({bounds.getCentreX(),43.f});g.setColour(selected?juce::Colour(0xff073d34):colour);g.drawRoundedRectangle(box,12.f,selected?3.f:1.5f);drawIcon(g,box.reduced(10),type,ink);
   drawCaption(g,type?nameFor(type):"Empty slot",{8,75,getWidth()-16,31},16.f,ink,juce::Justification::centred);return;
  }
- if(type==0&&!selected&&!over)return;
- const float side=juce::jmin(62.f,bounds.getHeight()-16.f);auto box=juce::Rectangle<float>(side,side).withCentre({bounds.getCentreX(),bounds.getCentreY()});
+ const bool expanded=getHeight()>100;const float centreY=expanded?47.f:bounds.getCentreY();
+ if(type==0&&!selected&&!over){g.setColour(juce::Colour(0xff080a0a));g.fillRoundedRectangle(bounds.getCentreX()-8,centreY-8,16,16,3);drawIcon(g,{bounds.getCentreX()-7,centreY-7,14,14},0,juce::Colour(0xff48514e));return;}
+ const float side=expanded?62.f:juce::jmin(62.f,bounds.getHeight()-10.f);auto box=juce::Rectangle<float>(side,side).withCentre({bounds.getCentreX(),centreY});
  // Preserve the reference rounded-square silhouette in compact and expanded rows.
  const float corner=side*.2f,outline=side*(selected?.08f:.027f);
- g.setColour(selected?colour.withAlpha(.13f):juce::Colour(0xff101111));g.fillRoundedRectangle(box,corner);
+ g.setColour(selected?colour.withAlpha(.16f):juce::Colour(over?0xff202524:0xff101111));g.fillRoundedRectangle(box,corner);
  g.setColour(blockEnabled?colour:colour.withAlpha(.3f));g.drawRoundedRectangle(box,corner,outline);
  drawIcon(g,box.reduced(side*.24f),type,blockEnabled?juce::Colours::white:muted.withAlpha(.55f));
- if(type){const auto badge=juce::Rectangle<float>(side*.38f,side*.38f).withCentre({box.getX()-1,box.getY()-1});g.setColour(juce::Colours::white);g.fillEllipse(badge);drawCaption(g,caption,badge.toNearestInt(),side*.24f,juce::Colours::black,juce::Justification::centred);}
+ if(hasKeyboardFocus(false)){g.setColour(mint.withAlpha(.7f));g.drawRoundedRectangle(box.expanded(4),corner+3,1.f);}
+ if(expanded&&type){g.setColour(blockEnabled?(selected?colour:juce::Colour(0xffd5dbd8)):muted);g.setFont(12.f);g.drawFittedText(nameFor(type),4,86,getWidth()-8,32,juce::Justification::centred,2);if(!blockEnabled)drawCaption(g,"BYPASSED",{4,118,getWidth()-8,14},9.f,muted,juce::Justification::centred);}
+ if(type){const auto badge=juce::Rectangle<float>(side*.38f,side*.38f).withCentre({box.getX()-1,box.getY()+(expanded?-1.f:2.f)});g.setColour(juce::Colours::white);g.fillEllipse(badge);drawCaption(g,caption,badge.toNearestInt(),side*.24f,juce::Colours::black,juce::Justification::centred);}
 }
 VirtualCortexEditor::VirtualCortexEditor(VirtualCortexProcessor& p):AudioProcessorEditor(&p),processor(p){
  setLookAndFeel(&look);
@@ -222,7 +234,7 @@ VirtualCortexEditor::VirtualCortexEditor(VirtualCortexProcessor& p):AudioProcess
  fullScreenButton.setVisible(processor.wrapperType==juce::AudioProcessor::wrapperType_Standalone);
  catalogButton.setComponentID("catalog-toggle");catalogButton.setTooltip("Browse playable originals and the complete reference device inventory");
  catalogButton.onClick=[this]{catalogPanel.setVisible(!catalogPanel.isVisible());if(catalogPanel.isVisible())catalogPanel.toFront(false);};
- addAndMakeVisible(catalogButton);addChildComponent(catalogPanel);addChildComponent(routingPanel);
+ addAndMakeVisible(catalogButton);addChildComponent(catalogPanel);addChildComponent(routingPanel);routingPanel.onChange=[this]{routingSelector.setSelectedId(processor.getRoutingMode()+1,juce::dontSendNotification);refreshGridControls();repaint();};
  for(int r=0;r<4;++r){auto& b=routeButtons[r];b.setButtonText("ROUTE");b.setComponentID("row-route-"+juce::String(r));b.setTooltip("Open custom row sources, output mix, level and balance");b.onClick=[this]{routingPanel.refresh();routingPanel.setVisible(true);routingPanel.toFront(false);};addAndMakeVisible(b);}
  catalogPanel.onChooseOriginal=[this](int type){
   if(type<=21||vc::isAdvanced(type)){if(!insertBlock(type))return;}
@@ -269,7 +281,7 @@ std::vector<int> VirtualCortexEditor::visibleSlotControls() const{
 void VirtualCortexEditor::selectSlot(int row,int col){if(!vc::SignalGrid::valid((size_t)row,(size_t)col))return;selectedRow=row;selectedColumn=col;rowBank=row/2;rowSelector.setSelectedId(row+1,juce::dontSendNotification);masterPage=false;const auto grid=processor.getEditableGrid();const int type=(int)grid.get((size_t)row,(size_t)col)->type;if(type)browserType=type;lastView=-1;refreshSlotControls();updateView();}
 bool VirtualCortexEditor::insertBlock(int type){if(type<0||(type>21&&!vc::isAdvanced(type)))return false;bool ok=processor.setGridBlock((size_t)selectedRow,(size_t)selectedColumn,{(vc::BlockType)type,true});masterPage=false;if(type)browserType=type;lastView=-1;updateView();statusLabel.setText(gridMode()?"Block updated":"Block updated. Enable GRID ENGINE to hear the grid.",juce::dontSendNotification);return ok;}
 bool VirtualCortexEditor::toggleSelectedSlot(){const auto grid=processor.getEditableGrid();const auto slot=*grid.get((size_t)selectedRow,(size_t)selectedColumn);if(slot.type==vc::BlockType::Empty)return false;bool ok=processor.setGridBlock((size_t)selectedRow,(size_t)selectedColumn,{slot.type,!slot.enabled});refreshGridControls();return ok;}
-void VirtualCortexEditor::refreshGridControls(){const auto grid=processor.getEditableGrid();for(int r=0;r<4;++r){laneButtons[(size_t)r].setToggleState(processor.isGridLaneEnabled((size_t)r),juce::dontSendNotification);for(int c=0;c<8;++c){const auto slot=*grid.get((size_t)r,(size_t)c);auto& b=gridCells[(size_t)r][(size_t)c];b.type=(int)slot.type;b.blockEnabled=slot.enabled&&processor.isGridLaneEnabled((size_t)r);b.selected=r==selectedRow&&c==selectedColumn;b.caption=juce::String::charToString((juce::juce_wchar)('A'+c));b.repaint();}}
+void VirtualCortexEditor::refreshGridControls(){const auto routes=processor.getRowRouting();const bool custom=processor.getRoutingMode()==3;for(int r=0;r<4;++r){routeButtons[r].setButtonText(custom?(routes.rows[r].output?"OUT":"BUS"):"ROUTE");routeButtons[r].setToggleState(custom&&routes.rows[r].output,juce::dontSendNotification);}const auto grid=processor.getEditableGrid();for(int r=0;r<4;++r){laneButtons[(size_t)r].setToggleState(processor.isGridLaneEnabled((size_t)r),juce::dontSendNotification);for(int c=0;c<8;++c){const auto slot=*grid.get((size_t)r,(size_t)c);auto& b=gridCells[(size_t)r][(size_t)c];b.type=(int)slot.type;b.blockEnabled=slot.enabled&&processor.isGridLaneEnabled((size_t)r);b.selected=r==selectedRow&&c==selectedColumn;b.caption=juce::String::charToString((juce::juce_wchar)('A'+c));const auto description="Row "+juce::String(r+1)+", slot "+b.caption+": "+CortexBlockButton::nameFor((int)slot.type)+(b.blockEnabled?"":" (bypassed)");b.setName(description);b.setTooltip(description+". Drag to move; select to edit.");b.repaint();}}
  for(int c=0;c<8;++c){const auto slot=*grid.get((size_t)selectedRow,(size_t)c);auto& b=stomps[(size_t)c];b.type=(int)slot.type;b.blockEnabled=slot.enabled;b.selected=c==selectedColumn;b.repaint();}
  for(int c=0;c<8;++c)quickSelectors[(size_t)c].setToggleState(c==processor.selectedScene(),juce::dontSendNotification);
  slotEnabled.setToggleState(grid.get((size_t)selectedRow,(size_t)selectedColumn)->enabled,juce::dontSendNotification);
@@ -331,7 +343,7 @@ void VirtualCortexEditor::resized(){
  addButton.setBounds(62,789,224,31);
  bankButtons[0].setVisible(false);bankButtons[1].setVisible(false);
  const int rowStep=editorsVisible?46:160,rowTop=editorsVisible?132:153;
- for(int r=0;r<4;++r){laneButtons[(size_t)r].setVisible(true);laneButtons[(size_t)r].setBounds(302,rowTop+r*rowStep+5,49,editorsVisible?39:84);for(int c=0;c<8;++c){auto& cell=gridCells[(size_t)r][(size_t)c];cell.setVisible(true);cell.setBounds(363+c*93,rowTop+r*rowStep,94,editorsVisible?44:92);}}
+ for(int r=0;r<4;++r){laneButtons[(size_t)r].setVisible(true);laneButtons[(size_t)r].setBounds(302,rowTop+r*rowStep+5,49,editorsVisible?39:84);for(int c=0;c<8;++c){auto& cell=gridCells[(size_t)r][(size_t)c];cell.setVisible(true);cell.setBounds(363+c*93,rowTop+r*rowStep,94,editorsVisible?44:134);}}
  routingSelector.setBounds(638,35,165,32);directoryButton.setVisible(false);catalogButton.setBounds(511,35,115,32);catalogPanel.setBounds(53,78,1121,752);routingPanel.setBounds(53,78,1121,752);
  for(int r=0;r<4;++r)routeButtons[r].setBounds(1124,rowTop+r*rowStep+5,49,editorsVisible?39:84);
  fullScreenButton.setBounds(805,35,162,32);
@@ -382,12 +394,18 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
 
  const int rowStep=editorsVisible?46:160,rowTop=editorsVisible?132:153;
  for(int row=0;row<4;++row){const int y=rowTop+row*rowStep;const bool active=processor.isGridLaneEnabled((size_t)row);g.setColour(juce::Colour(active?0xffa3a3a3:0xff383838));const float cy=(float)y+(editorsVisible?22.f:47.f);g.drawLine(352,cy,1124,cy,1.f);g.setColour(juce::Colour(0xff111212));g.fillRoundedRectangle(1124.f,(float)y+5,49.f,editorsVisible?39.f:84.f,16);drawCaption(g,"Mix",{1125,y+(editorsVisible?9:30),47,25},12.f,juce::Colours::white,juce::Justification::centred);}
+ if(!editorsVisible&&processor.getRoutingMode()==3){const auto routes=processor.getRowRouting();
+  for(int r=0;r<4;++r){juce::StringArray inputs;const auto& row=routes.rows[r];if(row.sources&1)inputs.add("IN");for(int from=0;from<r;++from)if(row.sources&(2u<<from))inputs.add("ROW "+juce::String(from+1));
+   const auto text=(inputs.isEmpty()?juce::String("NO INPUT"):inputs.joinIntoString(" + "))+"  >  ROW "+juce::String(r+1)+(row.output?"  >  OUTPUT":"  >  ROW BUS");
+   drawCaption(g,text,{368,rowTop+r*rowStep+136,735,18},11.f,processor.isGridLaneEnabled(r)?mint:muted);
+  }
+ }
  if(!editorsVisible&&(switches[10].button.getToggleState()||switches[14].button.getToggleState()))drawCaption(g,juce::String("POST CHAIN: ")+(switches[10].button.getToggleState()?"STEREO DELAY":"")+(switches[10].button.getToggleState()&&switches[14].button.getToggleState()?" > ":"")+(switches[14].button.getToggleState()?"STEREO REVERB":""),{363,801,760,25},13.f,mint);
- if(!editorsVisible)drawCaption(g,processor.getRoutingMode()==0?"PARALLEL: same input / averaged rows":processor.getRoutingMode()==1?"SERIES: row 1 > 2 > 3 > 4":"DUAL MONO: L rows 1 > 2 / R rows 3 > 4 / grid effects only",{363,768,760,35},14.f,muted);
+ if(!editorsVisible&&processor.getRoutingMode()!=3)drawCaption(g,processor.getRoutingMode()==0?"PARALLEL: same input / averaged rows":processor.getRoutingMode()==1?"SERIES: row 1 > 2 > 3 > 4":processor.getRoutingMode()==3?"CUSTOM: select OUT / BUS to edit connections and row levels":"DUAL MONO: L rows 1 > 2 / R rows 3 > 4 / grid effects only",{363,768,760,35},14.f,muted);
  if(editorsVisible){
  g.setColour(juce::Colour(0xff111111));g.fillRoundedRectangle(parameterArea.toFloat(),5);g.setColour(panel);g.fillRect(302,354,872,236);
  for(int i=0;i<3;++i){g.setColour(muted);g.fillEllipse(318.f,325.f+i*7.f,2.f,2.f);g.fillEllipse(318.f,605.f+i*7.f,2.f,2.f);}
- drawCaption(g,CortexBlockButton::nameFor(currentType()),{347,319,vc::isAdvanced(currentType())?350:currentType()==26?195:135,33},18.f,muted);drawCaption(g,currentType()==2?"Original amplifier":currentType()==3?"Cabinet IR":currentType()>=30?"GRID DEVICE":currentType()>=28?"INPUT PROCESSOR":currentType()>=23?"POST CHAIN":currentType()==8?"Original peak compressor":currentType()==9?"Original soft clipping":currentType()==10?"Original hard clipping":"Original",{vc::isAdvanced(currentType())?710:currentType()==26?545:485,319,vc::isAdvanced(currentType())?410:currentType()==26?540:600,33},18.f,CortexBlockButton::colourFor(currentType()));
+ drawCaption(g,CortexBlockButton::nameFor(currentType()),{347,319,vc::isAdvanced(currentType())?350:currentType()==26?195:135,33},18.f,muted);drawCaption(g,currentType()==2?(gridMode()&&processor.isGridNAM(selectedRow,selectedColumn)?processor.getGridNeuralModelName(selectedRow,selectedColumn):juce::String("Original amplifier")):currentType()==3?"Cabinet IR":currentType()>=30?"GRID DEVICE":currentType()>=28?"INPUT PROCESSOR":currentType()>=23?"POST CHAIN":currentType()==8?"Original peak compressor":currentType()==9?"Original soft clipping":currentType()==10?"Original hard clipping":"Original",{vc::isAdvanced(currentType())?710:currentType()==26?545:485,319,vc::isAdvanced(currentType())?410:currentType()==26?540:600,33},18.f,CortexBlockButton::colourFor(currentType()));
  const auto indices=gridMode()&&!masterPage?visibleSlotControls():visibleKnobs();for(int j=0;j<10;++j){int x=302+(j%5)*174,y=354+(j/5)*118;g.setColour(juce::Colour(0xff070707));g.drawLine((float)x+174,(float)y+8,(float)x+174,(float)y+118,1.f);g.drawLine((float)x,(float)y+118,(float)x+174,(float)y+118,1.f);if(j<(int)indices.size()){int i=indices[(size_t)j];drawCaption(g,gridMode()&&!masterPage?slotLabels[(size_t)i]:knobs[(size_t)i].label,{x+9,y+6,156,23},15.f);}}
  if(indices.empty())drawCaption(g,currentType()==0?"Select a slot, then choose a device from the directory.":currentType()==3?"Load a cabinet impulse response.":"Fixed settings in the current grid engine.",{320,381,730,44},14.f,muted);
 
