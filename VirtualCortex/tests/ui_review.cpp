@@ -273,6 +273,8 @@ int main(int argc,char** argv){
    auto* lane=dynamic_cast<juce::ToggleButton*>(panel->findChildWithID("route-lane-3"));require(lane!=nullptr,"Routing lane switch missing");lane->setToggleState(false,juce::dontSendNotification);lane->onClick();require(!processor->isGridLaneEnabled(3),"Routing lane switch unbound");lane->setToggleState(true,juce::dontSendNotification);lane->onClick();
    dynamic_cast<juce::Slider*>(panel->findChildWithID("route-gain-1"))->setValue(-6,juce::sendNotificationSync);
    require(processor->getRowRouting().rows[1].gainDb==-6,"Route level unbound");
+   auto* balanceControl=dynamic_cast<juce::Slider*>(panel->findChildWithID("route-balance-1"));require(balanceControl&&balanceControl->getTextFromValue(0)=="CENTER","Center balance formatting missing");
+   balanceControl->setValue(-.5,juce::sendNotificationSync);require(processor->getRowRouting().rows[1].balance==-.5f&&balanceControl->getTextFromValue(-.5)=="L 50%","Balance control unbound");balanceControl->setValue(0,juce::sendNotificationSync);
    capture("custom-routing-2560x1440.png",2560,1440);capture("custom-routing-822x600.png",822,600);
    dynamic_cast<juce::Button*>(panel->findChildWithID("routing-close"))->onClick();require(!panel->isVisible(),"Routing close failed");
    editor->setEditorsVisible(false);capture("custom-grid-2560x1440.png",2560,1440);
