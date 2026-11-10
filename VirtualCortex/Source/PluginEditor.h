@@ -42,6 +42,7 @@ public:
  bool isFullScreenMode() const;
  // Used by the native UI review to exercise real selection and insertion.
  void selectSlot(int row,int col);
+ bool moveGridSlotToPosition(int row,int col,juce::Point<float> position);
  void setEditorsVisible(bool visible);
  bool insertBlock(int type);
  bool toggleSelectedSlot();

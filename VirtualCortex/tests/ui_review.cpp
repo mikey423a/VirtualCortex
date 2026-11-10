@@ -15,6 +15,7 @@ int main(int argc,char** argv){
   require(dir.createDirectory().wasOk(),"Cannot create screenshot directory");
   auto capture=[&](const juce::String& name,int w,int h){
    editor->setSize(w,h);
+   for(int i=0;i<editor->getNumChildComponents();++i)if(auto* slider=dynamic_cast<juce::Slider*>(editor->getChildComponent(i));slider&&slider->isVisible()&&slider->getSliderStyle()==juce::Slider::RotaryHorizontalVerticalDrag)require(slider->getBounds().getWidth()==slider->getBounds().getHeight(),"Rotary control distorted by widescreen layout");
    for(int i=0;i<editor->getNumChildComponents();++i){auto* child=editor->getChildComponent(i);if(child->isVisible())require(editor->getLocalBounds().contains(child->getBoundsInParent()),"A visible control is clipped by the window");}
    if(w*9==h*16){
     auto* route=editor->findChildWithID("row-route-3");require(route!=nullptr,"Row output missing");
@@ -283,6 +284,16 @@ int main(int argc,char** argv){
    capture("custom-routing-2560x1440.png",2560,1440);capture("custom-routing-822x600.png",822,600);
    dynamic_cast<juce::Button*>(panel->findChildWithID("routing-close"))->onClick();require(!panel->isVisible(),"Routing close failed");
    editor->setEditorsVisible(false);capture("custom-grid-2560x1440.png",2560,1440);capture("custom-grid-1920x1080.png",1920,1080);capture("custom-grid-1600x900.png",1600,900);
+  }
+  for(const auto size:{juce::Point<int>(2560,1440),juce::Point<int>(1280,720)}){
+   editor->setSize(size.x,size.y);editor->setEditorsVisible(false);
+   editor->selectSlot(0,0);require(editor->insertBlock(2),"Drag source insertion failed");
+   editor->selectSlot(3,7);require(editor->insertBlock(0),"Drag target clearing failed");
+   auto* target=editor->findChildWithID("grid-3-7");require(target!=nullptr,"Drag target missing");
+   require(editor->moveGridSlotToPosition(0,0,target->getBoundsInParent().getCentre().toFloat()),"Scaled drop missed target");
+   auto grid=processor->getEditableGrid();require((int)grid.get(3,7)->type==2&&(int)grid.get(0,0)->type==0,"Scaled drop moved to wrong slot");
+   auto* source=editor->findChildWithID("grid-0-0");require(editor->moveGridSlotToPosition(3,7,source->getBoundsInParent().getCentre().toFloat()),"Scaled return drop failed");
+   require(!editor->moveGridSlotToPosition(0,0,{-10.f,-10.f}),"Outside drop accepted");
   }
   editor.reset();processor->releaseResources();
   std::cout<<"PASS: native editor snapshots at three sizes, control binding, insertion and bypass\n";
