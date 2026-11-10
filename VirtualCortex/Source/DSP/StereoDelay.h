@@ -73,7 +73,7 @@ private:
  }
  float readHead(int channel,double wanted,double modulation) noexcept {
   auto& h=heads_[(std::size_t)channel];
-  if(cfg_.tape){h.current=wanted+glideCoefficient_*(h.current-wanted);h.fading=false;return read(channel,h.current+modulation);}
+  if(cfg_.tape&&!h.fading){h.current=wanted+glideCoefficient_*(h.current-wanted);h.fading=false;return read(channel,h.current+modulation);}
   if(!h.fading&&std::abs(wanted-h.current)>.05){h.target=wanted;h.fade=0;h.fading=true;}
   if(!h.fading)return read(channel,h.current+modulation);
   const auto length=std::max<std::size_t>(1,(std::size_t)(fs_*.02));const float t=(float)(h.fade+1)/(float)length;

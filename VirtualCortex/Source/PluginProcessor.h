@@ -62,7 +62,9 @@ public:
  juce::String getGridCabinetIRName(std::size_t row, std::size_t col) const;
  juce::String getCabinetIRName() const;
  void loopCommand(unsigned command)noexcept{loopCommands.fetch_or(command);}
- void setRoutingMode(int mode) noexcept {routingMode.store(juce::jlimit(0,2,mode));}
+ void setRoutingMode(int mode) noexcept {routingMode.store(juce::jlimit(0,3,mode));}
+ vc::RowRouting getRowRouting()const {std::lock_guard<std::mutex> lock(rowRoutingMutex);return rowRouting;}
+ bool setRowRouting(const vc::RowRouting& route){if(!vc::RowRouting::valid(route))return false;std::lock_guard<std::mutex> lock(rowRoutingMutex);rowRouting=route;rowRoutingVersion.fetch_add(1,std::memory_order_release);return true;}
  int getRoutingMode() const noexcept {return routingMode.load();}
  unsigned loopStatus()const noexcept{return loopState.load();}
  // Message/control-thread operations; never call from processBlock.
@@ -86,7 +88,10 @@ private:
  std::array<std::array<std::atomic<int>,8>,4> namStatus{};
  juce::String lastModelError;
  void updateNamStatus()noexcept;
- std::recursive_mutex gridMoveMutex;
+ mutable std::recursive_mutex gridMoveMutex;
+ vc::RowRouting rowRouting;
+ mutable std::mutex rowRoutingMutex;
+ std::atomic<unsigned> rowRoutingVersion{1};unsigned appliedRowRoutingVersion=0;
  std::atomic<int> routingMode{0};
  mutable std::mutex sceneMutex;
  std::array<juce::ValueTree,8> scenes{};

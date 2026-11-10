@@ -133,8 +133,10 @@ public:
  const SlotParameters* getSlotParameters(std::size_t row,std::size_t col) const noexcept {
   return SignalGrid::valid(row,col) ? &parameters_[row][col] : nullptr;
  }
+ bool setRowRouting(const RowRouting& c)noexcept{return routing_.setRowRouting(c);}
  void prepare(double sampleRate, std::size_t maxDelaySamples = 0) {
   hasProcessed_=false;
+  routing_.prepareMixer(sampleRate);
   // A device restart or sample-rate change must not resume an unfinished
   // transition from the previous stream. Retain the selected model/IR but
   // discard obsolete crossfade state and previous FIR coefficients.

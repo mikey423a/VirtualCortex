@@ -298,6 +298,25 @@ int runProcessorAudioTests(){
    p->setGridBlock(0,0,{vc::BlockType::GridPrismSynth,false});b.clear();p->processBlock(b,midi);for(const auto m:midi)if(m.getMessage().isNoteOff())++offs;
    check(ons>0&&offs>0,"Grid synth missing MIDI or bypass note-off");
   }
+  {
+   auto p=std::make_unique<VirtualCortexProcessor>();grid(*p,vc::BlockType::Empty);
+   for(int r=0;r<4;++r)p->setGridLaneEnabled(r,true);
+   vc::RowRouting config;config.rows[0].gainDb=-6;config.rows[0].output=config.rows[1].output=config.rows[2].output=false;
+   config.rows[1].sources=config.rows[2].sources=2;config.rows[3].sources=12;
+   check(p->setRowRouting(config),"Custom routing rejected");p->setRoutingMode(3);prepare(*p);
+   check(std::abs(settle(*p,.2f)-.2f*std::pow(10.f,-6.f/20.f))<1e-5f,"Native split merge level wrong");
+   juce::AudioBuffer<float> b(2,128);b.clear();juce::MidiBuffer midi;midi.ensureSize(8192);
+   allocationProbe::count=0;allocationProbe::enabled=true;p->processBlock(b,midi);allocationProbe::enabled=false;check(allocationProbe::count==0,"Custom routing callback allocated");
+   const auto saved=state(*p);auto q=std::make_unique<VirtualCortexProcessor>();restore(*q,saved);prepare(*q);
+   check(q->getRoutingMode()==3&&q->getRowRouting().rows[3].sources==12&&q->getRowRouting().rows[0].gainDb==-6,"Custom routing preset lost");
+   check(std::abs(settle(*q,.2f)-.2f*std::pow(10.f,-6.f/20.f))<1e-5f,"Restored custom mix differs");
+   q->swapGridSlots(0,0,3,7);check(q->getRowRouting().rows[3].sources==12,"Moving blocks changed row connections");
+   auto noOutput=config;for(auto& row:noOutput.rows)row.output=false;q->setRowRouting(noOutput);check(settle(*q,.2f,2)==0,"Disconnected output must mute");
+   auto xml=juce::AudioProcessor::getXmlFromBinary(saved.getData(),(int)saved.getSize());auto tree=juce::ValueTree::fromXml(*xml);
+   for(int r=0;r<4;++r)for(const char* key:{"sources","channel","gain","balance","invert","output"})tree.removeProperty("route_"+juce::String(r)+"_"+key,nullptr);
+   tree.removeProperty("rowRoutingAverage",nullptr);tree.setProperty("routingMode",0,nullptr);auto old=tree.createXml();juce::MemoryBlock oldState;juce::AudioProcessor::copyXmlToBinary(*old,oldState);restore(*q,oldState);
+   check(q->getRoutingMode()==0&&q->getRowRouting().rows[0].gainDb==0&&q->getRowRouting().rows[3].sources==1,"Legacy preset inherits stale custom settings");
+  }
 #if VC_HAS_NAM
   {
    const auto file=folder.getChildFile("live-amp.nam");check(file.replaceWithText(R"({"version":"0.5.4","architecture":"Linear","config":{"receptive_field":2,"bias":false},"weights":[0.5,0.25],"sample_rate":48000,"metadata":{}})"),"NAM fixture failed");

@@ -3,6 +3,7 @@
 #include <array>
 #include "DeviceCatalogPanel.h"
 #include "AdvancedGridEditor.h"
+#include "RoutingEditor.h"
 
 class CortexLookAndFeel final : public juce::LookAndFeel_V4 {
 public:
@@ -63,6 +64,8 @@ private:
  juce::TextButton headerStompButton{""},previousPreset{"<"},nextPreset{">"},directoryButton{"DIRECTORY"},ioButton{"I/O"},stompModeButton{"STOMP"},presetMenuButton{"PRESET"};
  juce::Rectangle<int> windowedBounds;
  juce::TextButton fullScreenButton{"FULL SCREEN"};
+ RoutingEditor routingPanel{processor};
+ std::array<juce::TextButton,4> routeButtons;
  DeviceCatalogPanel catalogPanel;
  juce::TextButton catalogButton{"CATALOG"};
  juce::TextButton editorsButton{"SHOW EDITORS"};

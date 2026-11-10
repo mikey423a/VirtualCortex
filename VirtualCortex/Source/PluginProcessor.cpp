@@ -338,7 +338,7 @@ void VirtualCortexProcessor::prepareToPlay(double sampleRate,int samplesPerBlock
  assetSampleRate.store(fs,std::memory_order_release);
  // Routing changes are published through atomic row snapshots.
  updateGridRouting();
- gridAudio.prepare(fs);updateNamStatus();
+ gridAudio.setRowRouting(getRowRouting());gridAudio.prepare(fs);updateNamStatus();
  trackingSynth.prepare(fs);sequenceCrusher.prepare(fs);midiPanic=true;intervalEcho.prepare(fs);layerLoom.prepare(fs);loopCommands=0;loopState=0;
  multiHead.prepare(fs);mhMix=0;mhDrain=0;
  stereoDelay.prepare(fs);
@@ -371,6 +371,10 @@ void VirtualCortexProcessor::processBlock(juce::AudioBuffer<float>& b,juce::Midi
  // Process only the supported main bus channels; clear unexpected extra channels.
  for (int ch = getTotalNumInputChannels(); ch < b.getNumChannels(); ++ch)
   b.clear(ch, 0, b.getNumSamples());
+ if(rowRoutingVersion.load(std::memory_order_acquire)!=appliedRowRoutingVersion){
+  std::unique_lock<std::mutex> routes(rowRoutingMutex,std::try_to_lock);
+  if(routes.owns_lock()){gridAudio.setRowRouting(rowRouting);appliedRowRoutingVersion=rowRoutingVersion.load();}
+ }
  const int route=routingMode.load();
  const bool dual=route==2 && cached.gridMode->load()>.5f;
  // A mono guitar input feeds both sides of a stereo effects chain.
@@ -731,6 +735,11 @@ void VirtualCortexProcessor::getStateInformation(juce::MemoryBlock& dest){
  std::lock_guard<std::recursive_mutex> move(gridMoveMutex);
  auto state=parameters.copyState();
  state.setProperty("routingMode",getRoutingMode(),nullptr);
+ const auto savedRoutes=getRowRouting();
+ state.setProperty("rowRoutingAverage",savedRoutes.average,nullptr);
+ for(int r=0;r<4;++r){const auto key="route_"+juce::String(r)+"_";const auto& p=savedRoutes.rows[r];
+  state.setProperty(key+"sources",(int)p.sources,nullptr);state.setProperty(key+"channel",p.channel,nullptr);state.setProperty(key+"gain",p.gainDb,nullptr);state.setProperty(key+"balance",p.balance,nullptr);state.setProperty(key+"invert",p.invert,nullptr);state.setProperty(key+"output",p.output,nullptr);
+ }
  state.removeChild(state.getChildWithName("ScenesV1"),nullptr);
  juce::ValueTree bank("ScenesV1");
  {std::lock_guard<std::mutex> lock(sceneMutex);
@@ -763,6 +772,9 @@ void VirtualCortexProcessor::setStateInformation(const void* data,int size){
  if(xml&&xml->hasTagName(parameters.state.getType())){
   auto restored=juce::ValueTree::fromXml(*xml);
   setRoutingMode((int)restored.getProperty("routingMode",0));
+  vc::RowRouting routes;routes.average=(bool)restored.getProperty("rowRoutingAverage",true);
+  for(int r=0;r<4;++r){const auto key="route_"+juce::String(r)+"_";auto& p=routes.rows[r];p.sources=(unsigned)(int)restored.getProperty(key+"sources",1);p.channel=(int)restored.getProperty(key+"channel",0);p.gainDb=(float)restored.getProperty(key+"gain",0.f);p.balance=(float)restored.getProperty(key+"balance",0.f);p.invert=(bool)restored.getProperty(key+"invert",false);p.output=(bool)restored.getProperty(key+"output",true);}
+  if(!setRowRouting(routes))setRowRouting(vc::RowRouting{});
   const auto bank=restored.getChildWithName("ScenesV1");
   {std::lock_guard<std::mutex> lock(sceneMutex);scenes={};activeScene.store(-1);
    if(bank.isValid()){

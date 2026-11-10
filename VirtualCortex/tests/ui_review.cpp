@@ -262,6 +262,18 @@ int main(int argc,char** argv){
    auto* clear=dynamic_cast<juce::Button*>(editor->findChildWithID("clear-amp-model"));require(clear&&clear->isVisible(),"NAM removal missing");clear->onClick();require(!processor->isGridNAM(0,0)&&!editor->findChildWithID("slot-param-1")->isVisible(),"NAM removal unbound");
   }
 #endif
+  {
+   auto* open=dynamic_cast<juce::Button*>(editor->findChildWithID("row-route-0"));require(open!=nullptr,"Routing button missing");open->onClick();
+   auto* panel=editor->findChildWithID("routing-editor");require(panel&&panel->isVisible(),"Routing panel hidden");
+   require(!panel->findChildWithID("route-source-0-1")->isEnabled(),"Self feedback offered in UI");
+   dynamic_cast<juce::Button*>(panel->findChildWithID("route-preset-1"))->onClick();
+   require(processor->getRoutingMode()==3&&processor->getRowRouting().rows[3].sources==12,"Split preset not bound");
+   dynamic_cast<juce::Slider*>(panel->findChildWithID("route-gain-1"))->setValue(-6,juce::sendNotificationSync);
+   require(processor->getRowRouting().rows[1].gainDb==-6,"Route level unbound");
+   capture("custom-routing-2560x1440.png",2560,1440);capture("custom-routing-822x600.png",822,600);
+   dynamic_cast<juce::Button*>(panel->findChildWithID("routing-close"))->onClick();require(!panel->isVisible(),"Routing close failed");
+   editor->setEditorsVisible(false);capture("custom-grid-2560x1440.png",2560,1440);
+  }
   editor.reset();processor->releaseResources();
   std::cout<<"PASS: native editor snapshots at three sizes, control binding, insertion and bypass\n";
   return 0;
