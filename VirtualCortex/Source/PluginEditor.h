@@ -48,6 +48,7 @@ public:
 private:
  VirtualCortexProcessor& processor;
  CortexLookAndFeel look;
+ juce::TooltipWindow tooltip{this,700};
  AdvancedGridEditor advancedEditor{processor};
  struct Knob {juce::Slider slider;std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attachment;juce::Label value;juce::String label;};
  struct Switch {juce::ToggleButton button;std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> attachment;};

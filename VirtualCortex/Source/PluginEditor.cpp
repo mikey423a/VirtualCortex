@@ -382,7 +382,7 @@ void VirtualCortexEditor::resized(){
  else removeButton.setVisible(true);
  for(auto& b:stomps)b.setVisible(editorsVisible);presetMenuButton.setVisible(editorsVisible);rowSelector.setVisible(editorsVisible);stompModeButton.setVisible(editorsVisible);
  const auto transform=juce::AffineTransform::scale(designScale).translated(designOffsetX,designOffsetY);
- for(int i=0;i<getNumChildComponents();++i){auto* child=getChildComponent(i);if(dynamic_cast<juce::ResizableCornerComponent*>(child)==nullptr)child->setTransform(transform);}
+ for(int i=0;i<getNumChildComponents();++i){auto* child=getChildComponent(i);if(dynamic_cast<juce::ResizableCornerComponent*>(child)==nullptr&&dynamic_cast<juce::TooltipWindow*>(child)==nullptr)child->setTransform(transform);}
 }
 void VirtualCortexEditor::paint(juce::Graphics& g){
  g.fillAll(juce::Colours::black);g.addTransform(juce::AffineTransform::scale(designScale).translated(designOffsetX,designOffsetY));
