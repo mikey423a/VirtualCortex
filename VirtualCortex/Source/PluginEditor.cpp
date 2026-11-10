@@ -394,7 +394,7 @@ void VirtualCortexEditor::resized(){
  for(int i=0;i<getNumChildComponents();++i){auto* child=getChildComponent(i);if(dynamic_cast<juce::ResizableCornerComponent*>(child)==nullptr&&dynamic_cast<juce::TooltipWindow*>(child)==nullptr)child->setTransform(transform);}
 }
 void VirtualCortexEditor::paint(juce::Graphics& g){
- auto drawCaption=[this](juce::Graphics& target,const juce::String& text,juce::Rectangle<int> area,float size,juce::Colour colour=juce::Colours::white,juce::Justification align=juce::Justification::centredLeft,bool bold=false){::drawCaption(target,text,layoutRect(area),size,colour,align,bold);};
+ auto drawCaption=[this](juce::Graphics& target,const juce::String& text,juce::Rectangle<int> area,float size,juce::Colour colour=juce::Colours::white,int align=juce::Justification::centredLeft,bool bold=false){::drawCaption(target,text,layoutRect(area),size,colour,align,bold);};
  g.fillAll(juce::Colours::black);g.addTransform(juce::AffineTransform::scale(designScale).translated(designOffsetX,designOffsetY));
  g.setColour(juce::Colour(0xff313031));g.fillRect(0,0,juce::roundToInt(designWidth),26);drawCaption(g,"Virtual Cortex",{440,1,300,23},12.f,juce::Colour(0xffa5a5a5),juce::Justification::centred);
  g.setColour(juce::Colour(0xff5845ff));g.fillRoundedRectangle(10,2,65,18,9);g.setColour(juce::Colours::white);g.drawRoundedRectangle(35,5,16,11,1.5f,1.f);g.drawLine(39,18,47,18,1.f);g.fillEllipse(45,10,4,4);
