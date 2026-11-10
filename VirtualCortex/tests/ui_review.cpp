@@ -16,6 +16,11 @@ int main(int argc,char** argv){
   auto capture=[&](const juce::String& name,int w,int h){
    editor->setSize(w,h);
    for(int i=0;i<editor->getNumChildComponents();++i){auto* child=editor->getChildComponent(i);if(child->isVisible())require(editor->getLocalBounds().contains(child->getBoundsInParent()),"A visible control is clipped by the window");}
+   if(w*9==h*16){
+    auto* route=editor->findChildWithID("row-route-3");require(route!=nullptr,"Row output missing");
+    require(route->getBoundsInParent().getRight()>w-w/40,"Wide layout leaves a right margin");
+    auto* category=editor->findChildWithID("device-category");require(category&&category->getBoundsInParent().getX()<w/10,"Wide layout leaves a left margin");
+   }
    const auto image=editor->createComponentSnapshot(editor->getLocalBounds());
    require(image.isValid(),"Editor snapshot failed");
    auto out=dir.getChildFile(name).createOutputStream();require(out!=nullptr,"PNG output failed");
@@ -277,7 +282,7 @@ int main(int argc,char** argv){
    balanceControl->setValue(-.5,juce::sendNotificationSync);require(processor->getRowRouting().rows[1].balance==-.5f&&balanceControl->getTextFromValue(-.5)=="L 50%","Balance control unbound");balanceControl->setValue(0,juce::sendNotificationSync);
    capture("custom-routing-2560x1440.png",2560,1440);capture("custom-routing-822x600.png",822,600);
    dynamic_cast<juce::Button*>(panel->findChildWithID("routing-close"))->onClick();require(!panel->isVisible(),"Routing close failed");
-   editor->setEditorsVisible(false);capture("custom-grid-2560x1440.png",2560,1440);
+   editor->setEditorsVisible(false);capture("custom-grid-2560x1440.png",2560,1440);capture("custom-grid-1920x1080.png",1920,1080);capture("custom-grid-1600x900.png",1600,900);
   }
   editor.reset();processor->releaseResources();
   std::cout<<"PASS: native editor snapshots at three sizes, control binding, insertion and bypass\n";

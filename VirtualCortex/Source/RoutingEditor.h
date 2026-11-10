@@ -33,16 +33,18 @@ public:
   close.setBounds(getWidth()-110,14,96,32);use.setBounds(getWidth()-300,14,180,32);
   for(int r=0;r<4;++r){int y=128+r*108;lanes[r].setBounds(12,y+8,90,36);for(int s=0;s<5;++s)sources[r][s].setBounds(105+s*64,y+8,62,36);channels[r].setBounds(440,y+10,135,32);gain[r].setBounds(590,y,150,65);balance[r].setBounds(760,y,150,65);invert[r].setBounds(930,y+10,70,32);output[r].setBounds(1010,y+10,90,32);}
   average.setBounds(24,580,400,36);for(int i=0;i<3;++i)presets[i].setBounds(445+i*215,580,205,36);
+  for(int i=0;i<getNumChildComponents();++i){auto* child=getChildComponent(i);if(child==&close||child==&use)continue;const auto r=child->getBounds();child->setBounds(px(r.getX()),r.getY(),px(r.getRight())-px(r.getX()),r.getHeight());}
  }
  void paint(juce::Graphics& g)override {
   g.fillAll(juce::Colour(0xff171919));g.setColour(juce::Colour(0xff57f5d5));g.setFont(22);g.drawText("CUSTOM ROUTING",24,14,500,32,juce::Justification::centredLeft);
-  g.setColour(juce::Colour(0xffaebbb5));g.setFont(12);g.drawText("POLARITY",930,84,75,28,juce::Justification::centred);g.drawText("OUTPUT",1010,84,90,28,juce::Justification::centred);g.drawText("SOURCES",105,84,320,28,juce::Justification::centredLeft);g.drawText("CHANNEL",440,84,135,28,juce::Justification::centredLeft);g.drawText("ROW LEVEL",590,84,150,28,juce::Justification::centredLeft);g.drawText("BALANCE L / R",760,84,160,28,juce::Justification::centredLeft);
+  g.setColour(juce::Colour(0xffaebbb5));g.setFont(12);g.drawText("POLARITY",px(930),84,px(1005)-px(930),28,juce::Justification::centred);g.drawText("OUTPUT",px(1010),84,px(1100)-px(1010),28,juce::Justification::centred);g.drawText("SOURCES",px(105),84,px(425)-px(105),28,juce::Justification::centredLeft);g.drawText("CHANNEL",px(440),84,px(575)-px(440),28,juce::Justification::centredLeft);g.drawText("ROW LEVEL",px(590),84,px(740)-px(590),28,juce::Justification::centredLeft);g.drawText("BALANCE L / R",px(760),84,px(920)-px(760),28,juce::Justification::centredLeft);
   for(int r=0;r<4;++r){const int y=128+r*108;g.setColour(juce::Colour(0xff303535));g.drawHorizontalLine(y+85,24.f,(float)getWidth()-24);g.setColour(juce::Colours::white);}
   g.setColour(juce::Colour(0xffaaaaaa));g.setFont(15);
   g.drawFittedText("IN = app input. Numbered sources = earlier row outputs. Select several to merge; reuse a source to split.\nA disabled row is silent. OUT includes a row in the final mix. No selected OUT rows means silence.\nAverage prevents identical parallel signals from adding level. Off sums at unity; leave headroom.\nRouting belongs to the preset and stays attached to rows when blocks move. Connections are between whole rows. Global post effects still follow the mix.",24,634,getWidth()-48,100,juce::Justification::topLeft,5);
   g.setColour(processor.getRoutingMode()==3?juce::Colour(0xff57f5d5):juce::Colours::orange);g.drawText(processor.getRoutingMode()==3?"CUSTOM ROUTING SELECTED":"Preview settings — press USE CUSTOM to hear them",24,52,900,24,juce::Justification::centredLeft);
  }
 private:
+ int px(int x)const{return juce::roundToInt(x*getWidth()/1121.f);}
  VirtualCortexProcessor& processor;bool refreshing=false;
  std::array<std::array<juce::ToggleButton,5>,4> sources;std::array<juce::ComboBox,4>channels;
  std::array<juce::Slider,4>gain,balance;std::array<juce::ToggleButton,4>invert,output,lanes;juce::ToggleButton average;

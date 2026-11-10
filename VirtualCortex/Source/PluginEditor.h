@@ -88,7 +88,9 @@ private:
  juce::ComboBox presetBox;
  bool lastNam=false;
  int selectedRow=0,selectedColumn=1,browserType=2,lastView=-1,rowBank=0,variant=0;
- float designScale=1.f,designOffsetX=0.f,designOffsetY=0.f;
+ float designScale=1.f,designOffsetX=0.f,designOffsetY=0.f,designWidth=1184.f;
+ float layoutX(float x)const {return x<=302.f?x:302.f+(x-302.f)*(designWidth-312.f)/872.f;}
+ juce::Rectangle<int> layoutRect(juce::Rectangle<int> r)const {const auto left=juce::roundToInt(layoutX((float)r.getX()));return {left,r.getY(),juce::roundToInt(layoutX((float)r.getRight()))-left,r.getHeight()};}
  juce::StringArray deviceNames() const;
  void refreshDeviceList();
  void applyDeviceVariant(int);
