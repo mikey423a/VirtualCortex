@@ -1,6 +1,6 @@
 # NAM backend and offline renderer
 
-The core is pinned at v0.5.4 commit 1f42f88535884450104b8711d7595019afa0495b. The 6.24 development candidate connects it to live Amp grid slots; see LIVE-NAM-PROGRESS.md for current verification status and limitations. The separate renderer remains available:
+The core is pinned at v0.5.4 commit 1f42f88535884450104b8711d7595019afa0495b. The verified 6.24.0 Windows build connects it to live Amp grid slots; see LIVE-NAM-PROGRESS.md for current verification status and limitations. The separate renderer remains available:
 
 ```
 virtualcortex_nam_render.exe model.nam input.wav output.wav
