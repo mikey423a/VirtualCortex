@@ -268,6 +268,8 @@ int main(int argc,char** argv){
    require(!panel->findChildWithID("route-source-0-1")->isEnabled(),"Self feedback offered in UI");
    dynamic_cast<juce::Button*>(panel->findChildWithID("route-preset-1"))->onClick();
    require(processor->getRoutingMode()==3&&processor->getRowRouting().rows[3].sources==12,"Split preset not bound");
+   for(int r=0;r<4;++r)require(processor->isGridLaneEnabled(r),"Routing template left a row disabled");
+   auto* lane=dynamic_cast<juce::ToggleButton*>(panel->findChildWithID("route-lane-3"));require(lane!=nullptr,"Routing lane switch missing");lane->setToggleState(false,juce::dontSendNotification);lane->onClick();require(!processor->isGridLaneEnabled(3),"Routing lane switch unbound");lane->setToggleState(true,juce::dontSendNotification);lane->onClick();
    dynamic_cast<juce::Slider*>(panel->findChildWithID("route-gain-1"))->setValue(-6,juce::sendNotificationSync);
    require(processor->getRowRouting().rows[1].gainDb==-6,"Route level unbound");
    capture("custom-routing-2560x1440.png",2560,1440);capture("custom-routing-822x600.png",822,600);
