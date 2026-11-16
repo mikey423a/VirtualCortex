@@ -415,12 +415,14 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
    const float endX=layoutX(357.f+93.f*route.entryColumn);
    const float startY=(float)(rowTop+source*rowStep)+(editorsVisible?22.f:47.f);
    const float endY=(float)(rowTop+destination*rowStep)+(editorsVisible?22.f:47.f);
-   const bool active=processor.isGridLaneEnabled(source)&&processor.isGridLaneEnabled(destination);
+   const bool active=gridMode()&&processor.isGridLaneEnabled(source)&&processor.isGridLaneEnabled(destination);
    g.setColour(active?mint.withAlpha(.55f):muted.withAlpha(.2f));
    juce::Path wire;wire.startNewSubPath(startX,startY);
    // Route across the gutter above the destination, clear of block outlines and badges.
    const float bendY=(float)(rowTop+destination*rowStep)-2.f;
-   wire.lineTo(startX,bendY);wire.lineTo(endX,bendY);wire.lineTo(endX,endY);
+   // Each source uses a separate vertical track within the inter-slot gap.
+   const float railX=layoutX(357.f+93.f*route.sourceTaps[source]-6.f+3.f*source);
+   wire.lineTo(railX,startY);wire.lineTo(railX,bendY);wire.lineTo(endX,bendY);wire.lineTo(endX,endY);
    g.strokePath(wire,juce::PathStrokeType(1.f));
    g.fillEllipse(startX-2.f,startY-2.f,4.f,4.f);
    juce::Path arrow;arrow.startNewSubPath(endX-3.f,endY-5.f);arrow.lineTo(endX,endY);arrow.lineTo(endX+3.f,endY-5.f);
@@ -430,7 +432,7 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
  if(!editorsVisible&&processor.getRoutingMode()==3){const auto routes=processor.getRowRouting();
   for(int r=0;r<4;++r){juce::StringArray inputs;const auto& row=routes.rows[r];if(row.sources&1)inputs.add("IN");for(int from=0;from<r;++from)if(row.sources&(2u<<from))inputs.add("R"+juce::String(from+1)+(row.sourceTaps[from]==0?juce::String(" BEFORE A"):juce::String(" AFTER ")+juce::String::charToString('A'+row.sourceTaps[from]-1)));
    const auto text=(inputs.isEmpty()?juce::String("NO INPUT"):inputs.joinIntoString(" + "))+"  >  R"+juce::String(r+1)+" "+juce::String::charToString('A'+row.entryColumn)+"-H"+(row.output?"  >  OUTPUT":"  >  ROW BUS");
-   drawCaption(g,text,{368,rowTop+r*rowStep+136,735,18},11.f,processor.isGridLaneEnabled(r)?mint:muted);
+   drawCaption(g,text,{368,rowTop+r*rowStep+136,735,18},11.f,gridMode()&&processor.isGridLaneEnabled(r)?mint:muted);
   }
  }
  if(!editorsVisible&&(switches[10].button.getToggleState()||switches[14].button.getToggleState()))drawCaption(g,juce::String("POST CHAIN: ")+(switches[10].button.getToggleState()?"STEREO DELAY":"")+(switches[10].button.getToggleState()&&switches[14].button.getToggleState()?" > ":"")+(switches[14].button.getToggleState()?"STEREO REVERB":""),{363,801,760,25},13.f,mint);
@@ -444,7 +446,7 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
 
  g.setColour(panel);g.fillRect(layoutRect({302,598,172,232}));g.setColour(juce::Colour(0xff070707));g.drawRect(layoutRect({302,598,172,36}),1);drawCaption(g,"Gig view",{343,599,125,33},20.f,juce::Colours::white,juce::Justification::centredLeft,true);drawCaption(g,"Parameter Editor",{310,796,156,32},14.f,muted);
  }
- drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.28.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
+ drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.29.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
 }
 void VirtualCortexEditor::applyPreset(int index){auto set=[this](const char* id,float value){if(auto* p=processor.parameters.getParameter(id))p->setValueNotifyingHost(p->convertTo0to1(value));};if(index<2)return;set("gridMode",0.f);
  if(index==2){set("drive",.12f);set("tone",.7f);set("level",.65f);set("delayMix",.12f);set("reverbMix",.25f);set("ampBias",0.f);set("delayOn",1.f);set("reverbOn",1.f);}
