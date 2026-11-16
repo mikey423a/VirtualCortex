@@ -406,6 +406,26 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
 
  const int rowStep=editorsVisible?46:160,rowTop=editorsVisible?132:153;
  for(int row=0;row<4;++row){const int y=rowTop+row*rowStep;const bool active=processor.isGridLaneEnabled((size_t)row);g.setColour(juce::Colour(active?0xffa3a3a3:0xff383838));const float cy=(float)y+(editorsVisible?22.f:47.f);g.drawLine(layoutX(352),cy,layoutX(1124),cy,1.f);g.setColour(juce::Colour(0xff111212));g.fillRoundedRectangle(layoutRect({1124,y+5,49,editorsVisible?39:84}).toFloat(),16);drawCaption(g,"Mix",{1125,y+(editorsVisible?9:30),47,25},12.f,juce::Colours::white,juce::Justification::centred);}
+ if(processor.getRoutingMode()==3){
+  const auto routes=processor.getRowRouting();
+  for(int destination=1;destination<4;++destination)for(int source=0;source<destination;++source){
+   const auto& route=routes.rows[destination];
+   if(!(route.sources&(2u<<source)))continue;
+   const float startX=layoutX(357.f+93.f*route.sourceTaps[source]);
+   const float endX=layoutX(357.f+93.f*route.entryColumn);
+   const float startY=(float)(rowTop+source*rowStep)+(editorsVisible?22.f:47.f);
+   const float endY=(float)(rowTop+destination*rowStep)+(editorsVisible?22.f:47.f);
+   const bool active=processor.isGridLaneEnabled(source)&&processor.isGridLaneEnabled(destination);
+   g.setColour(active?mint.withAlpha(.55f):muted.withAlpha(.2f));
+   juce::Path wire;wire.startNewSubPath(startX,startY);
+   const float bendY=endY-(editorsVisible?12.f:28.f);
+   wire.lineTo(startX,bendY);wire.lineTo(endX,bendY);wire.lineTo(endX,endY);
+   g.strokePath(wire,juce::PathStrokeType(1.f));
+   g.fillEllipse(startX-2.f,startY-2.f,4.f,4.f);
+   juce::Path arrow;arrow.startNewSubPath(endX-3.f,endY-5.f);arrow.lineTo(endX,endY);arrow.lineTo(endX+3.f,endY-5.f);
+   g.strokePath(arrow,juce::PathStrokeType(1.f));
+  }
+ }
  if(!editorsVisible&&processor.getRoutingMode()==3){const auto routes=processor.getRowRouting();
   for(int r=0;r<4;++r){juce::StringArray inputs;const auto& row=routes.rows[r];if(row.sources&1)inputs.add("IN");for(int from=0;from<r;++from)if(row.sources&(2u<<from))inputs.add("R"+juce::String(from+1)+(row.sourceTaps[from]==0?juce::String(" BEFORE A"):juce::String(" AFTER ")+juce::String::charToString('A'+row.sourceTaps[from]-1)));
    const auto text=(inputs.isEmpty()?juce::String("NO INPUT"):inputs.joinIntoString(" + "))+"  >  R"+juce::String(r+1)+" "+juce::String::charToString('A'+row.entryColumn)+"-H"+(row.output?"  >  OUTPUT":"  >  ROW BUS");
