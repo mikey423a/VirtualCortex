@@ -35,6 +35,8 @@ if (-not (Test-Path $installed)) { throw 'Installed EXE missing' }
 if ((Get-FileHash $installed).Hash -ne (Get-FileHash $original).Hash) { throw 'Installed EXE does not match build' }
 $vstInstalled = Join-Path ${env:CommonProgramFiles} 'VST3/Virtual Cortex.vst3/Contents/x86_64-win/Virtual Cortex.vst3'
 if (-not (Test-Path $vstInstalled)) { throw 'Installed VST3 module missing' }
+$vstOriginal = Join-Path $build 'VirtualCortex_artefacts/Release/VST3/Virtual Cortex.vst3/Contents/x86_64-win/Virtual Cortex.vst3'
+if ((Get-FileHash $vstInstalled -Algorithm SHA256).Hash -ne (Get-FileHash $vstOriginal -Algorithm SHA256).Hash) { throw 'Installed VST3 does not match build' }
 $p = Start-Process -FilePath "$testDir/unins000.exe" -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/LOG=`"$dist/uninstall-test.log`"") -PassThru -Wait
 if ($p.ExitCode -ne 0) { throw "Uninstall failed: $($p.ExitCode)" }
 if ((Test-Path $installed) -or (Test-Path $vstInstalled)) { throw 'Uninstall left application binaries installed' }
