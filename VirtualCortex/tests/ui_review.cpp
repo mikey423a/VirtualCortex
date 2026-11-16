@@ -293,7 +293,13 @@ int main(int argc,char** argv){
    editor->selectSlot(3,0);capture("custom-routing-focus-row4-2560x1440.png",2560,1440);capture("custom-routing-focus-row4-822x600.png",822,600);
    editor->selectSlot(1,4);capture("custom-routing-focus-row2-2560x1440.png",2560,1440);editor->selectSlot(0,0);
 
-   processor->parameters.getParameter("gridMode")->setValueNotifyingHost(0.f);capture("custom-grid-disabled-2560x1440.png",2560,1440);processor->parameters.getParameter("gridMode")->setValueNotifyingHost(1.f);
+   processor->parameters.getParameter("gridMode")->setValueNotifyingHost(0.f);editor->selectSlot(0,0);
+   auto* offBlock=dynamic_cast<CortexBlockButton*>(editor->findChildWithID("grid-0-0"));require(offBlock&&!offBlock->blockEnabled&&offBlock->getTooltip().contains("grid engine off"),"Inactive grid block appears active");
+   auto* outButton=dynamic_cast<juce::Button*>(editor->findChildWithID("row-route-3"));require(outButton&&!outButton->getToggleState()&&outButton->isEnabled(),"Inactive output state wrong");
+   require(processor->getEditableGrid().get(0,0)->enabled&&processor->getRowRouting().rows[3].output,"Visual off state changed saved configuration");
+   capture("custom-grid-disabled-2560x1440.png",2560,1440);capture("custom-grid-disabled-822x600.png",822,600);
+   processor->parameters.getParameter("gridMode")->setValueNotifyingHost(1.f);editor->selectSlot(0,0);
+   require(offBlock->blockEnabled&&outButton->getToggleState(),"Grid active visuals did not restore");
 
   }
   for(const auto size:{juce::Point<int>(2560,1440),juce::Point<int>(1280,720)}){
