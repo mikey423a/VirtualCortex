@@ -4,6 +4,7 @@
 #include "DeviceCatalogPanel.h"
 #include "AdvancedGridEditor.h"
 #include "RoutingEditor.h"
+#include "RoutingWireHitTest.h"
 
 class CortexLookAndFeel final : public juce::LookAndFeel_V4 {
 public:
@@ -39,6 +40,7 @@ public:
  ~VirtualCortexEditor() override;
  void paint(juce::Graphics&) override;
  void resized() override;
+ void mouseDown(const juce::MouseEvent&) override;
  bool keyPressed(const juce::KeyPress&) override;
  bool setFullScreenMode(bool enabled);
  bool isFullScreenMode() const;
@@ -49,6 +51,8 @@ public:
  bool insertBlock(int type);
  bool toggleSelectedSlot();
 private:
+ int selectedWireSource=-1,selectedWireDestination=-1;
+ vc::WirePolyline routingWire(int source,int destination,const vc::RowRoute& route) const;
  VirtualCortexProcessor& processor;
  CortexLookAndFeel look;
  juce::TooltipWindow tooltip{this,700};

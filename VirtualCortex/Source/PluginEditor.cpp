@@ -273,7 +273,7 @@ std::vector<int> VirtualCortexEditor::visibleKnobs() const{
 std::vector<int> VirtualCortexEditor::visibleSlotControls() const{
  switch(currentType()){case 30:case 31:case 32:case 33:case 34:case 35:case 36:return {};case 2:return processor.isGridNAM(selectedRow,selectedColumn)?std::vector<int>{0,1}:std::vector<int>{0};case 5:if(processor.getGridSlotParameters((size_t)selectedRow,(size_t)selectedColumn).repeatFx)return {2,3,1,0,5,4};return {1,2,3};case 6:return {1};case 7:return {4,5};case 8:return {0,3,4,5,2,1};case 9:case 10:return {0,4,5,1};case 11:case 12:case 13:return {4,5,2,3,1};case 14:return {0,2,3,4,5,1};case 15:return {0,2,5,1};case 16:return {4,5,2,1};case 17:return {4,5,1};case 18:return {0,3};case 19:return {0,2,1};case 20:return {0,2,3,4,5,1};case 21:return {2,3,4,5,1};default:return {};}
 }
-void VirtualCortexEditor::selectSlot(int row,int col){if(!vc::SignalGrid::valid((size_t)row,(size_t)col))return;selectedRow=row;selectedColumn=col;rowBank=row/2;rowSelector.setSelectedId(row+1,juce::dontSendNotification);masterPage=false;repaint();const auto grid=processor.getEditableGrid();const int type=(int)grid.get((size_t)row,(size_t)col)->type;if(type)browserType=type;lastView=-1;refreshSlotControls();updateView();}
+void VirtualCortexEditor::selectSlot(int row,int col){if(!vc::SignalGrid::valid((size_t)row,(size_t)col))return;selectedWireSource=selectedWireDestination=-1;selectedRow=row;selectedColumn=col;rowBank=row/2;rowSelector.setSelectedId(row+1,juce::dontSendNotification);masterPage=false;repaint();const auto grid=processor.getEditableGrid();const int type=(int)grid.get((size_t)row,(size_t)col)->type;if(type)browserType=type;lastView=-1;refreshSlotControls();updateView();}
 bool VirtualCortexEditor::insertBlock(int type){if(type<0||(type>21&&!vc::isAdvanced(type)))return false;bool ok=processor.setGridBlock((size_t)selectedRow,(size_t)selectedColumn,{(vc::BlockType)type,true});masterPage=false;if(type)browserType=type;lastView=-1;updateView();statusLabel.setText(gridMode()?"Block updated":"Block updated. Enable GRID ENGINE to hear the grid.",juce::dontSendNotification);return ok;}
 bool VirtualCortexEditor::toggleSelectedSlot(){const auto grid=processor.getEditableGrid();const auto slot=*grid.get((size_t)selectedRow,(size_t)selectedColumn);if(slot.type==vc::BlockType::Empty)return false;bool ok=processor.setGridBlock((size_t)selectedRow,(size_t)selectedColumn,{slot.type,!slot.enabled});refreshGridControls();return ok;}
 void VirtualCortexEditor::refreshGridControls(){const auto routes=processor.getRowRouting();const bool custom=processor.getRoutingMode()==3;for(int r=0;r<4;++r){routeButtons[r].setButtonText(custom?(routes.rows[r].output?"OUT":"BUS"):"ROUTE");routeButtons[r].setToggleState(gridMode()&&processor.isGridLaneEnabled(r)&&custom&&routes.rows[r].output,juce::dontSendNotification);}const auto grid=processor.getEditableGrid();for(int r=0;r<4;++r){laneButtons[(size_t)r].setToggleState(processor.isGridLaneEnabled((size_t)r),juce::dontSendNotification);for(int c=0;c<8;++c){const auto slot=*grid.get((size_t)r,(size_t)c);auto& b=gridCells[(size_t)r][(size_t)c];b.type=(int)slot.type;b.gridEngineOff=!gridMode();b.routingSkipped=custom&&c<routes.rows[r].entryColumn;b.blockEnabled=gridMode()&&slot.enabled&&processor.isGridLaneEnabled((size_t)r)&&!b.routingSkipped;b.selected=r==selectedRow&&c==selectedColumn;b.caption=juce::String::charToString((juce::juce_wchar)('A'+c));const auto description="Row "+juce::String(r+1)+", slot "+b.caption+": "+CortexBlockButton::nameFor((int)slot.type)+(!gridMode()?" (grid engine off)":b.routingSkipped?" (skipped by routing)":b.blockEnabled?"":" (bypassed)");b.setName(description);b.setTooltip(description+". Drag to move; select to edit.");b.repaint();}}
@@ -417,14 +417,12 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
    const float endY=(float)(rowTop+destination*rowStep)+(editorsVisible?22.f:47.f);
    const bool active=gridMode()&&processor.isGridLaneEnabled(source)&&processor.isGridLaneEnabled(destination);
    const bool focused=source==selectedRow||destination==selectedRow;
-   const float wireWidth=active&&focused?2.f:1.f;
-   g.setColour(active?mint.withAlpha(focused?1.f:.3f):muted.withAlpha(.2f));
-   juce::Path wire;wire.startNewSubPath(startX,startY);
-   // Route across the gutter above the destination, clear of block outlines and badges.
-   const float bendY=(float)(rowTop+destination*rowStep)-2.f;
-   // Each source uses a separate vertical track within the inter-slot gap.
-   const float railX=layoutX(357.f+93.f*route.sourceTaps[source]-6.f+3.f*source);
-   wire.lineTo(railX,startY);wire.lineTo(railX,bendY);wire.lineTo(endX,bendY);wire.lineTo(endX,endY);
+   const bool individuallySelected=source==selectedWireSource&&destination==selectedWireDestination;
+   const float wireWidth=individuallySelected?3.f:active&&focused?2.f:1.f;
+   g.setColour(active?(individuallySelected?juce::Colour(0xffffd84a):mint.withAlpha(focused?1.f:.3f)):muted.withAlpha(individuallySelected?.5f:.2f));
+   const auto points=routingWire(source,destination,route);
+   juce::Path wire;wire.startNewSubPath(points[0].x,points[0].y);
+   for(std::size_t i=1;i<points.size();++i)wire.lineTo(points[i].x,points[i].y);
    g.strokePath(wire,juce::PathStrokeType(wireWidth));
    g.fillEllipse(startX-2.f,startY-2.f,4.f,4.f);
    juce::Path arrow;arrow.startNewSubPath(endX-3.f,endY-5.f);arrow.lineTo(endX,endY);arrow.lineTo(endX+3.f,endY-5.f);
@@ -544,4 +542,29 @@ void VirtualCortexEditor::applyDeviceVariant(int index){
   if(browserType==7){const float rates[]={.5f,2,4,8,12};set("tremRate",rates[index]);set("tremDepth",.5f);set("tremOn",1);}
  }
  lastView=-1;refreshSlotControls();updateView();statusLabel.setText(names[index]+" selected",juce::dontSendNotification);
+}
+
+vc::WirePolyline VirtualCortexEditor::routingWire(int source,int destination,const vc::RowRoute& route) const {
+ const int step=editorsVisible?46:160,top=editorsVisible?132:153;
+ const float startX=layoutX(357.f+93.f*route.sourceTaps[source]);
+ const float endX=layoutX(357.f+93.f*route.entryColumn);
+ const float startY=float(top+source*step)+(editorsVisible?22.f:47.f);
+ const float endY=float(top+destination*step)+(editorsVisible?22.f:47.f);
+ const float railX=layoutX(357.f+93.f*route.sourceTaps[source]-6.f+3.f*source);
+ const float bendY=float(top+destination*step)-2.f;
+ return {{{startX,startY},{railX,startY},{railX,bendY},{endX,bendY},{endX,endY}}};
+}
+void VirtualCortexEditor::mouseDown(const juce::MouseEvent& event) {
+ selectedWireSource=selectedWireDestination=-1;
+ if(processor.getRoutingMode()==3 && designScale>0){
+  const auto routes=processor.getRowRouting();
+  std::array<vc::WirePolyline,6> wires{};std::array<std::array<int,2>,6> ids{};std::size_t count=0;
+  for(int d=1;d<4;++d)for(int s=0;s<d;++s)if(routes.rows[d].sources&(2u<<s)){
+   wires[count]=routingWire(s,d,routes.rows[d]);ids[count++]={s,d};
+  }
+  const vc::WirePoint p{(event.position.x-designOffsetX)/designScale,(event.position.y-designOffsetY)/designScale};
+  const int hit=vc::hitRoutingWire(p,wires,count,6.f/designScale);
+  if(hit>=0){selectedWireSource=ids[(std::size_t)hit][0];selectedWireDestination=ids[(std::size_t)hit][1];}
+ }
+ repaint();
 }
