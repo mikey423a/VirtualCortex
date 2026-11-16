@@ -9,3 +9,6 @@ Existing native UI CI 43960242244 failed because the selected source-rail point 
 Next quality milestones: benchmark steady-state and automated delay CPU; frequency/decay measurements of the FDN across rates and settings; measure modulation and time-transition artifacts; level-matched musical listening. Fractional interpolation affects frequency response (Julius O. Smith, Physical Audio Signal Processing, https://www.dsprelated.com/freebooks/pasp/Delay_Line_Signal_Interpolation.html); do not replace interpolation blindly inside a feedback loop. Preserve legacy preset sound or introduce explicit optional modes for sonic changes.
 
 Windows CI pending for this candidate. Main and delivered 6.32 unchanged. No new installer until regression/pluginval/startup/install/uninstall/hash checks and native screenshot review pass. Anubis testing remains user-side.
+
+
+CI 43971152595 compiled but failed native_editor_layout at interception assertion. Follow-up explicitly makes the editor visible for getComponentAt, reports unexpected child identity, and retains assertion. Adds frozen pre-cache delay fixture and exact output comparisons at three rates, automated filters/time/mode/bypass and prepare restarts. CI pending; CPU measurements still pending. No promotion or new installer.
