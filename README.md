@@ -1,19 +1,16 @@
-# Virtual Cortex 6.13
+# Virtual Cortex
 
 Windows x64 standalone guitar amplifier/effects application and VST3, built with JUCE 8.0.10 and ASIO enabled.
 
-## Verified build
+## Current verified milestone: 6.28.0
 
-[6.13 Windows build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/41528022183)
+[Windows build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/43804654764) · [Routing changes, verification and next steps](VirtualCortex/ROUTING-6.28.md)
 
-- EXE and VST3 compiled using MSVC on Windows Server 2022.
-- All 32 CTest checks passed, including the real JUCE processor, editor renders, four-row routing and the new effects.
-- VST3 passed pluginval 1.0.4 at strictness level 5.
-- Standalone stayed running for the 10-second startup test.
-- Inno Setup installer passed install/uninstall and installed-binary checks.
-- Windows 11 interactive use and Anubis ASIO input/output still need user testing. Installer is unsigned.
+Actual EXE/VST3 compilation, 45 regressions, pluginval strictness 5, standalone startup, and installer install/uninstall passed. Native 2560x1440 and compact screenshots were inspected. This milestone improves visible routing connections and compact tap controls while preserving DSP and presets. Four rounded-square grid rows fill the widescreen layout.
 
-Download the VirtualCortex-Windows-x64 artifact for Setup EXE, standalone EXE, VST3 ZIP, hashes and installer logs. Native screenshots and test logs are in VirtualCortex-build-logs.
+Download the VirtualCortex-Windows-x64 artifact for the unsigned Setup EXE, standalone EXE, VST3 ZIP and hashes. Native screenshots/test logs are in VirtualCortex-build-logs. Anubis hardware and Windows 11 interactive audio testing remain user-side. Routing features still outstanding are listed in the linked notes. No proprietary DSP equivalence or complete playable Neural DSP catalog is claimed.
+
+The sections below describe earlier milestones and their historical scope.
 
 ## Catalog inventory in 6.13
 

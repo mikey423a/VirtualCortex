@@ -1,5 +1,10 @@
 # Grid routing development
 
+Current verified milestone: **6.28.0**. [Current changes, checks and next steps](ROUTING-6.28.md). The old staging notes below are historical: routing modes, movement and advanced grid effects have since been integrated and Windows-tested. Hardware channel mapping and further routing features remain incomplete.
+
+## Historical staging notes
+
+
 Portable routing now provides a stereo frame entry point with parallel,
 series (all four enabled rows in sequence), and dual mono (L rows 1/2,
 R rows 3/4) modes. Disabled rows are bypassed. Legacy parallel APIs are
