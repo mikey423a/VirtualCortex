@@ -290,6 +290,9 @@ int main(int argc,char** argv){
    dynamic_cast<juce::Button*>(panel->findChildWithID("routing-close"))->onClick();require(!panel->isVisible(),"Routing close failed");
    editor->setEditorsVisible(true);capture("custom-grid-editors-2560x1440.png",2560,1440);capture("custom-grid-editors-822x600.png",822,600);
    editor->setEditorsVisible(false);capture("custom-grid-2560x1440.png",2560,1440);capture("custom-grid-1920x1080.png",1920,1080);capture("custom-grid-1600x900.png",1600,900);
+   editor->selectSlot(3,0);capture("custom-routing-focus-row4-2560x1440.png",2560,1440);capture("custom-routing-focus-row4-822x600.png",822,600);
+   editor->selectSlot(1,4);capture("custom-routing-focus-row2-2560x1440.png",2560,1440);editor->selectSlot(0,0);
+
    processor->parameters.getParameter("gridMode")->setValueNotifyingHost(0.f);capture("custom-grid-disabled-2560x1440.png",2560,1440);processor->parameters.getParameter("gridMode")->setValueNotifyingHost(1.f);
 
   }
