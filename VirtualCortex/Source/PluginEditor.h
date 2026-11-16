@@ -41,6 +41,8 @@ public:
  void paint(juce::Graphics&) override;
  void resized() override;
  void mouseDown(const juce::MouseEvent&) override;
+ void selectRoutingWireAt(juce::Point<float> position);
+ std::array<int,2> selectedRoutingWire() const {return {selectedWireSource,selectedWireDestination};}
  bool keyPressed(const juce::KeyPress&) override;
  bool setFullScreenMode(bool enabled);
  bool isFullScreenMode() const;

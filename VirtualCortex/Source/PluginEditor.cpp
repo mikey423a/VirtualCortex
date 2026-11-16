@@ -559,7 +559,8 @@ vc::WirePolyline VirtualCortexEditor::routingWire(int source,int destination,con
  const float bendY=float(top+destination*step)-2.f;
  return {{{startX,startY},{railX,startY},{railX,bendY},{endX,bendY},{endX,endY}}};
 }
-void VirtualCortexEditor::mouseDown(const juce::MouseEvent& event) {
+void VirtualCortexEditor::mouseDown(const juce::MouseEvent& event) { selectRoutingWireAt(event.position); }
+void VirtualCortexEditor::selectRoutingWireAt(juce::Point<float> position) {
  selectedWireSource=selectedWireDestination=-1;
  if(processor.getRoutingMode()==3 && designScale>0){
   const auto routes=processor.getRowRouting();
@@ -567,7 +568,7 @@ void VirtualCortexEditor::mouseDown(const juce::MouseEvent& event) {
   for(int d=1;d<4;++d)for(int s=0;s<d;++s)if(routes.rows[d].sources&(2u<<s)){
    wires[count]=routingWire(s,d,routes.rows[d]);ids[count++]={s,d};
   }
-  const vc::WirePoint p{(event.position.x-designOffsetX)/designScale,(event.position.y-designOffsetY)/designScale};
+  const vc::WirePoint p{(position.x-designOffsetX)/designScale,(position.y-designOffsetY)/designScale};
   const int hit=vc::hitRoutingWire(p,wires,count,6.f/designScale);
   if(hit>=0){selectedWireSource=ids[(std::size_t)hit][0];selectedWireDestination=ids[(std::size_t)hit][1];selectedWireTap=routes.rows[(std::size_t)selectedWireDestination].sourceTaps[(std::size_t)selectedWireSource];selectedWireEntry=routes.rows[(std::size_t)selectedWireDestination].entryColumn;}
  }

@@ -293,6 +293,24 @@ int main(int argc,char** argv){
    editor->selectSlot(3,0);capture("custom-routing-focus-row4-2560x1440.png",2560,1440);capture("custom-routing-focus-row4-822x600.png",822,600);
    editor->selectSlot(1,4);capture("custom-routing-focus-row2-2560x1440.png",2560,1440);editor->selectSlot(0,0);
 
+
+   for(const auto size:{juce::Point<int>(2560,1440),juce::Point<int>(822,600)}){
+    editor->setSize(size.x,size.y);
+    const float scale=juce::jmin(size.x/1184.f,size.y/864.f),width=size.x/scale;
+    const float offsetY=(size.y-864.f*scale)*.5f;
+    // R1 after C to R2 entry E: vertical source rail, halfway between rows.
+    const float x=(302.f+(357.f+93.f*3.f-6.f-302.f)*(width-312.f)/872.f)*scale;
+    const juce::Point<float> point{x,250.f*scale+offsetY};
+    require(editor->getComponentAt(point.roundToInt())==editor.get(),"Wire click intercepted by child control");
+    editor->selectRoutingWireAt(point);
+    require(editor->selectedRoutingWire()==std::array<int,2>{0,1},"Native wire selection missed source rail");
+    capture("selected-wire-"+juce::String(size.x)+"x"+juce::String(size.y)+".png",size.x,size.y);
+    editor->selectRoutingWireAt({1.f,1.f});
+    require(editor->selectedRoutingWire()==std::array<int,2>{-1,-1},"Background miss retained selection");
+    editor->selectRoutingWireAt(point);editor->selectSlot(0,0);
+    require(editor->selectedRoutingWire()==std::array<int,2>{-1,-1},"Slot selection retained wire focus");
+   }
+
    processor->parameters.getParameter("gridMode")->setValueNotifyingHost(0.f);editor->selectSlot(0,0);
    auto* offBlock=dynamic_cast<CortexBlockButton*>(editor->findChildWithID("grid-0-0"));require(offBlock&&offBlock->inactiveCaption()=="GRID OFF"&&!offBlock->blockEnabled&&offBlock->getTooltip().contains("grid engine off"),"Inactive grid block appears active");
    auto* outButton=dynamic_cast<juce::Button*>(editor->findChildWithID("row-route-3"));require(outButton&&!outButton->getToggleState()&&outButton->isEnabled(),"Inactive output state wrong");
