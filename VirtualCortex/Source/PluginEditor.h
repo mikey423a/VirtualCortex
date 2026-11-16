@@ -24,6 +24,7 @@ public:
   juce::Button::mouseUp(e);
  }
  int type=0;
+ bool routingSkipped=false;
  bool selected=false, blockEnabled=true, stomp=false, rail=false;
  juce::String caption;
  static juce::Colour colourFor(int);
