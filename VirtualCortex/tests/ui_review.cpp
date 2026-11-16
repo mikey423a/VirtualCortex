@@ -294,11 +294,13 @@ int main(int argc,char** argv){
    editor->selectSlot(1,4);capture("custom-routing-focus-row2-2560x1440.png",2560,1440);editor->selectSlot(0,0);
 
    processor->parameters.getParameter("gridMode")->setValueNotifyingHost(0.f);editor->selectSlot(0,0);
-   auto* offBlock=dynamic_cast<CortexBlockButton*>(editor->findChildWithID("grid-0-0"));require(offBlock&&!offBlock->blockEnabled&&offBlock->getTooltip().contains("grid engine off"),"Inactive grid block appears active");
+   auto* offBlock=dynamic_cast<CortexBlockButton*>(editor->findChildWithID("grid-0-0"));require(offBlock&&offBlock->inactiveCaption()=="GRID OFF"&&!offBlock->blockEnabled&&offBlock->getTooltip().contains("grid engine off"),"Inactive grid block appears active");
    auto* outButton=dynamic_cast<juce::Button*>(editor->findChildWithID("row-route-3"));require(outButton&&!outButton->getToggleState()&&outButton->isEnabled(),"Inactive output state wrong");
    require(processor->getEditableGrid().get(0,0)->enabled&&processor->getRowRouting().rows[3].output,"Visual off state changed saved configuration");
+   require(skipped->inactiveCaption()=="GRID OFF","Grid off must override skipped caption");
    capture("custom-grid-disabled-2560x1440.png",2560,1440);capture("custom-grid-disabled-822x600.png",822,600);
    processor->parameters.getParameter("gridMode")->setValueNotifyingHost(1.f);editor->selectSlot(0,0);
+   require(skipped->inactiveCaption()=="SKIPPED","Skipped caption did not restore");
    require(offBlock->blockEnabled&&outButton->getToggleState(),"Grid active visuals did not restore");
 
   }
