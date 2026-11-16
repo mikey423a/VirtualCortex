@@ -418,7 +418,8 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
    const bool active=processor.isGridLaneEnabled(source)&&processor.isGridLaneEnabled(destination);
    g.setColour(active?mint.withAlpha(.55f):muted.withAlpha(.2f));
    juce::Path wire;wire.startNewSubPath(startX,startY);
-   const float bendY=endY-(editorsVisible?12.f:28.f);
+   // Route across the gutter above the destination, clear of block outlines and badges.
+   const float bendY=(float)(rowTop+destination*rowStep)-2.f;
    wire.lineTo(startX,bendY);wire.lineTo(endX,bendY);wire.lineTo(endX,endY);
    g.strokePath(wire,juce::PathStrokeType(1.f));
    g.fillEllipse(startX-2.f,startY-2.f,4.f,4.f);
@@ -443,7 +444,7 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
 
  g.setColour(panel);g.fillRect(layoutRect({302,598,172,232}));g.setColour(juce::Colour(0xff070707));g.drawRect(layoutRect({302,598,172,36}),1);drawCaption(g,"Gig view",{343,599,125,33},20.f,juce::Colours::white,juce::Justification::centredLeft,true);drawCaption(g,"Parameter Editor",{310,796,156,32},14.f,muted);
  }
- drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.27.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
+ drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.28.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
 }
 void VirtualCortexEditor::applyPreset(int index){auto set=[this](const char* id,float value){if(auto* p=processor.parameters.getParameter(id))p->setValueNotifyingHost(p->convertTo0to1(value));};if(index<2)return;set("gridMode",0.f);
  if(index==2){set("drive",.12f);set("tone",.7f);set("level",.65f);set("delayMix",.12f);set("reverbMix",.25f);set("ampBias",0.f);set("delayOn",1.f);set("reverbOn",1.f);}
