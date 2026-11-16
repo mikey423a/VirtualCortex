@@ -43,5 +43,28 @@ int main(){try{
  config={};for(auto& r:config.rows)r.output=false;config.rows[1].output=true;config.rows[1].sources=2;config.rows[1].sourceTaps[0]=3;config.rows[1].entryColumn=7;
  engine.setRowRouting(config);engine.prepareMixer(48000);auto holes=engine.processStereoFrame({.1f,.2f},vc::ParallelGrid::Mode::Custom,[](std::size_t,std::size_t,vc::BlockType,std::array<float,2>x){for(auto& v:x)v*=2;return x;});
  check(near(holes[0],.4f)&&near(holes[1],.8f),"Empty/bypassed tap boundary wrong");
+
+ // Stateful one-sample delay oracle: disconnecting a source must clock tails;
+ // skipping a slot must freeze its state under the current preset semantics.
+ {
+  vc::SignalGrid tailGrid;tailGrid.set(0,0,{vc::BlockType::Delay,true});
+  vc::ParallelGrid tailEngine;check(tailEngine.configure(tailGrid,{true,false,false,false}),"Tail configure");
+  vc::RowRouting routes;check(tailEngine.setRowRouting(routes),"Tail routing");tailEngine.prepareMixer(48000);
+  std::array<float,2> memory{};int visits=0;
+  auto delay=[&](std::size_t r,std::size_t c,vc::BlockType,std::array<float,2> in){
+   check(r==0&&c==0,"Tail moved physical slot");++visits;auto out=memory;memory=in;return out;
+  };
+  auto tick=[&](std::array<float,2> in){return tailEngine.processStereoFrame(in,vc::ParallelGrid::Mode::Custom,delay);};
+  check(tick({.25f,-.5f})==std::array<float,2>{0,0},"Delay initial state");
+  routes.rows[0].sources=0;check(tailEngine.setRowRouting(routes),"Disconnect source");
+  check(tick({1,1})==std::array<float,2>{.25f,-.5f},"Disconnected source truncated tail");
+  check(tick({1,1})==std::array<float,2>{0,0},"Disconnected source leaked input");
+  routes.rows[0].sources=1;tailEngine.setRowRouting(routes);tick({.125f,-.25f});
+  const int beforeSkip=visits;routes.rows[0].entryColumn=1;tailEngine.setRowRouting(routes);
+  check(tick({.75f,.5f})==std::array<float,2>{.75f,.5f}&&visits==beforeSkip,"Skipped slot advanced state");
+  routes.rows[0].entryColumn=0;tailEngine.setRowRouting(routes);
+  check(tick({0,0})==std::array<float,2>{.125f,-.25f},"Reenabled slot lost retained tail");
+ }
+
  std::cout<<"PASS: custom split/merge oracle, channel isolation, unity levels, invalid cycles, smooth polarity and mute\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
