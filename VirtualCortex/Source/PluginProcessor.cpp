@@ -738,6 +738,7 @@ void VirtualCortexProcessor::getStateInformation(juce::MemoryBlock& dest){
  const auto savedRoutes=getRowRouting();
  state.setProperty("rowRoutingAverage",savedRoutes.average,nullptr);
  for(int r=0;r<4;++r){const auto key="route_"+juce::String(r)+"_";const auto& p=savedRoutes.rows[r];
+  state.setProperty(key+"entry",p.entryColumn,nullptr);for(int from=0;from<4;++from)state.setProperty(key+"tap_"+juce::String(from),p.sourceTaps[from],nullptr);
   state.setProperty(key+"sources",(int)p.sources,nullptr);state.setProperty(key+"channel",p.channel,nullptr);state.setProperty(key+"gain",p.gainDb,nullptr);state.setProperty(key+"balance",p.balance,nullptr);state.setProperty(key+"invert",p.invert,nullptr);state.setProperty(key+"output",p.output,nullptr);
  }
  state.removeChild(state.getChildWithName("ScenesV1"),nullptr);
@@ -773,7 +774,7 @@ void VirtualCortexProcessor::setStateInformation(const void* data,int size){
   auto restored=juce::ValueTree::fromXml(*xml);
   setRoutingMode((int)restored.getProperty("routingMode",0));
   vc::RowRouting routes;routes.average=(bool)restored.getProperty("rowRoutingAverage",true);
-  for(int r=0;r<4;++r){const auto key="route_"+juce::String(r)+"_";auto& p=routes.rows[r];p.sources=(unsigned)(int)restored.getProperty(key+"sources",1);p.channel=(int)restored.getProperty(key+"channel",0);p.gainDb=(float)restored.getProperty(key+"gain",0.f);p.balance=(float)restored.getProperty(key+"balance",0.f);p.invert=(bool)restored.getProperty(key+"invert",false);p.output=(bool)restored.getProperty(key+"output",true);}
+  for(int r=0;r<4;++r){const auto key="route_"+juce::String(r)+"_";auto& p=routes.rows[r];p.entryColumn=(int)restored.getProperty(key+"entry",0);for(int from=0;from<4;++from)p.sourceTaps[from]=(int)restored.getProperty(key+"tap_"+juce::String(from),8);p.sources=(unsigned)(int)restored.getProperty(key+"sources",1);p.channel=(int)restored.getProperty(key+"channel",0);p.gainDb=(float)restored.getProperty(key+"gain",0.f);p.balance=(float)restored.getProperty(key+"balance",0.f);p.invert=(bool)restored.getProperty(key+"invert",false);p.output=(bool)restored.getProperty(key+"output",true);}
   if(!setRowRouting(routes))setRowRouting(vc::RowRouting{});
   const auto bank=restored.getChildWithName("ScenesV1");
   {std::lock_guard<std::mutex> lock(sceneMutex);scenes={};activeScene.store(-1);

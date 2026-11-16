@@ -407,8 +407,8 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
  const int rowStep=editorsVisible?46:160,rowTop=editorsVisible?132:153;
  for(int row=0;row<4;++row){const int y=rowTop+row*rowStep;const bool active=processor.isGridLaneEnabled((size_t)row);g.setColour(juce::Colour(active?0xffa3a3a3:0xff383838));const float cy=(float)y+(editorsVisible?22.f:47.f);g.drawLine(layoutX(352),cy,layoutX(1124),cy,1.f);g.setColour(juce::Colour(0xff111212));g.fillRoundedRectangle(layoutRect({1124,y+5,49,editorsVisible?39:84}).toFloat(),16);drawCaption(g,"Mix",{1125,y+(editorsVisible?9:30),47,25},12.f,juce::Colours::white,juce::Justification::centred);}
  if(!editorsVisible&&processor.getRoutingMode()==3){const auto routes=processor.getRowRouting();
-  for(int r=0;r<4;++r){juce::StringArray inputs;const auto& row=routes.rows[r];if(row.sources&1)inputs.add("IN");for(int from=0;from<r;++from)if(row.sources&(2u<<from))inputs.add("ROW "+juce::String(from+1));
-   const auto text=(inputs.isEmpty()?juce::String("NO INPUT"):inputs.joinIntoString(" + "))+"  >  ROW "+juce::String(r+1)+(row.output?"  >  OUTPUT":"  >  ROW BUS");
+  for(int r=0;r<4;++r){juce::StringArray inputs;const auto& row=routes.rows[r];if(row.sources&1)inputs.add("IN");for(int from=0;from<r;++from)if(row.sources&(2u<<from))inputs.add("R"+juce::String(from+1)+(row.sourceTaps[from]==0?juce::String(" BEFORE A"):juce::String(" AFTER ")+juce::String::charToString('A'+row.sourceTaps[from]-1)));
+   const auto text=(inputs.isEmpty()?juce::String("NO INPUT"):inputs.joinIntoString(" + "))+"  >  R"+juce::String(r+1)+" "+juce::String::charToString('A'+row.entryColumn)+"-H"+(row.output?"  >  OUTPUT":"  >  ROW BUS");
    drawCaption(g,text,{368,rowTop+r*rowStep+136,735,18},11.f,processor.isGridLaneEnabled(r)?mint:muted);
   }
  }
@@ -423,7 +423,7 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
 
  g.setColour(panel);g.fillRect(layoutRect({302,598,172,232}));g.setColour(juce::Colour(0xff070707));g.drawRect(layoutRect({302,598,172,36}),1);drawCaption(g,"Gig view",{343,599,125,33},20.f,juce::Colours::white,juce::Justification::centredLeft,true);drawCaption(g,"Parameter Editor",{310,796,156,32},14.f,muted);
  }
- drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.26.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
+ drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.27.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
 }
 void VirtualCortexEditor::applyPreset(int index){auto set=[this](const char* id,float value){if(auto* p=processor.parameters.getParameter(id))p->setValueNotifyingHost(p->convertTo0to1(value));};if(index<2)return;set("gridMode",0.f);
  if(index==2){set("drive",.12f);set("tone",.7f);set("level",.65f);set("delayMix",.12f);set("reverbMix",.25f);set("ampBias",0.f);set("delayOn",1.f);set("reverbOn",1.f);}

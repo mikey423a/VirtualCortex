@@ -74,15 +74,24 @@ public:
  template<class DSP>
  std::array<float,2> processCustom(std::array<float,2> input,DSP&& dsp)noexcept {
   for(auto& x:input)if(!std::isfinite(x))x=0;
-  std::array<std::array<float,2>,4> bus{};std::array<double,2> sum{};unsigned outputs=0;
+  std::array<std::array<std::array<float,2>,9>,4> taps{};std::array<std::array<float,2>,4> bus{};std::array<double,2> sum{};unsigned outputs=0;
   for(unsigned r=0;r<4;++r){
    for(int ch=0;ch<2;++ch){const float t=targets_[r][ch];gains_[r][ch]=(float)(t+mixerCoefficient_*(gains_[r][ch]-t));if(std::abs(gains_[r][ch]-t)<1.e-7f)gains_[r][ch]=t;}
    if(!enabled_[r])continue;const auto& route=custom_.rows[r];std::array<double,2> incoming{};unsigned count=0;
    if(route.sources&1u){incoming={input[0],input[1]};++count;}
-   for(unsigned from=0;from<r;++from)if((route.sources&(2u<<from))&&enabled_[from]){for(int ch=0;ch<2;++ch)incoming[ch]+=bus[from][ch];++count;}
+   for(unsigned from=0;from<r;++from)if((route.sources&(2u<<from))&&enabled_[from]){for(int ch=0;ch<2;++ch)incoming[ch]+=taps[from][route.sourceTaps[from]][ch];++count;}
    std::array<float,2> frame{};for(int ch=0;ch<2;++ch)frame[ch]=(float)(incoming[ch]/(custom_.average&&count?count:1));
    if(route.channel){const float mono=route.channel==1?frame[0]:route.channel==2?frame[1]:(frame[0]+frame[1])*.5f;frame={mono,mono};}
-   const auto& plan=lanes_[r].plan();for(std::size_t i=0;i<plan.count;++i){frame=dsp(r,(std::size_t)plan.columns[i],plan.blocks[i],frame);for(auto& x:frame)if(!std::isfinite(x))x=0;}
+   const auto& plan=lanes_[r].plan();std::size_t index=0;
+   auto storeTap=[&](unsigned boundary){for(int ch=0;ch<2;++ch){const float value=frame[ch]*gains_[r][ch];taps[r][boundary][ch]=std::isfinite(value)?value:0.f;}};
+   storeTap(0);
+   for(unsigned column=0;column<8;++column){
+    if(index<plan.count&&(unsigned)plan.columns[index]==column){
+     if(column>=(unsigned)route.entryColumn){frame=dsp(r,column,plan.blocks[index],frame);for(auto& x:frame)if(!std::isfinite(x))x=0;}
+     ++index;
+    }
+    storeTap(column+1);
+   }
    for(int ch=0;ch<2;++ch){bus[r][ch]=frame[ch]*gains_[r][ch];if(!std::isfinite(bus[r][ch]))bus[r][ch]=0;}
    if(route.output){++outputs;for(int ch=0;ch<2;++ch)sum[ch]+=bus[r][ch];}
   }

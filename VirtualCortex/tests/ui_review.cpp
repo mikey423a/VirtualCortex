@@ -281,6 +281,8 @@ int main(int argc,char** argv){
    require(processor->getRowRouting().rows[1].gainDb==-6,"Route level unbound");
    auto* balanceControl=dynamic_cast<juce::Slider*>(panel->findChildWithID("route-balance-1"));require(balanceControl&&balanceControl->getTextFromValue(0)=="CENTER","Center balance formatting missing");
    balanceControl->setValue(-.5,juce::sendNotificationSync);require(processor->getRowRouting().rows[1].balance==-.5f&&balanceControl->getTextFromValue(-.5)=="L 50%","Balance control unbound");balanceControl->setValue(0,juce::sendNotificationSync);
+   auto* entry=dynamic_cast<juce::ComboBox*>(panel->findChildWithID("route-entry-1"));auto* tap=dynamic_cast<juce::ComboBox*>(panel->findChildWithID("route-tap-1-0"));require(entry&&tap&&tap->isEnabled(),"Column routing controls missing");
+   entry->setSelectedId(5,juce::sendNotificationSync);tap->setSelectedId(4,juce::sendNotificationSync);require(processor->getRowRouting().rows[1].entryColumn==4&&processor->getRowRouting().rows[1].sourceTaps[0]==3,"Column routing controls unbound");
    capture("custom-routing-2560x1440.png",2560,1440);capture("custom-routing-822x600.png",822,600);
    dynamic_cast<juce::Button*>(panel->findChildWithID("routing-close"))->onClick();require(!panel->isVisible(),"Routing close failed");
    editor->setEditorsVisible(false);capture("custom-grid-2560x1440.png",2560,1440);capture("custom-grid-1920x1080.png",1920,1080);capture("custom-grid-1600x900.png",1600,900);
