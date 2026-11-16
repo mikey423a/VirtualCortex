@@ -52,6 +52,7 @@ public:
  bool toggleSelectedSlot();
 private:
  int selectedWireSource=-1,selectedWireDestination=-1;
+ int selectedWireTap=-1,selectedWireEntry=-1;
  vc::WirePolyline routingWire(int source,int destination,const vc::RowRoute& route) const;
  VirtualCortexProcessor& processor;
  CortexLookAndFeel look;
