@@ -17,7 +17,7 @@ public:
   fs_=std::isfinite(rate)?std::clamp(rate,8000.,192000.):48000.;const auto size=(std::size_t)std::ceil(fs_*16.02)+8;
   for(auto& b:buffer_)b.assign(size,0.f);index_=0;phase_=0;envelope_=0;initialized_=false;dormant_=true;idle_=0;counter_=0;
   for(int ch=0;ch<2;++ch)for(int stage=0;stage<4;++stage){const double ms[]={3.7,7.3,11.3,17.9};auto& d=diffusers_[(std::size_t)ch][(std::size_t)stage];d.data.assign((std::size_t)std::max(1.,std::round(fs_*.001*(ms[stage]+ch*.71))),0.f);d.index=0;}
-  heads_={};high_={};low_={};smooth_=StereoDelayParameters{};smooth_.mix=0;smooth_.feedback=0;cfg_={};coefficient_=std::exp(-1./(fs_*.01));
+  filterCoefficientsValid_=false;heads_={};high_={};low_={};smooth_=StereoDelayParameters{};smooth_.mix=0;smooth_.feedback=0;cfg_={};coefficient_=std::exp(-1./(fs_*.01));
  }
  bool active() const noexcept {return !dormant_;}
  void configure(StereoDelayParameters p) noexcept {
@@ -37,7 +37,10 @@ public:
   auto move=[&](float& x,float target){const float next=(float)(target+coefficient_*(x-target));x=(next==x||std::abs(next-target)<1.e-7f)?target:next;};
   move(smooth_.mix,cfg_.enabled?cfg_.mix:0);move(smooth_.feedback,cfg_.enabled?cfg_.feedback:0);move(smooth_.cross,cfg_.pingPong?1.f:cfg_.cross);move(smooth_.lowCut,cfg_.lowCut);move(smooth_.highCut,cfg_.highCut);
   move(smooth_.modRate,cfg_.modRate);move(smooth_.modDepth,cfg_.modDepth);move(smooth_.ducking,cfg_.ducking);move(smooth_.width,cfg_.width);move(smooth_.filterMix,cfg_.filterMix);move(wetGain_,wetTarget_);move(smooth_.diffusion,cfg_.diffusion);
-  if(counter_++%16==0)for(int ch=0;ch<2;++ch){high_[(std::size_t)ch].cut((float)fs_,smooth_.lowCut,true);low_[(std::size_t)ch].cut((float)fs_,smooth_.highCut,false);}
+  if(counter_++%16==0&&(!filterCoefficientsValid_||cachedLowCut_!=smooth_.lowCut||cachedHighCut_!=smooth_.highCut)){
+   for(int ch=0;ch<2;++ch){high_[(std::size_t)ch].cut((float)fs_,smooth_.lowCut,true);low_[(std::size_t)ch].cut((float)fs_,smooth_.highCut,false);}
+   cachedLowCut_=smooth_.lowCut;cachedHighCut_=smooth_.highCut;filterCoefficientsValid_=true;
+  }
   const double magnitude=std::max(std::abs(left),std::abs(right)),envCoefficient=magnitude>envelope_?attack_:release_;envelope_=magnitude+envCoefficient*(envelope_-magnitude);
   std::array<float,2> wet{},returned{};
   for(int ch=0;ch<2;++ch){
@@ -80,6 +83,7 @@ private:
   const float y=read(channel,h.current+modulation)*(1-t)+read(channel,h.target+modulation)*t;
   if(++h.fade>=length){h.current=h.target;h.fading=false;}return y;
  }
+ float cachedLowCut_=0,cachedHighCut_=0;bool filterCoefficientsValid_=false;
  double fs_=48000,phase_=0,envelope_=0,coefficient_=0,release_=0,attack_=0,glideCoefficient_=0;
  std::array<std::vector<float>,2> buffer_;std::array<Head,2> heads_{};std::array<Biquad,2> high_,low_;
  StereoDelayParameters cfg_,smooth_;std::size_t index_=0,idle_=0;unsigned counter_=0;float wetTarget_=1,wetGain_=1;bool initialized_=false,dormant_=true;

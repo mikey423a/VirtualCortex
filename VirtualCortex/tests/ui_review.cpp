@@ -298,9 +298,9 @@ int main(int argc,char** argv){
     editor->setSize(size.x,size.y);
     const float scale=juce::jmin(size.x/1184.f,size.y/864.f),width=size.x/scale;
     const float offsetY=(size.y-864.f*scale)*.5f;
-    // R1 after C to R2 entry E: vertical source rail, halfway between rows.
-    const float x=(302.f+(357.f+93.f*3.f-6.f-302.f)*(width-312.f)/872.f)*scale;
-    const juce::Point<float> point{x,250.f*scale+offsetY};
+    // R1 after C to R2 entry E: horizontal gutter above the destination row.
+    const float x=(302.f+((357.f+93.f*3.f-6.f+357.f+93.f*4.f)*.5f-302.f)*(width-312.f)/872.f)*scale;
+    const juce::Point<float> point{x,311.f*scale+offsetY};
     require(editor->getComponentAt(point.roundToInt())==editor.get(),"Wire click intercepted by child control");
     editor->selectRoutingWireAt(point);
     require(editor->selectedRoutingWire()==std::array<int,2>{0,1},"Native wire selection missed source rail");
