@@ -19,3 +19,16 @@ Band sweep Windows CI 44029407814 succeeded on 0c50e15a7bc2d267763960f5887bb3208
 
 
 Two-tone leakage oracle: equal .1 amplitudes at500Hz (T60=2s) and8000Hz (T60=.6s),48kHz. Single8000Hz bandpass estimated.640188s; two identical cascaded bandpasses estimated.6s. Local full regression passed. Confirms leakage bias in simple band estimates; does NOT validate all frequency/decay combinations or establish a standardized octave bank. New Windows check pending. Next compare real tank single/cascaded estimates before opt-in calibration. No application DSP change.
+
+
+## Transition and CPU characterization candidate — November 17
+
+Two-tone oracle commit e7efa9cea2a415c371b9bcf565bf0f8767922a6c passed Windows run 44063688616 (job 133971772744): actual EXE/VST3 build, 48 regressions, pluginval strictness 5, startup and installer gates. No new application release.
+
+Added paired live-control renders at 44.1/48/96 kHz. Engines must match exactly before the change; afterwards record output peak, largest adjacent-sample change, and error energy against an unchanged reference for predelay, size, modulation depth/rate, and decay/damping changes. Stimulus is a stereo four-tone signal, two seconds warmup plus a half-second observation. Local GCC -O2 passed: changed peaks .0531–.0988, largest adjacent-sample changes .00561–.02285. Guards peak<.2 and step<.05 cover this stimulus only. Signal slope and intended tonal changes contribute to these metrics: these are not isolated click/aliasing measures or listening-quality certification.
+
+Real-tank band diagnostics now report two cascaded analysis sections alongside one. At 48kHz, modulation off, nominal 2s, high ratio1: 500/2000/8000Hz cascaded estimates 2.00081/1.89731/1.33331s (single 1.98231/1.87637/1.46044s). High ratio.3 gives 1.94056/1.52256/.775813s (single 1.911/1.52694/.952s). This narrows leakage but is still not an IEC octave bank. Do not recalibrate tank gains from broadband estimates alone.
+
+Informational local CPU diagnostic, 240000 stereo frames at48kHz, three passes, configure every128 samples in both conditions: median77.4303ms steady and82.2808ms with rapid size/decay/modulation automation. Deterministic checksums matched between repetitions per condition. This compares different workloads, not old/new implementations; no optimization or app-wide CPU claim. Windows results pending. Application DSP, presets, GUI and version remain unchanged.
+
+Next: obtain Windows results; preserve compatibility while investigating optional tank interpolation/decay choices; isolate modulation sidebands and time-transition residuals using known-tone references, then level-matched listening. Size moving reads remain pitch-changing; no click-free claim. Delivered application remains verified6.33.

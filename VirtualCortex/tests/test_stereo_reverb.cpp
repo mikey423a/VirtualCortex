@@ -6,6 +6,7 @@
 #include <iostream>
 #include <limits>
 #include <vector>
+#include <chrono>
 using Params=vc::StereoReverbParameters;
 void warm(vc::StereoReverb& r,double fs){for(int i=0;i<(int)(fs*.5);++i)r.process(0,0);}
 std::vector<std::array<float,2>> impulse(double fs,Params p,double seconds){vc::StereoReverb r;r.prepare(fs);p.enabled=true;p.mix=1;r.configure(p);warm(r,fs);std::vector<std::array<float,2>> y((std::size_t)(seconds*fs));for(std::size_t i=0;i<y.size();++i)y[i]=r.process(i==0?.1f:0.f,0);return y;}
@@ -22,6 +23,56 @@ std::vector<std::array<float,2>> band(const std::vector<std::array<float,2>>& in
  return out;
 }
 int main(){
+ // Paired live-control characterization. Identical engines establish an exact
+ // pre-change reference; first-difference metrics include musical signal slope,
+ // so they are diagnostics, not an audibility or aliasing measurement.
+ for(double fs:{44100.,48000.,96000.})for(int control=0;control<4;++control){
+  vc::StereoReverb changed,reference;changed.prepare(fs);reference.prepare(fs);
+  Params p;p.enabled=true;p.mix=1;p.decay=2;p.preGlide=false;
+  changed.configure(p);reference.configure(p);
+  std::array<float,2> previous{};double baselineStep=0,step=0,peak=0,errorEnergy=0,referenceEnergy=0;
+  const int changeAt=(int)(fs*2),end=changeAt+(int)(fs*.5);
+  for(int i=0;i<end;++i){
+   if(i==changeAt){
+    if(control==0)p.preDelay=180;
+    if(control==1)p.size=2;
+    if(control==2){p.modDepth=2;p.modRate=4;}
+    if(control==3){p.decay=.2f;p.highDecay=.1f;}
+    changed.configure(p);
+   }
+   const double t=i/fs;
+   const float l=(float)(.06*std::sin(6.283185307179586*220*t)+.03*std::sin(6.283185307179586*1760*t));
+   const float r=(float)(.05*std::sin(6.283185307179586*330*t)+.02*std::sin(6.283185307179586*3520*t));
+   const auto y=changed.process(l,r),ref=reference.process(l,r);
+   if(i<changeAt)assert(y==ref);
+   for(int ch=0;ch<2;++ch){
+    assert(std::isfinite(y[ch]));const double delta=std::abs(y[ch]-previous[ch]);
+    if(i>=changeAt-(int)(fs*.5)&&i<changeAt)baselineStep=std::max(baselineStep,delta);
+    if(i>=changeAt){step=std::max(step,delta);peak=std::max(peak,(double)std::abs(y[ch]));errorEnergy+=(y[ch]-ref[ch])*(y[ch]-ref[ch]);referenceEnergy+=ref[ch]*ref[ch];}
+   }
+   previous=y;
+  }
+  assert(peak>0&&peak<.2&&step<.05&&referenceEnergy>1.e-8&&errorEnergy>1.e-10);
+  std::cout<<"REVERB_TRANSITION rate="<<fs<<" control="<<control<<" baseline_step="<<baselineStep<<" changed_step="<<step<<" peak="<<peak<<" relative_error_energy="<<errorEnergy/referenceEnergy<<"\n";
+ }
+
+ // Informational CPU comparison, same engine and stimulus. Configure every
+ // 128 frames in both cases; only automated controls differ. No timing gate.
+ for(bool automate:{false,true}){
+  std::vector<double> times;double checksum=0;
+  for(int pass=0;pass<3;++pass){
+   vc::StereoReverb r;r.prepare(48000);Params p;p.enabled=true;p.mix=1;r.configure(p);warm(r,48000);
+   const auto start=std::chrono::steady_clock::now();double sum=0;
+   for(int i=0;i<240000;++i){
+    if(i%128==0){if(automate){p.size=(i/128)%2?.5f:2.f;p.decay=(i/128)%2?1.f:6.f;p.modDepth=(i/128)%2?0.f:2.f;}r.configure(p);}
+    auto y=r.process(i%97==0?.1f:0.f,i%131==0?-.07f:0.f);sum+=y[0]+y[1];
+   }
+   times.push_back(std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count());
+   assert(std::isfinite(sum));if(pass)assert(sum==checksum);checksum=sum;
+  }
+  std::sort(times.begin(),times.end());
+  std::cout<<"REVERB_CPU automated="<<automate<<" frames=240000 rate=48000 median_ms="<<times[1]<<" checksum="<<checksum<<"\n";
+ }
  // Leakage diagnostic: short high tone mixed with a longer low tail.
  // Do not assert a nominal high-band decay: broad analysis skirts admit low energy.
  {
@@ -52,7 +103,8 @@ int main(){
   for(double hz:{500.,2000.,8000.}){
    auto filtered=band(y,48000,hz);const double e=energy(filtered,0,filtered.size());assert(std::isfinite(e)&&e>1.e-12);
    const double measured=rt60(filtered,48000);assert(std::isfinite(measured)&&measured>.05&&measured<8);
-   std::cout<<"BAND_DECAY center_hz="<<hz<<" depth_ms="<<depth<<" high_ratio="<<damping<<" measured="<<measured<<"\n";
+   const double cascaded=rt60(band(filtered,48000,hz),48000);assert(std::isfinite(cascaded)&&cascaded>.05&&cascaded<8);
+   std::cout<<"BAND_DECAY center_hz="<<hz<<" depth_ms="<<depth<<" high_ratio="<<damping<<" measured="<<measured<<" cascade="<<cascaded<<"\n";
   }
  }
 
