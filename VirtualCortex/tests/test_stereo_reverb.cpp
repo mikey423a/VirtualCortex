@@ -12,6 +12,15 @@ std::vector<std::array<float,2>> impulse(double fs,Params p,double seconds){vc::
 double energy(const std::vector<std::array<float,2>>& y,std::size_t begin,std::size_t end){double e=0;for(std::size_t i=begin;i<std::min(end,y.size());++i)for(float x:y[i])e+=x*x;return e;}
 double rt60(const std::vector<std::array<float,2>>& y,double fs){std::vector<double> e(y.size()+1);for(std::size_t i=y.size();i-->0;)e[i]=e[i+1]+y[i][0]*y[i][0]+y[i][1]*y[i][1];std::size_t a=0,b=0;for(std::size_t i=0;i<y.size();++i){double db=10*std::log10(std::max(1.e-30,e[i]/e[0]));if(!a&&db<=-5)a=i;if(db<=-25){b=i;break;}}assert(a&&b>a);return (b-a)/fs*3;}
 int main(){
+ // Modulation decay characterization, with bounded output and nonzero tails.
+ for(double rate:{44100.,96000.})for(float depth:{0.f,.8f,2.f}){
+  Params q;q.decay=2;q.lowDecay=q.highDecay=1;q.modDepth=depth;q.preDelay=0;q.early=0;
+  auto y=impulse(rate,q,8);double peak=0;for(auto frame:y)for(float x:frame){assert(std::isfinite(x));peak=std::max(peak,(double)std::abs(x));}
+  const double measured=rt60(y,rate);
+  std::cout<<"MOD_DECAY rate="<<rate<<" depth_ms="<<depth<<" measured="<<measured<<" peak="<<peak<<"\n";
+  assert(peak>1.e-5&&peak<1&&measured>1&&measured<3);
+ }
+
  // Characterize decay scaling across room sizes and sample rates.
  for(double rate:{44100.,96000.})for(float decay:{.5f,2.f,6.f})for(float size:{.5f,2.f}){
   Params q;q.decay=decay;q.size=size;q.lowDecay=q.highDecay=1;q.modDepth=0;q.preDelay=0;q.early=0;
