@@ -309,6 +309,24 @@ int main(int argc,char** argv){
     capture("selected-wire-"+juce::String(size.x)+"x"+juce::String(size.y)+".png",size.x,size.y);
     editor->selectRoutingWireAt({1.f,1.f});
     require(editor->selectedRoutingWire()==std::array<int,2>{-1,-1},"Background miss retained selection");
+
+    const auto savedRoutes=processor->getRowRouting();
+    for(int mutation=0;mutation<4;++mutation){
+     require(processor->setRowRouting(savedRoutes),"Restore routing for focus test failed");
+     processor->setRoutingMode(3);editor->setEditorsVisible(false);editor->selectRoutingWireAt(point);
+     require(editor->selectedRoutingWire()==std::array<int,2>{0,1},"Wire focus setup failed");
+     auto changed=savedRoutes;
+     if(mutation==0)changed.rows[1].sources&=~2u;
+     if(mutation==1)changed.rows[1].sourceTaps[0]=(changed.rows[1].sourceTaps[0]+1)%9;
+     if(mutation==2)changed.rows[1].entryColumn=(changed.rows[1].entryColumn+1)%8;
+     if(mutation==3)processor->setRoutingMode(0);
+     require(processor->setRowRouting(changed),"Routing mutation rejected");
+     editor->setEditorsVisible(false);
+     require(editor->selectedRoutingWire()==std::array<int,2>{-1,-1},"Changed topology retained stale wire focus");
+    }
+    require(processor->setRowRouting(savedRoutes),"Final routing restore failed");
+    processor->setRoutingMode(3);editor->setEditorsVisible(false);
+
     editor->selectRoutingWireAt(point);editor->selectSlot(0,0);
     require(editor->selectedRoutingWire()==std::array<int,2>{-1,-1},"Slot selection retained wire focus");
    }
