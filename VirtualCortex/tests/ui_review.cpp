@@ -337,13 +337,14 @@ int main(int argc,char** argv){
      const auto before=processor->stateRecallRevision();
      auto rejected=[&](const char* message){
       require(!editor->loadPresetFile(file),"Invalid preset file accepted");
+      if(status->getText()!=message)std::cerr<<"Expected preset status: "<<message<<"; actual: "<<status->getText()<<'\n';
       require(status->getText()==message,"Preset rejection status incorrect");
       require(processor->stateRecallRevision()==before,"Rejected file published recall");
       require(editor->selectedRoutingWire()==std::array<int,2>{0,1},"Rejected file cleared wire selection");
       juce::MemoryBlock after;processor->getStateInformation(after);require(after==saved,"Rejected file changed serialized state");
      };
      rejected("Preset not found.");
-     require(file.replaceWithData("",0),"Empty preset fixture failed");rejected("Invalid preset; state unchanged.");
+     require(file.create().wasOk()&&file.existsAsFile()&&file.getSize()==0,"Empty preset fixture failed");rejected("Invalid preset; state unchanged.");
      require(file.replaceWithText("not a preset"),"Corrupt preset fixture failed");rejected("Invalid preset; state unchanged.");
      juce::MemoryBlock oversized(1024*1024+1,true);require(file.replaceWithData(oversized.getData(),oversized.getSize()),"Oversize fixture failed");rejected("Preset exceeds 1 MB limit.");
      capture("preset-rejected-"+juce::String(size.x)+"x"+juce::String(size.y)+".png",size.x,size.y);
