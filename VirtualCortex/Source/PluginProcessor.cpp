@@ -845,6 +845,9 @@ void VirtualCortexProcessor::setStateInformation(const void* data,int size){
    cabinetIRPath.clear();cabinetIRName="No IR loaded";
    cabinetIRLoaded.store(false,std::memory_order_release);
   }
+  // Publish only after a valid state has completed restoration. Editors poll
+  // this marker; no GUI calls are made on a host's state-loading thread.
+  stateRecallCounter.fetch_add(1,std::memory_order_release);
  }
 }
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter(){return new VirtualCortexProcessor();}

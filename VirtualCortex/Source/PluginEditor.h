@@ -53,6 +53,7 @@ public:
  bool insertBlock(int type);
  bool toggleSelectedSlot();
 private:
+ std::uint64_t observedStateRecall=0;
  int selectedWireSource=-1,selectedWireDestination=-1;
  int selectedWireTap=-1,selectedWireEntry=-1;
  vc::WirePolyline routingWire(int source,int destination,const vc::RowRoute& route) const;

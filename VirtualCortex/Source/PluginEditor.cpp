@@ -276,7 +276,10 @@ std::vector<int> VirtualCortexEditor::visibleSlotControls() const{
 void VirtualCortexEditor::selectSlot(int row,int col){if(!vc::SignalGrid::valid((size_t)row,(size_t)col))return;selectedWireSource=selectedWireDestination=-1;selectedRow=row;selectedColumn=col;rowBank=row/2;rowSelector.setSelectedId(row+1,juce::dontSendNotification);masterPage=false;repaint();const auto grid=processor.getEditableGrid();const int type=(int)grid.get((size_t)row,(size_t)col)->type;if(type)browserType=type;lastView=-1;refreshSlotControls();updateView();}
 bool VirtualCortexEditor::insertBlock(int type){if(type<0||(type>21&&!vc::isAdvanced(type)))return false;bool ok=processor.setGridBlock((size_t)selectedRow,(size_t)selectedColumn,{(vc::BlockType)type,true});masterPage=false;if(type)browserType=type;lastView=-1;updateView();statusLabel.setText(gridMode()?"Block updated":"Block updated. Enable GRID ENGINE to hear the grid.",juce::dontSendNotification);return ok;}
 bool VirtualCortexEditor::toggleSelectedSlot(){const auto grid=processor.getEditableGrid();const auto slot=*grid.get((size_t)selectedRow,(size_t)selectedColumn);if(slot.type==vc::BlockType::Empty)return false;bool ok=processor.setGridBlock((size_t)selectedRow,(size_t)selectedColumn,{slot.type,!slot.enabled});refreshGridControls();return ok;}
-void VirtualCortexEditor::refreshGridControls(){const auto routes=processor.getRowRouting();const bool custom=processor.getRoutingMode()==3;
+void VirtualCortexEditor::refreshGridControls(){
+ const auto recall=processor.stateRecallRevision();
+ if(recall!=observedStateRecall){observedStateRecall=recall;selectedWireSource=selectedWireDestination=-1;repaint();}
+ const auto routes=processor.getRowRouting();const bool custom=processor.getRoutingMode()==3;
  if(selectedWireSource>=0&&selectedWireDestination>=0){
   const auto& selectedRoute=routes.rows[(std::size_t)selectedWireDestination];
   if(!custom||!(selectedRoute.sources&(2u<<selectedWireSource))||selectedRoute.sourceTaps[(std::size_t)selectedWireSource]!=selectedWireTap||selectedRoute.entryColumn!=selectedWireEntry){selectedWireSource=selectedWireDestination=-1;repaint();}
@@ -451,7 +454,7 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
 
  g.setColour(panel);g.fillRect(layoutRect({302,598,172,232}));g.setColour(juce::Colour(0xff070707));g.drawRect(layoutRect({302,598,172,36}),1);drawCaption(g,"Gig view",{343,599,125,33},20.f,juce::Colours::white,juce::Justification::centredLeft,true);drawCaption(g,"Parameter Editor",{310,796,156,32},14.f,muted);
  }
- drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.33.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
+ drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.34.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
 }
 void VirtualCortexEditor::applyPreset(int index){auto set=[this](const char* id,float value){if(auto* p=processor.parameters.getParameter(id))p->setValueNotifyingHost(p->convertTo0to1(value));};if(index<2)return;set("gridMode",0.f);
  if(index==2){set("drive",.12f);set("tone",.7f);set("level",.65f);set("delayMix",.12f);set("reverbMix",.25f);set("ampBias",0.f);set("delayOn",1.f);set("reverbOn",1.f);}
@@ -561,6 +564,8 @@ vc::WirePolyline VirtualCortexEditor::routingWire(int source,int destination,con
 }
 void VirtualCortexEditor::mouseDown(const juce::MouseEvent& event) { selectRoutingWireAt(event.position); }
 void VirtualCortexEditor::selectRoutingWireAt(juce::Point<float> position) {
+ // Consume any completed recall before accepting a new user selection.
+ refreshGridControls();
  selectedWireSource=selectedWireDestination=-1;
  if(processor.getRoutingMode()==3 && designScale>0){
   const auto routes=processor.getRowRouting();

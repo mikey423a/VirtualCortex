@@ -327,6 +327,34 @@ int main(int argc,char** argv){
     require(processor->setRowRouting(savedRoutes),"Final routing restore failed");
     processor->setRoutingMode(3);editor->setEditorsVisible(false);
 
+    // A new preset/state is a new editing context, even with identical routing.
+    editor->selectRoutingWireAt(point);
+    const auto revision=processor->stateRecallRevision();
+    auto gainRoutes=processor->getRowRouting();gainRoutes.rows[1].gainDb=-3.f;
+    require(processor->setRowRouting(gainRoutes),"Gain-only route edit failed");
+    editor->setEditorsVisible(false);
+    require(editor->selectedRoutingWire()==std::array<int,2>{0,1},"Gain edit unexpectedly cleared wire focus");
+    require(processor->setRowRouting(savedRoutes),"Gain edit restore failed");
+    const char invalidState[]="not a JUCE state";
+    processor->setStateInformation(invalidState,sizeof(invalidState));
+    editor->setEditorsVisible(false);
+    require(processor->stateRecallRevision()==revision&&editor->selectedRoutingWire()==std::array<int,2>{0,1},"Rejected state changed recall identity or focus");
+    juce::MemoryBlock recalledState;processor->getStateInformation(recalledState);
+    for(int recall=0;recall<2;++recall){
+     editor->selectRoutingWireAt(point);
+     require(editor->selectedRoutingWire()==std::array<int,2>{0,1},"Recall focus setup failed");
+     processor->setStateInformation(recalledState.getData(),(int)recalledState.getSize());
+     require(processor->stateRecallRevision()==revision+recall+1,"Valid state did not publish recall identity");
+     editor->setEditorsVisible(false);
+     require(editor->selectedRoutingWire()==std::array<int,2>{-1,-1},"Identical-topology state recall retained wire focus");
+     const auto restoredRoutes=processor->getRowRouting();
+     require(processor->getRoutingMode()==3&&restoredRoutes.rows[1].sources==savedRoutes.rows[1].sources&&restoredRoutes.rows[1].sourceTaps==savedRoutes.rows[1].sourceTaps&&restoredRoutes.rows[1].entryColumn==savedRoutes.rows[1].entryColumn,"Focus clearing changed recalled routing");
+    }
+    capture("recalled-wire-cleared-"+juce::String(size.x)+"x"+juce::String(size.y)+".png",size.x,size.y);
+    processor->setStateInformation(recalledState.getData(),(int)recalledState.getSize());
+    editor->selectRoutingWireAt(point);editor->setEditorsVisible(false);
+    require(editor->selectedRoutingWire()==std::array<int,2>{0,1},"New selection after recall was cleared by delayed refresh");
+
     editor->selectRoutingWireAt(point);editor->selectSlot(0,0);
     require(editor->selectedRoutingWire()==std::array<int,2>{-1,-1},"Slot selection retained wire focus");
    }

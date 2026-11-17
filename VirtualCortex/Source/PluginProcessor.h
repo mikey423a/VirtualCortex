@@ -39,6 +39,8 @@ public:
  void changeProgramName(int,const juce::String&) override {}
  void getStateInformation(juce::MemoryBlock&) override;
  void setStateInformation(const void*,int) override;
+ // UI-only recall identity; not serialized and never changed by parameter automation.
+ std::uint64_t stateRecallRevision() const noexcept {return stateRecallCounter.load(std::memory_order_acquire);}
  juce::AudioProcessorValueTreeState parameters;
  vc::AdvancedValues getAdvancedValues(int row,int col) const noexcept;
  bool setAdvancedValue(int row,int col,int index,float value) noexcept;
@@ -73,6 +75,7 @@ public:
  bool hasScene(int index) const;
  int selectedScene() const noexcept {return activeScene.load();}
 private:
+ std::atomic<std::uint64_t> stateRecallCounter{0};
  struct AdvancedControls {
   std::atomic<int> type{0};std::array<std::atomic<float>,vc::advancedCapacity> values{};
   std::atomic<unsigned> commands{0},status{0};
