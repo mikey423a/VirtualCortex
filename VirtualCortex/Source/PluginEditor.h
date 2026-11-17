@@ -53,6 +53,8 @@ public:
  bool moveGridSlotToPosition(int row,int col,juce::Point<float> position);
  void setEditorsVisible(bool visible);
  bool insertBlock(int type);
+ // File chooser and native regression share the bounded preset-loading path.
+ bool loadPresetFile(const juce::File&);
  bool toggleSelectedSlot();
 private:
  std::uint64_t observedStateRecall=0;

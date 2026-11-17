@@ -40,6 +40,8 @@ public:
  void changeProgramName(int,const juce::String&) override {}
  void getStateInformation(juce::MemoryBlock&) override;
  void setStateInformation(const void*,int) override;
+ // Same restore path as host state, with an explicit acceptance result for file loading.
+ bool restoreStateInformation(const void*,int);
  // UI-only recall identity; not serialized and never changed by parameter automation.
  std::uint64_t stateRecallRevision() const noexcept {return stateRecallCounter.load(std::memory_order_acquire);}
  juce::AudioProcessorValueTreeState parameters;

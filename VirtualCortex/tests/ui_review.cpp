@@ -327,6 +327,34 @@ int main(int argc,char** argv){
     require(processor->setRowRouting(savedRoutes),"Final routing restore failed");
     processor->setRoutingMode(3);editor->setEditorsVisible(false);
 
+    // The actual file-load path must report rejection without disturbing state/focus.
+    {
+     editor->selectRoutingWireAt(point);
+     const auto folder=dir.getChildFile("preset-file-regression");require(folder.createDirectory().wasOk(),"Preset test directory failed");
+     const auto file=folder.getChildFile("test.vcpreset");file.deleteFile();
+     auto* status=dynamic_cast<juce::Label*>(editor->findChildWithID("preset-status"));require(status!=nullptr,"Preset status missing");
+     juce::MemoryBlock saved;processor->getStateInformation(saved);
+     const auto before=processor->stateRecallRevision();
+     auto rejected=[&](const char* message){
+      require(!editor->loadPresetFile(file),"Invalid preset file accepted");
+      require(status->getText()==message,"Preset rejection status incorrect");
+      require(processor->stateRecallRevision()==before,"Rejected file published recall");
+      require(editor->selectedRoutingWire()==std::array<int,2>{0,1},"Rejected file cleared wire selection");
+      juce::MemoryBlock after;processor->getStateInformation(after);require(after==saved,"Rejected file changed serialized state");
+     };
+     rejected("Preset not found.");
+     require(file.replaceWithData("",0),"Empty preset fixture failed");rejected("Invalid preset; state unchanged.");
+     require(file.replaceWithText("not a preset"),"Corrupt preset fixture failed");rejected("Invalid preset; state unchanged.");
+     juce::MemoryBlock oversized(1024*1024+1,true);require(file.replaceWithData(oversized.getData(),oversized.getSize()),"Oversize fixture failed");rejected("Preset exceeds 1 MB limit.");
+     capture("preset-rejected-"+juce::String(size.x)+"x"+juce::String(size.y)+".png",size.x,size.y);
+     require(file.replaceWithData(saved.getData(),saved.getSize()),"Valid preset fixture failed");
+     require(editor->loadPresetFile(file)&&status->getText()=="Preset loaded","Valid preset not reported");
+     require(processor->stateRecallRevision()==before+1,"File restore did not publish exactly once");
+     require(editor->selectedRoutingWire()==std::array<int,2>{-1,-1},"Valid file recall kept stale selection");
+     capture("preset-loaded-"+juce::String(size.x)+"x"+juce::String(size.y)+".png",size.x,size.y);
+     require(folder.deleteRecursively(),"Preset test cleanup failed");
+     editor->selectRoutingWireAt(point);
+    }
     // A new preset/state is a new editing context, even with identical routing.
     editor->selectRoutingWireAt(point);
     const auto revision=processor->stateRecallRevision();

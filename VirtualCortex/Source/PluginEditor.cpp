@@ -196,7 +196,8 @@ VirtualCortexEditor::VirtualCortexEditor(VirtualCortexProcessor& p):AudioProcess
  clearNeuralButton.setComponentID("clear-amp-model");clearNeuralButton.onClick=[this]{processor.clearGridNeuralModel(selectedRow,selectedColumn);lastView=-1;updateView();statusLabel.setText("Model removed; original amplifier restored",juce::dontSendNotification);};
  loadNeuralButton.onClick=[this]{const auto r=selectedRow,c=selectedColumn;neuralChooser=std::make_unique<juce::FileChooser>("Load NAM or VCMLP1 amplifier model",juce::File{},"*.nam;*.vcmlp;*.txt");auto safe=juce::Component::SafePointer<VirtualCortexEditor>(this);neuralChooser->launchAsync(juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles,[safe,r,c](const juce::FileChooser& chooser){if(safe&&chooser.getResult().existsAsFile()){bool ok=safe->processor.loadGridNeuralModel(chooser.getResult(),(size_t)r,(size_t)c);const auto message=ok?juce::String("Model loaded"):safe->processor.getLastModelError();safe->statusLabel.setText(message,juce::dontSendNotification);safe->statusLabel.setTooltip(message);safe->lastView=-1;safe->updateView();}});};
  savePresetButton.onClick=[this]{presetChooser=std::make_unique<juce::FileChooser>("Save preset",juce::File{},"*.vcpreset");auto safe=juce::Component::SafePointer<VirtualCortexEditor>(this);presetChooser->launchAsync(juce::FileBrowserComponent::saveMode|juce::FileBrowserComponent::canSelectFiles|juce::FileBrowserComponent::warnAboutOverwriting,[safe](const juce::FileChooser& c){if(!safe||c.getResult()==juce::File{})return;juce::MemoryBlock data;safe->processor.getStateInformation(data);bool ok=c.getResult().withFileExtension(".vcpreset").replaceWithData(data.getData(),data.getSize());safe->statusLabel.setText(ok?"Preset saved":"Preset save failed",juce::dontSendNotification);});};
- loadPresetButton.onClick=[this]{presetChooser=std::make_unique<juce::FileChooser>("Open preset",juce::File{},"*.vcpreset");auto safe=juce::Component::SafePointer<VirtualCortexEditor>(this);presetChooser->launchAsync(juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles,[safe](const juce::FileChooser& c){if(!safe||!c.getResult().existsAsFile()||c.getResult().getSize()>1024*1024)return;juce::MemoryBlock data;if(c.getResult().loadFileAsData(data)){safe->processor.setStateInformation(data.getData(),(int)data.getSize());safe->refreshSlotControls();safe->lastView=-1;safe->updateView();safe->statusLabel.setText("Preset loaded",juce::dontSendNotification);}});};
+ loadPresetButton.onClick=[this]{presetChooser=std::make_unique<juce::FileChooser>("Open preset",juce::File{},"*.vcpreset");auto safe=juce::Component::SafePointer<VirtualCortexEditor>(this);presetChooser->launchAsync(juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles,[safe](const juce::FileChooser& c){if(safe&&c.getResult()!=juce::File{})safe->loadPresetFile(c.getResult());});};
+ statusLabel.setComponentID("preset-status");
  savePresetButton.setComponentID("save");loadPresetButton.setComponentID("open");directoryButton.setComponentID("directory");
  for(size_t i=0;i<switches.size();++i)if(i!=8&&i!=9&&i<11){switches[i].button.setComponentID(i==6?"bypass":"power");switches[i].button.setTooltip(i==6?"Global bypass":"Enable selected effect");}
  slotEnabled.setComponentID("power");
@@ -454,7 +455,7 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
 
  g.setColour(panel);g.fillRect(layoutRect({302,598,172,232}));g.setColour(juce::Colour(0xff070707));g.drawRect(layoutRect({302,598,172,36}),1);drawCaption(g,"Gig view",{343,599,125,33},20.f,juce::Colours::white,juce::Justification::centredLeft,true);drawCaption(g,"Parameter Editor",{310,796,156,32},14.f,muted);
  }
- drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.35.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
+ drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.36.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
 }
 void VirtualCortexEditor::applyPreset(int index){auto set=[this](const char* id,float value){if(auto* p=processor.parameters.getParameter(id))p->setValueNotifyingHost(p->convertTo0to1(value));};if(index<2)return;set("gridMode",0.f);
  if(index==2){set("drive",.12f);set("tone",.7f);set("level",.65f);set("delayMix",.12f);set("reverbMix",.25f);set("ampBias",0.f);set("delayOn",1.f);set("reverbOn",1.f);}
@@ -598,4 +599,21 @@ void VirtualCortexEditor::selectRoutingWireAt(juce::Point<float> position) {
   if(hit>=0){selectedWireSource=ids[(std::size_t)hit][0];selectedWireDestination=ids[(std::size_t)hit][1];selectedWireTap=routes.rows[(std::size_t)selectedWireDestination].sourceTaps[(std::size_t)selectedWireSource];selectedWireEntry=routes.rows[(std::size_t)selectedWireDestination].entryColumn;}
  }
  repaint();
+}
+
+
+bool VirtualCortexEditor::loadPresetFile(const juce::File& file){
+ constexpr int maximumBytes=1024*1024;
+ auto fail=[this](const char* message){statusLabel.setText(message,juce::dontSendNotification);return false;};
+ if(!file.existsAsFile())return fail("Preset not found.");
+ auto input=file.createInputStream();
+ if(!input||input->getStatus().failed())return fail("Cannot read preset.");
+ juce::MemoryBlock data;
+ input->readIntoMemoryBlock(data,maximumBytes+1);
+ if(input->getStatus().failed())return fail("Cannot read preset.");
+ if(data.getSize()>maximumBytes)return fail("Preset exceeds 1 MB limit.");
+ if(!processor.restoreStateInformation(data.getData(),(int)data.getSize()))return fail("Invalid preset; state unchanged.");
+ refreshSlotControls();lastView=-1;updateView();
+ statusLabel.setText("Preset loaded",juce::dontSendNotification);
+ return true;
 }

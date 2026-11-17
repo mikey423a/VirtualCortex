@@ -768,6 +768,10 @@ void VirtualCortexProcessor::getStateInformation(juce::MemoryBlock& dest){
  std::unique_ptr<juce::XmlElement> xml(state.createXml());copyXmlToBinary(*xml,dest);
 }
 void VirtualCortexProcessor::setStateInformation(const void* data,int size){
+ (void)restoreStateInformation(data,size);
+}
+bool VirtualCortexProcessor::restoreStateInformation(const void* data,int size){
+ if(data==nullptr||size<=0)return false;
  std::lock_guard<std::recursive_mutex> move(gridMoveMutex);
  std::unique_ptr<juce::XmlElement> xml(getXmlFromBinary(data,size));
  if(xml&&xml->hasTagName(parameters.state.getType())){
@@ -848,6 +852,8 @@ void VirtualCortexProcessor::setStateInformation(const void* data,int size){
   // Publish only after a valid state has completed restoration. Editors poll
   // this marker; no GUI calls are made on a host's state-loading thread.
   stateRecallCounter.fetch_add(1,std::memory_order_release);
+  return true;
  }
+ return false;
 }
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter(){return new VirtualCortexProcessor();}
