@@ -2,11 +2,11 @@
 
 Windows x64 standalone guitar amplifier/effects application and VST3, built with JUCE 8.0.10 and ASIO enabled.
 
-## Current verified milestone: 6.32.0
+## Current verified milestone: 6.33.0
 
-[Windows build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/43894463366) · [Routing changes, verification and next steps](VirtualCortex/ROUTING-6.32.md)
+[Windows build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/43993250604) · [Routing changes, verification and next steps](VirtualCortex/ROUTING-6.33.md)
 
-Actual EXE/VST3 compilation, 45 regressions, pluginval strictness 5, standalone startup, and installer install/uninstall passed. Native 2560x1440 and compact screenshots were inspected. This milestone distinguishes GRID OFF captions from BYPASSED and SKIPPED while retaining routing connection highlighting while preserving DSP and presets. Four rounded-square grid rows fill the widescreen layout.
+Actual EXE/VST3 compilation, 48 regressions, pluginval strictness 5, standalone startup, and installer install/uninstall passed. Native 2560x1440 and compact screenshots were inspected. This milestone distinguishes GRID OFF captions from BYPASSED and SKIPPED while retaining routing connection highlighting while preserving DSP and presets. Four rounded-square grid rows fill the widescreen layout.
 
 Download the VirtualCortex-Windows-x64 artifact for the unsigned Setup EXE, standalone EXE, VST3 ZIP and hashes. Native screenshots/test logs are in VirtualCortex-build-logs. Anubis hardware and Windows 11 interactive audio testing remain user-side. Routing features still outstanding are listed in the linked notes. No proprietary DSP equivalence or complete playable Neural DSP catalog is claimed.
 
