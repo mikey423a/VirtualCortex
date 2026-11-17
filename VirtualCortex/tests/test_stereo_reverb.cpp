@@ -22,6 +22,17 @@ std::vector<std::array<float,2>> band(const std::vector<std::array<float,2>>& in
  return out;
 }
 int main(){
+ // Independent estimator oracle: exponentially decaying sinusoids with known T60.
+ for(double rate:{44100.,96000.})for(double hz:{500.,2000.,8000.})for(double seconds:{.5,2.}){
+  std::vector<std::array<float,2>> y((std::size_t)(rate*seconds*5));
+  for(std::size_t i=0;i<y.size();++i){
+   const double time=i/rate;float x=(float)(.1*std::exp(-std::log(1000.)*time/seconds)*std::sin(6.283185307179586*hz*time));y[i]={x,x};
+  }
+  const double raw=rt60(y,rate),filtered=rt60(band(y,rate,hz),rate);
+  std::cout<<"DECAY_ORACLE rate="<<rate<<" center="<<hz<<" expected="<<seconds<<" raw="<<raw<<" filtered="<<filtered<<"\n";
+  assert(std::abs(raw/seconds-1)<.02&&std::abs(filtered/seconds-1)<.03);
+ }
+
  for(float depth:{0.f,.8f})for(float damping:{1.f,.3f}){
   Params q;q.decay=2;q.lowDecay=1;q.highDecay=damping;q.modDepth=depth;q.preDelay=0;q.early=0;
   auto y=impulse(48000,q,8);
