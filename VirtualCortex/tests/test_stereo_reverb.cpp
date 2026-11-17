@@ -22,6 +22,19 @@ std::vector<std::array<float,2>> band(const std::vector<std::array<float,2>>& in
  return out;
 }
 int main(){
+ // Leakage diagnostic: short high tone mixed with a longer low tail.
+ // Do not assert a nominal high-band decay: broad analysis skirts admit low energy.
+ {
+  const double fs=48000;std::vector<std::array<float,2>> y((std::size_t)(fs*10));
+  for(std::size_t i=0;i<y.size();++i){const double t=i/fs;
+   const float x=(float)(.1*std::exp(-std::log(1000.)*t/.6)*std::sin(6.283185307179586*8000*t)+.1*std::exp(-std::log(1000.)*t/2.)*std::sin(6.283185307179586*500*t));y[i]={x,x};
+  }
+  auto once=band(y,fs,8000),twice=band(once,fs,8000);
+  const double a=rt60(once,fs),b=rt60(twice,fs);
+  std::cout<<"LEAKAGE_ORACLE target_high=.6 single="<<a<<" cascade="<<b<<"\n";
+  assert(std::isfinite(a)&&std::isfinite(b)&&b>.4&&b<.9);
+ }
+
  // Independent estimator oracle: exponentially decaying sinusoids with known T60.
  for(double rate:{44100.,96000.})for(double hz:{500.,2000.,8000.})for(double seconds:{.5,2.}){
   std::vector<std::array<float,2>> y((std::size_t)(rate*seconds*5));
