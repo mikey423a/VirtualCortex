@@ -1,6 +1,6 @@
 # Effects quality — current status
 
-Delivered application: **6.33.0**, code `7ecd8a2bedbae92e29b469309956894335b9405d`, Windows CI [43993250604](https://github.com/mikey423a/VirtualCortex/actions/runs/43993250604). See [release verification](ROUTING-6.33.md). Later measurement/test changes do not introduce a new application version or new sonic behavior.
+Delivered application: **6.34.0**, code `4852ef977fb2a1ba8d2a8304b2d60aca17163aac`, Windows CI [44072683824](https://github.com/mikey423a/VirtualCortex/actions/runs/44072683824). See [release verification](ROUTING-6.34.md). The 6.34 change concerns wire focus on state recall; DSP remains unchanged from 6.33.
 
 ## Verified application behavior
 
