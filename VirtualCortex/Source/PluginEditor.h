@@ -44,6 +44,7 @@ public:
  void selectRoutingWireAt(juce::Point<float> position);
  // Shared native menu action, also exercised by the UI regression.
  bool disconnectRoutingWire(int source,int destination,unsigned routingRevision,std::uint64_t recallRevision);
+ bool setRoutingWireTap(int source,int destination,int tap,unsigned routingRevision,std::uint64_t recallRevision);
  std::array<int,2> selectedRoutingWire() const {return {selectedWireSource,selectedWireDestination};}
  bool keyPressed(const juce::KeyPress&) override;
  bool setFullScreenMode(bool enabled);

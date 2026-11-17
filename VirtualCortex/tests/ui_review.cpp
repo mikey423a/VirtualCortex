@@ -356,6 +356,43 @@ int main(int argc,char** argv){
      require(folder.deleteRecursively(),"Preset test cleanup failed");
      editor->selectRoutingWireAt(point);
     }
+    // Source-tap edits use the same guarded action as the wire context menu.
+    {
+     const auto original=processor->getRowRouting();
+     const auto revision=processor->routingRevision();const auto recall=processor->stateRecallRevision();
+     require(!processor->setRowSourceTap(-1,1,0,revision,recall)&&!processor->setRowSourceTap(1,1,0,revision,recall)&&!processor->setRowSourceTap(0,4,0,revision,recall),"Invalid tap row accepted");
+     require(!processor->setRowSourceTap(0,1,-1,revision,recall)&&!processor->setRowSourceTap(0,1,9,revision,recall),"Out-of-range tap accepted");
+     require(processor->routingRevision()==revision,"Rejected tap advanced routing revision");
+     for(int tap=0;tap<=8;++tap){
+      require(editor->setRoutingWireTap(0,1,tap,processor->routingRevision(),processor->stateRecallRevision()),"Valid source tap rejected");
+      const auto actual=processor->getRowRouting();
+      for(int row=0;row<4;++row){
+       const auto& a=actual.rows[row];const auto& b=original.rows[row];
+       require(a.sources==b.sources&&a.entryColumn==b.entryColumn&&a.channel==b.channel&&a.gainDb==b.gainDb&&a.balance==b.balance&&a.invert==b.invert&&a.output==b.output,"Tap edit changed unrelated row settings");
+       for(int source=0;source<4;++source)require(a.sourceTaps[source]==((row==1&&source==0)?tap:b.sourceTaps[source]),"Tap edit changed another connection");
+      }
+      require(actual.average==original.average,"Tap edit changed mixer normalization");
+     }
+     const auto sameRevision=processor->routingRevision();
+     require(editor->setRoutingWireTap(0,1,8,sameRevision,processor->stateRecallRevision())&&processor->routingRevision()==sameRevision,"Same tap must be a no-op");
+     require(!editor->setRoutingWireTap(0,1,0,revision,recall),"Stale tap menu accepted");
+     juce::MemoryBlock state;processor->getStateInformation(state);
+     processor->setStateInformation(state.getData(),(int)state.getSize());
+     require(!editor->setRoutingWireTap(0,1,0,processor->routingRevision(),recall),"Old recall tap menu accepted");
+     processor->setRoutingMode(0);
+     require(!editor->setRoutingWireTap(0,1,0,processor->routingRevision(),processor->stateRecallRevision()),"Tap accepted outside custom mode");
+     processor->setRoutingMode(3);
+     auto missing=original;missing.rows[1].sources&=~2u;require(processor->setRowRouting(missing),"Missing tap setup failed");
+     require(!editor->setRoutingWireTap(0,1,0,processor->routingRevision(),processor->stateRecallRevision()),"Tap created an absent connection");
+     require(processor->setRowRouting(original),"Tap fixture restore failed");
+     editor->selectRoutingWireAt(point);
+     require(editor->setRoutingWireTap(0,1,0,processor->routingRevision(),processor->stateRecallRevision()),"Before-A tap rejected");
+     require(editor->selectedRoutingWire()==std::array<int,2>{-1,-1},"Changed tap retained stale selection");
+     capture("wire-tap-before-a-"+juce::String(size.x)+"x"+juce::String(size.y)+".png",size.x,size.y);
+     processor->getStateInformation(state);processor->setStateInformation(state.getData(),(int)state.getSize());
+     require(processor->getRowRouting().rows[1].sourceTaps[0]==0,"Source tap not retained by preset");
+     require(processor->setRowRouting(original),"Final tap restore failed");editor->setEditorsVisible(false);
+    }
     // A new preset/state is a new editing context, even with identical routing.
     editor->selectRoutingWireAt(point);
     const auto revision=processor->stateRecallRevision();

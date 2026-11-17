@@ -455,7 +455,7 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
 
  g.setColour(panel);g.fillRect(layoutRect({302,598,172,232}));g.setColour(juce::Colour(0xff070707));g.drawRect(layoutRect({302,598,172,36}),1);drawCaption(g,"Gig view",{343,599,125,33},20.f,juce::Colours::white,juce::Justification::centredLeft,true);drawCaption(g,"Parameter Editor",{310,796,156,32},14.f,muted);
  }
- drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.36.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
+ drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.37.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
 }
 void VirtualCortexEditor::applyPreset(int index){auto set=[this](const char* id,float value){if(auto* p=processor.parameters.getParameter(id))p->setValueNotifyingHost(p->convertTo0to1(value));};if(index<2)return;set("gridMode",0.f);
  if(index==2){set("drive",.12f);set("tone",.7f);set("level",.65f);set("delayMix",.12f);set("reverbMix",.25f);set("ampBias",0.f);set("delayOn",1.f);set("reverbOn",1.f);}
@@ -577,10 +577,18 @@ void VirtualCortexEditor::mouseDown(const juce::MouseEvent& event) {
  const auto recallRevision=observedStateRecall;
  juce::PopupMenu menu;
  menu.addSectionHeader("Row "+juce::String(source+1)+" to Row "+juce::String(destination+1));
+ juce::PopupMenu taps;
+ for(int tap=0;tap<=8;++tap){
+  const auto label=tap==0?juce::String("Before A"):juce::String("After ")+juce::String::charToString((juce::juce_wchar)('A'+tap-1));
+  taps.addItem(10+tap,label,true,tap==selectedWireTap);
+ }
+ menu.addSubMenu("Source tap — row "+juce::String(source+1),taps);
  menu.addItem(1,"Disconnect this connection");
  auto safe=juce::Component::SafePointer<VirtualCortexEditor>(this);
  menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(this).withTargetScreenArea({event.getScreenPosition().x,event.getScreenPosition().y,1,1}),[safe,source,destination,routingRevision,recallRevision](int item){
-  if(safe&&item==1)safe->disconnectRoutingWire(source,destination,routingRevision,recallRevision);
+  if(!safe)return;
+  if(item==1)safe->disconnectRoutingWire(source,destination,routingRevision,recallRevision);
+  else if(item>=10&&item<=18)safe->setRoutingWireTap(source,destination,item-10,routingRevision,recallRevision);
  });
 }
 void VirtualCortexEditor::selectRoutingWireAt(juce::Point<float> position) {
@@ -616,4 +624,11 @@ bool VirtualCortexEditor::loadPresetFile(const juce::File& file){
  refreshSlotControls();lastView=-1;updateView();
  statusLabel.setText("Preset loaded",juce::dontSendNotification);
  return true;
+}
+
+bool VirtualCortexEditor::setRoutingWireTap(int source,int destination,int tap,unsigned routingRevision,std::uint64_t recallRevision){
+ const bool changed=processor.setRowSourceTap(source,destination,tap,routingRevision,recallRevision);
+ refreshGridControls();routingPanel.refresh();repaint();
+ statusLabel.setText(changed?"Source tap updated. Save preset to keep changes.":"Routing changed; select the connection again.",juce::dontSendNotification);
+ return changed;
 }

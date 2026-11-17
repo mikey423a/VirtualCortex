@@ -82,6 +82,20 @@ public:
   if(!(row.sources&bit))return false;
   row.sources&=~bit;rowRoutingVersion.fetch_add(1,std::memory_order_release);return true;
  }
+ // Change only one existing connection's source tap; destination entry is untouched.
+ bool setRowSourceTap(int source,int destination,int tap,unsigned expectedRouting,std::uint64_t expectedRecall){
+  if(source<0||destination<=source||destination>=4||tap<0||tap>8)return false;
+  std::lock_guard<std::recursive_mutex> move(gridMoveMutex);
+  std::lock_guard<std::mutex> lock(rowRoutingMutex);
+  if(routingMode.load()!=3||rowRoutingVersion.load()!=expectedRouting||stateRecallRevision()!=expectedRecall)return false;
+  auto& row=rowRouting.rows[(std::size_t)destination];
+  if(!(row.sources&(2u<<source)))return false;
+  if(row.sourceTaps[(std::size_t)source]!=tap){
+   row.sourceTaps[(std::size_t)source]=tap;
+   rowRoutingVersion.fetch_add(1,std::memory_order_release);
+  }
+  return true;
+ }
  int getRoutingMode() const noexcept {return routingMode.load();}
  unsigned loopStatus()const noexcept{return loopState.load();}
  // Message/control-thread operations; never call from processBlock.
