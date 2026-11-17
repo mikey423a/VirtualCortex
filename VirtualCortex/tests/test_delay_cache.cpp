@@ -2,6 +2,8 @@
 #include "fixtures/LegacyStereoDelay.h"
 #include <iostream>
 #include <stdexcept>
+#include <chrono>
+#include <algorithm>
 int main(){try{
  for(double rate:{44100.,48000.,96000.}){
   vc::StereoDelay current;vc::LegacyStereoDelay old;
@@ -22,5 +24,31 @@ int main(){try{
    }
   }
  }
+
+ // Informational paired benchmark: no flaky wall-clock pass/fail threshold.
+ // Warm both engines, alternate order, retain output sums, report medians.
+ {
+  vc::StereoDelay current;vc::LegacyStereoDelay old;current.prepare(48000);old.prepare(48000);
+  vc::StereoDelayParameters p;vc::LegacyStereoDelayParameters q;
+  p.enabled=q.enabled=true;p.mix=q.mix=.7f;p.feedback=q.feedback=.75f;
+  current.configure(p);old.configure(q);
+  for(int i=0;i<48000;++i){current.process(.01f,-.01f);old.process(.01f,-.01f);}
+  auto measure=[](auto& effect){
+   double sum=0;const auto begin=std::chrono::steady_clock::now();
+   for(int i=0;i<480000;++i){const float x=i%97==0?.1f:0.f;auto y=effect.process(x,-x);sum+=y[0]+2.*y[1];}
+   const double ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count();
+   return std::array<double,2>{ms,sum};
+  };
+  std::array<double,6> cachedTimes{},legacyTimes{};
+  for(int pass=0;pass<6;++pass){
+   std::array<double,2> a,b;
+   if(pass%2){b=measure(old);a=measure(current);}else{a=measure(current);b=measure(old);}
+   if(a[1]!=b[1])throw std::runtime_error("Steady benchmark output differs");
+   cachedTimes[pass]=a[0];legacyTimes[pass]=b[0];
+  }
+  std::sort(cachedTimes.begin(),cachedTimes.end());std::sort(legacyTimes.begin(),legacyTimes.end());
+  std::cout<<"BENCHMARK 480k stereo frames at 48kHz, 6 alternating passes: cached median ms="<<(cachedTimes[2]+cachedTimes[3])*.5<<", legacy median ms="<<(legacyTimes[2]+legacyTimes[3])*.5<<"\n";
+ }
+
  std::cout<<"PASS: exact legacy output across cutoff/time automation, bypass and prepare restarts\n";
 }catch(const std::exception& e){std::cerr<<e.what();return 1;}}
