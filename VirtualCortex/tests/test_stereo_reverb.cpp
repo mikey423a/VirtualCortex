@@ -12,6 +12,15 @@ std::vector<std::array<float,2>> impulse(double fs,Params p,double seconds){vc::
 double energy(const std::vector<std::array<float,2>>& y,std::size_t begin,std::size_t end){double e=0;for(std::size_t i=begin;i<std::min(end,y.size());++i)for(float x:y[i])e+=x*x;return e;}
 double rt60(const std::vector<std::array<float,2>>& y,double fs){std::vector<double> e(y.size()+1);for(std::size_t i=y.size();i-->0;)e[i]=e[i+1]+y[i][0]*y[i][0]+y[i][1]*y[i][1];std::size_t a=0,b=0;for(std::size_t i=0;i<y.size();++i){double db=10*std::log10(std::max(1.e-30,e[i]/e[0]));if(!a&&db<=-5)a=i;if(db<=-25){b=i;break;}}assert(a&&b>a);return (b-a)/fs*3;}
 int main(){
+ // Characterize decay scaling across room sizes and sample rates.
+ for(double rate:{44100.,96000.})for(float decay:{.5f,2.f,6.f})for(float size:{.5f,2.f}){
+  Params q;q.decay=decay;q.size=size;q.lowDecay=q.highDecay=1;q.modDepth=0;q.preDelay=0;q.early=0;
+  auto y=impulse(rate,q,decay*4.+1.);const double measured=rt60(y,rate);
+  std::cout<<"DECAY_SWEEP rate="<<rate<<" size="<<size<<" requested="<<decay<<" measured="<<measured<<" ratio="<<measured/decay<<"\n";
+  // Broad regression guard for the characterized unmodulated configuration.
+  assert(std::isfinite(measured)&&measured>decay*.8&&measured<decay*1.1);
+ }
+
  for(double fs:{44100.,48000.,96000.,192000.}){
   Params p;p.decay=1.2f;p.lowDecay=p.highDecay=1;p.modDepth=0;p.preDelay=0;p.early=0;p.diffusion=.7f;
   auto y=impulse(fs,p,4);double measured=rt60(y,fs);std::cout<<fs<<" Hz measured broadband T60 "<<measured<<" s\n";assert(measured>.9&&measured<1.5);
