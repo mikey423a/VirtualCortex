@@ -2,13 +2,15 @@
 
 Windows x64 standalone guitar amplifier/effects application and VST3, built with JUCE 8.0.10 and ASIO enabled.
 
-## Current verified milestone: 6.35.0
+## Current verified milestone: 6.36.0
 
-[Windows build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/44082073363) · [Routing changes, verification and next steps](VirtualCortex/ROUTING-6.35.md)
+[Windows build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/44182466428) · [Preset loading, verification and next steps](VirtualCortex/PRESET-6.36.md)
 
-Actual EXE/VST3 compilation, 48 regressions, pluginval strictness 5, standalone startup, and installer install/uninstall passed. Native 2560x1440 and compact screenshots were inspected. This milestone adds right-click disconnection of one row-to-row wire in Custom row mixer mode, preserving other sources and tap/entry settings. Stale menu actions are rejected. Preset recall focus clearing is retained. Physical OS menu interaction remains unverified. Invalid state data and gain-only edits retain focus. Existing wire highlighting, delay coefficient cache and GRID OFF/BYPASSED/SKIPPED captions are retained; DSP and presets are unchanged. Four rounded-square grid rows fill the widescreen layout.
+Preset files now report missing, unreadable, oversized or invalid input instead of falsely reporting success. Rejected files retain the current serialized state and selected wire; successful recall clears stale wire focus. File reads are bounded to the existing 1 MiB limit plus a sentinel byte. DSP algorithms, legacy preset sound and preset format remain unchanged. The 6.35 wire-disconnection action, four rounded-square grid rows and full-width layout are retained.
 
-Download the VirtualCortex-Windows-x64 artifact for the unsigned Setup EXE, standalone EXE, VST3 ZIP and hashes. Native screenshots/test logs are in VirtualCortex-build-logs. Anubis hardware and Windows 11 interactive audio testing remain user-side. Routing features still outstanding are listed in the linked notes. No proprietary DSP equivalence or complete playable Neural DSP catalog is claimed.
+Actual Windows EXE/VST3 compilation, all 48 regressions, pluginval strictness 5, standalone 10-second startup, installer install/uninstall and package hashes passed. Native preset-rejected and preset-loaded PNGs were inspected at 2560x1440 and 822x600: rejected files retain yellow wire focus, successful recall clears it, and four rounded-square rows/full-width layout are preserved.
+
+The installer is unsigned. Anubis/Windows 11 hardware and subjective listening remain user-side. Native tests exercise the shared file-load/menu handlers; physical OS dialog/menu interaction remains unfinished. No proprietary DSP equivalence or complete playable catalog is claimed.
 
 Verified effects test/measurement work is tracked in [effects quality](VirtualCortex/EFFECTS-QUALITY-PROGRESS.md) and [reverb characterization](VirtualCortex/REVERB-DECAY-PROGRESS.md); it does not change the delivered application version.
 
