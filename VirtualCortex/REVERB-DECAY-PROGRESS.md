@@ -8,3 +8,8 @@ Added sweep to existing Windows reverb regression, with broad 0.8–1.1 requeste
 
 
 Modulation follow-up: six local GCC -O2 configurations at 44.1/96 kHz and depth 0/0.8/2 ms, requested decay 2 s, ratios1, predelay/early0. Measured broadband T60 1.82575–1.86088 s; finite nonzero output, max peak below .003 for .1 impulse. Existing regression executable passed. New modulation sweep now guards bounded output and broad decay range; Windows verification pending. This does not measure pitch sidebands, spectral decay or listening quality. DSP unchanged; next octave-band measurement and modulation artifact analysis.
+
+
+Modulation sweep Windows CI 44022344230 succeeded for e13294ad7d27990e7a3ed1f56be05daffb2eea78. New local GCC -O2 band characterization at 48kHz, requested2s, centers500/2000/8000Hz, depths0/.8ms, high ratios1/.3 passed finite-energy/range guards. Ratio1 depth0 results1.98231/1.87637/1.46044s; ratio.3 results1.911/1.52694/.952s. Modulated ratio1:1.97213/1.9005/1.55375s; ratio.3:1.89738/1.55319/.970125s.
+
+Analysis uses a single RBJ bandpass Q=sqrt(2), backward energy -5/-25dB crossings. Broad skirts leak other bands; these are exploratory band estimates, NOT IEC octave filtering or precise band RT60. Do not equate highDecay=.3 with exactly .6 seconds in these measurements. Next validate analysis filters with synthetic decays and narrower/cascaded bands before calibrating tank feedback. New Windows band tests pending. Application DSP/presets unchanged, current release6.33.

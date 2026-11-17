@@ -11,7 +11,27 @@ void warm(vc::StereoReverb& r,double fs){for(int i=0;i<(int)(fs*.5);++i)r.proces
 std::vector<std::array<float,2>> impulse(double fs,Params p,double seconds){vc::StereoReverb r;r.prepare(fs);p.enabled=true;p.mix=1;r.configure(p);warm(r,fs);std::vector<std::array<float,2>> y((std::size_t)(seconds*fs));for(std::size_t i=0;i<y.size();++i)y[i]=r.process(i==0?.1f:0.f,0);return y;}
 double energy(const std::vector<std::array<float,2>>& y,std::size_t begin,std::size_t end){double e=0;for(std::size_t i=begin;i<std::min(end,y.size());++i)for(float x:y[i])e+=x*x;return e;}
 double rt60(const std::vector<std::array<float,2>>& y,double fs){std::vector<double> e(y.size()+1);for(std::size_t i=y.size();i-->0;)e[i]=e[i+1]+y[i][0]*y[i][0]+y[i][1]*y[i][1];std::size_t a=0,b=0;for(std::size_t i=0;i<y.size();++i){double db=10*std::log10(std::max(1.e-30,e[i]/e[0]));if(!a&&db<=-5)a=i;if(db<=-25){b=i;break;}}assert(a&&b>a);return (b-a)/fs*3;}
+
+// Informational one-octave-width RBJ bandpass analysis (Q=sqrt(2)).
+// This is a measurement filter, not an IEC-certified octave filter bank.
+std::vector<std::array<float,2>> band(const std::vector<std::array<float,2>>& in,double fs,double hz){
+ const double w=6.283185307179586*hz/fs,alpha=std::sin(w)/(2*std::sqrt(2.));
+ const double b0=alpha/(1+alpha),b2=-b0,a1=-2*std::cos(w)/(1+alpha),a2=(1-alpha)/(1+alpha);
+ std::array<double,2> z1{},z2{};auto out=in;
+ for(auto& f:out)for(int ch=0;ch<2;++ch){double x=f[ch],y=b0*x+z1[ch];z1[ch]=-a1*y+z2[ch];z2[ch]=b2*x-a2*y;f[ch]=(float)y;}
+ return out;
+}
 int main(){
+ for(float depth:{0.f,.8f})for(float damping:{1.f,.3f}){
+  Params q;q.decay=2;q.lowDecay=1;q.highDecay=damping;q.modDepth=depth;q.preDelay=0;q.early=0;
+  auto y=impulse(48000,q,8);
+  for(double hz:{500.,2000.,8000.}){
+   auto filtered=band(y,48000,hz);const double e=energy(filtered,0,filtered.size());assert(std::isfinite(e)&&e>1.e-12);
+   const double measured=rt60(filtered,48000);assert(std::isfinite(measured)&&measured>.05&&measured<8);
+   std::cout<<"BAND_DECAY center_hz="<<hz<<" depth_ms="<<depth<<" high_ratio="<<damping<<" measured="<<measured<<"\n";
+  }
+ }
+
  // Modulation decay characterization, with bounded output and nonzero tails.
  for(double rate:{44100.,96000.})for(float depth:{0.f,.8f,2.f}){
   Params q;q.decay=2;q.lowDecay=q.highDecay=1;q.modDepth=depth;q.preDelay=0;q.early=0;
