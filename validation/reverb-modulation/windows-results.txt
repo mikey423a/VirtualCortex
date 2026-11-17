@@ -1,0 +1,27 @@
+REVERB_TRANSITION rate=44100 control=0 baseline_step=0.011066 changed_step=0.0147591 peak=0.0646041 relative_error_energy=1.71207
+REVERB_TRANSITION rate=44100 control=1 baseline_step=0.011066 changed_step=0.0228413 peak=0.072235 relative_error_energy=1.56379
+REVERB_TRANSITION rate=44100 control=2 baseline_step=0.011066 changed_step=0.0192969 peak=0.0976258 relative_error_energy=2.45552
+REVERB_TRANSITION rate=44100 control=3 baseline_step=0.011066 changed_step=0.0118182 peak=0.0537069 relative_error_energy=0.497301
+REVERB_TRANSITION rate=48000 control=0 baseline_step=0.00968682 changed_step=0.0130322 peak=0.063525 relative_error_energy=1.73243
+REVERB_TRANSITION rate=48000 control=1 baseline_step=0.00968682 changed_step=0.0197384 peak=0.071947 relative_error_energy=1.56088
+REVERB_TRANSITION rate=48000 control=2 baseline_step=0.00968682 changed_step=0.0169923 peak=0.0978003 relative_error_energy=2.46514
+REVERB_TRANSITION rate=48000 control=3 baseline_step=0.00968682 changed_step=0.0104893 peak=0.0531157 relative_error_energy=0.500357
+REVERB_TRANSITION rate=96000 control=0 baseline_step=0.00518829 changed_step=0.00697206 peak=0.0652233 relative_error_energy=1.71534
+REVERB_TRANSITION rate=96000 control=1 baseline_step=0.00518829 changed_step=0.011046 peak=0.0727569 relative_error_energy=1.56481
+REVERB_TRANSITION rate=96000 control=2 baseline_step=0.00518829 changed_step=0.0091842 peak=0.0987452 relative_error_energy=2.4494
+REVERB_TRANSITION rate=96000 control=3 baseline_step=0.00518829 changed_step=0.00561413 peak=0.0544255 relative_error_energy=0.497518
+REVERB_CPU automated=0 frames=240000 rate=48000 median_ms=61.0814 checksum=0.442725
+REVERB_CPU automated=1 frames=240000 rate=48000 median_ms=60.4332 checksum=-9.97299
+LEAKAGE_ORACLE target_high=.6 single=0.640188 cascade=0.6
+BAND_DECAY center_hz=500 depth_ms=0 high_ratio=1 measured=1.98231 cascade=2.00081
+BAND_DECAY center_hz=2000 depth_ms=0 high_ratio=1 measured=1.87637 cascade=1.89731
+BAND_DECAY center_hz=8000 depth_ms=0 high_ratio=1 measured=1.46044 cascade=1.33331
+BAND_DECAY center_hz=500 depth_ms=0 high_ratio=0.3 measured=1.911 cascade=1.94056
+BAND_DECAY center_hz=2000 depth_ms=0 high_ratio=0.3 measured=1.52694 cascade=1.52256
+BAND_DECAY center_hz=8000 depth_ms=0 high_ratio=0.3 measured=0.952 cascade=0.775813
+BAND_DECAY center_hz=500 depth_ms=0.8 high_ratio=1 measured=1.97213 cascade=1.96606
+BAND_DECAY center_hz=2000 depth_ms=0.8 high_ratio=1 measured=1.9005 cascade=1.92388
+BAND_DECAY center_hz=8000 depth_ms=0.8 high_ratio=1 measured=1.55375 cascade=1.43731
+BAND_DECAY center_hz=500 depth_ms=0.8 high_ratio=0.3 measured=1.89738 cascade=1.91188
+BAND_DECAY center_hz=2000 depth_ms=0.8 high_ratio=0.3 measured=1.55319 cascade=1.54306
+BAND_DECAY center_hz=8000 depth_ms=0.8 high_ratio=0.3 measured=0.970125 cascade=0.79875

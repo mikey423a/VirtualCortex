@@ -1,19 +1,24 @@
-# Effects quality work — candidate
+# Effects quality — current status
 
-User priority: improve original effects toward professional guitar/studio quality. No measured Strymon/Eventide/Neural DSP equivalence claimed.
+Delivered application: **6.33.0**, code `7ecd8a2bedbae92e29b469309956894335b9405d`, Windows CI [43993250604](https://github.com/mikey423a/VirtualCortex/actions/runs/43993250604). See [release verification](ROUTING-6.33.md). Later measurement/test changes do not introduce a new application version or new sonic behavior.
 
-StereoDelay candidate caches unchanged low/high-cut filter coefficients, invalidated on prepare. Coefficients still update at the same 16-sample cadence during smoothing. Intended result: identical audio with fewer trigonometric calculations at steady settings. Numerical old/new render comparison, restart/automation coverage and CPU measurements remain required; no measured speedup or audio improvement is claimed yet.
+## Verified application behavior
 
-Existing native UI CI 43960242244 failed because the selected source-rail point was intercepted by a child block. Test now uses the horizontal routing gutter. Keep the interception assertion; inspect resulting native screenshots before promotion.
+StereoDelay caches unchanged high/low-cut coefficients at the original 16-sample update cadence; prepare invalidates the cache. Frozen legacy-renderer comparisons passed exactly under cutoff/time/mode/bypass automation and sample-rate restarts. One paired Windows microbenchmark reported 56.8601 ms cached versus 58.9395 ms legacy for 480000 stereo frames at 48kHz (six alternating passes, medians), about 3.53% less elapsed time. This is not an app-wide CPU guarantee or sonic improvement.
 
-Next quality milestones: benchmark steady-state and automated delay CPU; frequency/decay measurements of the FDN across rates and settings; measure modulation and time-transition artifacts; level-matched musical listening. Fractional interpolation affects frequency response (Julius O. Smith, Physical Audio Signal Processing, https://www.dsprelated.com/freebooks/pasp/Delay_Line_Signal_Interpolation.html); do not replace interpolation blindly inside a feedback loop. Preserve legacy preset sound or introduce explicit optional modes for sonic changes.
+Native wire selection and visible-editor hit interception passed at 2560x1440 and 822x600. The earlier child-control assertion was preserved; making the editor visible and choosing its routing gutter resolved the test setup. Misses, slot changes, connection removal, tap/entry changes and leaving custom routing clear focus. See [connection selection](CONNECTION-SELECTION.md) and [topology tests](ROUTING-FOCUS-TESTS.md). Physical OS mouse injection remains unverified.
 
-Windows CI pending for this candidate. Main and delivered 6.32 unchanged. No new installer until regression/pluginval/startup/install/uninstall/hash checks and native screenshot review pass. Anubis testing remains user-side.
+## Reverb measurements
 
+[Reverb decay progress](REVERB-DECAY-PROGRESS.md) records exact commits, runs, test stimuli, band-analysis limitations and results. Broadbands alone are insufficient to calibrate the feedback network: linear tank interpolation colors high-frequency tails, and a single broad analysis filter admits neighboring decay components. Cascaded-band and mixed-tone diagnostics help distinguish these effects; they are not a certified octave filter bank.
 
-CI 43971152595 compiled but failed native_editor_layout at interception assertion. Follow-up explicitly makes the editor visible for getComponentAt, reports unexpected child identity, and retains assertion. Adds frozen pre-cache delay fixture and exact output comparisons at three rates, automated filters/time/mode/bypass and prepare restarts. CI pending; CPU measurements still pending. No promotion or new installer.
+Preserve existing preset sound. Any new interpolation/decay mode needs explicit compatibility handling, numerical/stability tests across rates and controls, allocation checks, CPU measurements and listening review before release. Official JUCE documentation describes [third-order Lagrange](https://docs.juce.com/master/structjuce_1_1dsp_1_1DelayLineInterpolationTypes_1_1Lagrange3rd.html) as reducing interpolation low-pass coloration at increased cost, and warns that stateful [Thiran interpolation](https://docs.juce.com/master/structjuce_1_1dsp_1_1DelayLineInterpolationTypes_1_1Thiran.html) is unsuitable for fast delay modulation. These are candidate-design considerations, not evidence that either is a drop-in improvement in this feedback tank.
 
+## Remaining quality work
 
-Verified CI evidence (Nov 16 Toronto): commit 8aa43b78e1b29074f068b11b2eb2316a956b7dca, run 43976543322, job 133681856802 passed all 48 tests, including exact delay_cache_equivalence and native_editor_layout, pluginval strictness 5, standalone startup and installer verification. GUI interception failure resolved after explicitly making the test editor visible. Artifact IDs: Windows 14282005839, diagnostics 14281396141. Archive digests are metadata only; downloads not independently checked this run.
+- Isolate modulation sidebands and transition residuals across frequencies/rates; distinguish intentional pitch movement from unwanted clicks and aliasing.
+- Evaluate optional interpolation/decay modes with legacy behavior retained; do not globally retune old presets.
+- Extend automated delay CPU characterization; keep microbenchmarks distinct from full application real-time load.
+- Level-matched musical listening and Windows 11/Anubis hardware evaluation remain user-side.
 
-Executor unavailable in this run: native PNGs cannot be unpacked/viewed, so no GUI signoff, promotion or installer delivery. Existing 6.32 remains verified release. Added informational paired steady-state CPU benchmark: 48k warmup, six alternating 480k-frame passes, median times and equal checksum assertion; wall-clock speedup is not a pass/fail threshold. Benchmark results pending new CI. Still require automated CPU measurements, screenshots, topology reset assertions and release version bump.
+Strymon/Eventide/Neural DSP are quality aspirations. No proprietary equivalence, full playable catalog or studio-quality certification is claimed. No profiling or additional looper work.

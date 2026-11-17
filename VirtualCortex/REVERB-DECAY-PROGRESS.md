@@ -1,5 +1,14 @@
 # Reverb decay characterization
 
+## Current verification — November 17
+
+Test code `5b710e88277b5b83ce13bd065704afa6bbdd39c3` passed Windows CI [44067783683](https://github.com/mikey423a/VirtualCortex/actions/runs/44067783683), job133985849672: actual EXE/VST3 compilation, all48 regressions, pluginval strictness5, standalone10-second startup, installer install/uninstall and deployed hash gates. Downloaded archives14322385131 (logs) and14320539466 (Windows) matched GitHub SHA256 digests; all four packaged binary/archive hashes independently checked. Native selected-wire screenshots inspected at2560x1440 and822x600; no GUI changes. Local ASan/UBSan test executable passed with leak detection disabled.
+
+Windows transition and cascaded-band results matched the local printed values. CPU medians:61.0814ms steady and60.4332ms automated for240000 frames at48kHz. Timing ordering differs from the local result: this non-interleaved workload diagnostic establishes no speedup or automation-cost guarantee. Full measurement output is in [Windows results](../validation/reverb-modulation/windows-results.txt).
+
+Application remains **6.33.0** with unchanged DSP, presets and GUI; no new release/version is declared. Pending statements in the chronological history below are superseded by this verification. The separate [modulation probe](../validation/reverb-modulation/README.md) has locally compiled source and analysis; it is not a Windows CI target. Still missing: broader modulation/aliasing characterization, optional compatible sonic improvements, listening and user-side Anubis/Windows11 hardware tests. No proprietary equivalence or completed-app claim.
+
+
 Local GCC -O2 run against verified 6.33 source: 12 configurations at 44.1/96 kHz, requested decay 0.5/2/6 seconds, size 0.5/2, low/high decay ratios 1, modulation off, predelay/early off. Stereo energy integrated backwards; -5 to -25 dB crossing interval extrapolated to 60 dB. Measured/requested ratios 0.871745–0.962279; shortest measured 0.4605 s, longest 5.46803 s. Full existing reverb regression executable also passed.
 
 This reveals nominal decay underestimation in these settings; it is not a certified RT60 measurement across bands/control ranges or proof of listening quality. Linear tank interpolation and input/diffusion filtering affect spectral energy and therefore broadband estimates. Preserve existing preset sound pending band measurements and an explicit compatibility decision.
