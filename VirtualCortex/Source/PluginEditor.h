@@ -42,6 +42,8 @@ public:
  void resized() override;
  void mouseDown(const juce::MouseEvent&) override;
  void selectRoutingWireAt(juce::Point<float> position);
+ // Shared native menu action, also exercised by the UI regression.
+ bool disconnectRoutingWire(int source,int destination,unsigned routingRevision,std::uint64_t recallRevision);
  std::array<int,2> selectedRoutingWire() const {return {selectedWireSource,selectedWireDestination};}
  bool keyPressed(const juce::KeyPress&) override;
  bool setFullScreenMode(bool enabled);
@@ -56,6 +58,7 @@ private:
  std::uint64_t observedStateRecall=0;
  int selectedWireSource=-1,selectedWireDestination=-1;
  int selectedWireTap=-1,selectedWireEntry=-1;
+ unsigned selectedWireRoutingRevision=0;
  vc::WirePolyline routingWire(int source,int destination,const vc::RowRoute& route) const;
  VirtualCortexProcessor& processor;
  CortexLookAndFeel look;

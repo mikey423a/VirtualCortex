@@ -355,6 +355,44 @@ int main(int argc,char** argv){
     editor->selectRoutingWireAt(point);editor->setEditorsVisible(false);
     require(editor->selectedRoutingWire()==std::array<int,2>{0,1},"New selection after recall was cleared by delayed refresh");
 
+    // Shared popup action: reject stale edits, remove exactly one source bit,
+    // preserve unrelated input/rows, and persist the edited route in a preset.
+    auto multiSource=savedRoutes;multiSource.rows[1].sources|=1u;
+    require(processor->setRowRouting(multiSource),"Disconnect test setup failed");
+    editor->setEditorsVisible(false);editor->selectRoutingWireAt(point);
+    const auto menuRevision=processor->routingRevision();const auto menuRecall=processor->stateRecallRevision();
+    require(!processor->disconnectRowSource(-1,1,menuRevision,menuRecall),"Invalid source accepted");
+    require(!processor->disconnectRowSource(1,1,menuRevision,menuRecall),"Self connection accepted");
+    require(!processor->disconnectRowSource(0,4,menuRevision,menuRecall),"Invalid destination accepted");
+    require(processor->routingRevision()==menuRevision,"Rejected action mutated routing");
+    auto gainChange=multiSource;gainChange.rows[1].gainDb=-2.f;
+    require(processor->setRowRouting(gainChange),"Stale-action setup failed");
+    require(!editor->disconnectRoutingWire(0,1,menuRevision,menuRecall),"Stale routing menu removed a connection");
+    require(processor->getRowRouting().rows[1].sources==multiSource.rows[1].sources,"Stale action changed sources");
+    require(processor->setRowRouting(multiSource),"Restore multi-source routing failed");
+    juce::MemoryBlock beforeDisconnect;processor->getStateInformation(beforeDisconnect);
+    processor->setStateInformation(beforeDisconnect.getData(),(int)beforeDisconnect.getSize());
+    require(!editor->disconnectRoutingWire(0,1,processor->routingRevision(),menuRecall),"Stale recall menu removed a connection");
+    const auto currentRevision=processor->routingRevision();const auto currentRecall=processor->stateRecallRevision();
+    processor->setRoutingMode(0);
+    require(!editor->disconnectRoutingWire(0,1,currentRevision,currentRecall),"Disconnect accepted outside custom mode");
+    processor->setRoutingMode(3);
+    editor->selectRoutingWireAt(point);
+    require(editor->disconnectRoutingWire(0,1,currentRevision,currentRecall),"Current connection removal failed");
+    const auto disconnected=processor->getRowRouting();
+    for(int row=0;row<4;++row){
+     require(disconnected.rows[row].sources==(row==1?(multiSource.rows[row].sources&~2u):multiSource.rows[row].sources),"Disconnect changed unrelated sources");
+     require(disconnected.rows[row].sourceTaps==multiSource.rows[row].sourceTaps&&disconnected.rows[row].entryColumn==multiSource.rows[row].entryColumn,"Disconnect moved a tap or entry");
+    }
+    require(editor->selectedRoutingWire()==std::array<int,2>{-1,-1},"Removed wire retained focus");
+    require(!editor->disconnectRoutingWire(0,1,processor->routingRevision(),currentRecall),"Missing connection removed twice");
+    capture("disconnected-wire-"+juce::String(size.x)+"x"+juce::String(size.y)+".png",size.x,size.y);
+    juce::MemoryBlock afterDisconnect;processor->getStateInformation(afterDisconnect);
+    require(processor->setRowRouting(savedRoutes),"Roundtrip setup failed");
+    processor->setStateInformation(afterDisconnect.getData(),(int)afterDisconnect.getSize());
+    require(processor->getRowRouting().rows[1].sources==disconnected.rows[1].sources,"Disconnected route did not survive state recall");
+    require(processor->setRowRouting(savedRoutes),"Final disconnected test restore failed");
+    editor->setEditorsVisible(false);
     editor->selectRoutingWireAt(point);editor->selectSlot(0,0);
     require(editor->selectedRoutingWire()==std::array<int,2>{-1,-1},"Slot selection retained wire focus");
    }

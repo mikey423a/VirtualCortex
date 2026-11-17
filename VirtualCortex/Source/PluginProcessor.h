@@ -5,6 +5,7 @@
 #include <JuceHeader.h>
 #include <array>
 #include <atomic>
+#include <cstdint>
 #include "DSP/GridPlan.h"
 #include <vector>
 #include <mutex>
@@ -67,6 +68,18 @@ public:
  void setRoutingMode(int mode) noexcept {routingMode.store(juce::jlimit(0,3,mode));}
  vc::RowRouting getRowRouting()const {std::lock_guard<std::mutex> lock(rowRoutingMutex);return rowRouting;}
  bool setRowRouting(const vc::RowRouting& route){if(!vc::RowRouting::valid(route))return false;std::lock_guard<std::mutex> lock(rowRoutingMutex);rowRouting=route;rowRoutingVersion.fetch_add(1,std::memory_order_release);return true;}
+ unsigned routingRevision() const noexcept {return rowRoutingVersion.load(std::memory_order_acquire);}
+ // Control-thread edit, guarded against a stale popup and concurrent state recall.
+ bool disconnectRowSource(int source,int destination,unsigned expectedRouting,std::uint64_t expectedRecall){
+  if(source<0||destination<=source||destination>=4)return false;
+  std::lock_guard<std::recursive_mutex> move(gridMoveMutex);
+  std::lock_guard<std::mutex> lock(rowRoutingMutex);
+  if(routingMode.load()!=3||rowRoutingVersion.load()!=expectedRouting||stateRecallRevision()!=expectedRecall)return false;
+  const unsigned bit=2u<<source;
+  auto& row=rowRouting.rows[(std::size_t)destination];
+  if(!(row.sources&bit))return false;
+  row.sources&=~bit;rowRoutingVersion.fetch_add(1,std::memory_order_release);return true;
+ }
  int getRoutingMode() const noexcept {return routingMode.load();}
  unsigned loopStatus()const noexcept{return loopState.load();}
  // Message/control-thread operations; never call from processBlock.
