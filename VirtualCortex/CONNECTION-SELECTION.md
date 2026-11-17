@@ -9,3 +9,8 @@ Native tests exercise the shared mouse-selection handler at 2560x1440 and 822x60
 6.34 now clears old wire focus on full preset-file/host state recall even with identical topology; rejected state blobs and gain-only edits retain it. Immediate selection after a completed recall survives the later refresh. Native regression and screenshots passed Windows CI 44072683824; see [6.34 notes](ROUTING-6.34.md).
 
 Remaining: physical OS mouse injection and interactions near child bounds/overlapping rails beyond portable geometry tests. Scene/factory quick-preset focus policies are unchanged. Current tests call the handler and refresh path; they must not be described as end-to-end physical mouse testing. No DSP or preset changes arise from selection.
+
+
+## Verified 6.35 routing milestone
+
+Delivered application 6.35, code a74129e652e3df9884b4c0080c2a058171aeb716, CI 44082073363: all 48 regressions, Windows EXE/VST3, pluginval5, startup, installer install/uninstall and downloaded hashes passed. Native disconnected-grid screenshots reviewed at 2560x1440/822x600. Right-click row-wire disconnection removes only the chosen source and rejects stale routing/recall actions. No DSP change or new effects-quality claim. See [6.35 verification and remaining work](ROUTING-6.35.md). Physical menu interaction, selected-wire tap editing, preset rejection feedback and audio topology-transition improvements remain next steps.

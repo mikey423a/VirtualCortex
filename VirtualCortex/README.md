@@ -1,6 +1,6 @@
 # Virtual Cortex Windows builds
 
-Current verified milestone: **6.34.0**, code 4852ef977fb2a1ba8d2a8304b2d60aca17163aac. See [routing verification and next steps](ROUTING-6.34.md) and [Windows CI/downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/44072683824).
+Current verified milestone: **6.35.0**, code a74129e652e3df9884b4c0080c2a058171aeb716. See [routing verification and next steps](ROUTING-6.35.md) and [Windows CI/downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/44082073363).
 
 The existing workflow builds standalone EXE/VST3 with MSVC on Windows Server 2022, JUCE 8.0.10 and ASIO enabled. Regression tests, pluginval strictness 5, standalone startup, installation and uninstallation passed. Anubis hardware and Windows 11 interactive testing remain user-side. The installer is unsigned.
 

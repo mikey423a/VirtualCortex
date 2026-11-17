@@ -22,3 +22,8 @@ Preserve existing preset sound. Any new interpolation/decay mode needs explicit 
 - Level-matched musical listening and Windows 11/Anubis hardware evaluation remain user-side.
 
 Strymon/Eventide/Neural DSP are quality aspirations. No proprietary equivalence, full playable catalog or studio-quality certification is claimed. No profiling or additional looper work.
+
+
+## Verified 6.35 routing milestone
+
+Delivered application 6.35, code a74129e652e3df9884b4c0080c2a058171aeb716, CI 44082073363: all 48 regressions, Windows EXE/VST3, pluginval5, startup, installer install/uninstall and downloaded hashes passed. Native disconnected-grid screenshots reviewed at 2560x1440/822x600. Right-click row-wire disconnection removes only the chosen source and rejects stale routing/recall actions. No DSP change or new effects-quality claim. See [6.35 verification and remaining work](ROUTING-6.35.md). Physical menu interaction, selected-wire tap editing, preset rejection feedback and audio topology-transition improvements remain next steps.
