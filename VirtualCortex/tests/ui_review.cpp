@@ -393,6 +393,40 @@ int main(int argc,char** argv){
      require(processor->getRowRouting().rows[1].sourceTaps[0]==0,"Source tap not retained by preset");
      require(processor->setRowRouting(original),"Final tap restore failed");editor->setEditorsVisible(false);
     }
+    // Entry edits affect all inputs of ONE destination row, preserving taps/masks.
+    {
+     const auto original=processor->getRowRouting();auto multi=original;multi.rows[1].sources|=1u;
+     require(processor->setRowRouting(multi),"Entry multi-source setup failed");
+     const auto revision=processor->routingRevision();const auto recall=processor->stateRecallRevision();
+     require(!processor->setRowDestinationEntry(-1,1,0,revision,recall)&&!processor->setRowDestinationEntry(1,1,0,revision,recall)&&!processor->setRowDestinationEntry(0,4,0,revision,recall),"Invalid entry rows accepted");
+     require(!processor->setRowDestinationEntry(0,1,-1,revision,recall)&&!processor->setRowDestinationEntry(0,1,8,revision,recall),"Invalid entry range accepted");
+     require(processor->routingRevision()==revision,"Rejected entry advanced revision");
+     for(int entry=0;entry<8;++entry){
+      require(editor->setRoutingWireEntry(0,1,entry,processor->routingRevision(),processor->stateRecallRevision()),"Entry menu edit rejected");
+      const auto actual=processor->getRowRouting();
+      for(int row=0;row<4;++row){
+       const auto& a=actual.rows[row];const auto& b=multi.rows[row];
+       require(a.entryColumn==(row==1?entry:b.entryColumn),"Entry affected wrong row");
+       require(a.sources==b.sources&&a.sourceTaps==b.sourceTaps&&a.channel==b.channel&&a.gainDb==b.gainDb&&a.balance==b.balance&&a.invert==b.invert&&a.output==b.output,"Entry changed unrelated routing");
+      }
+      require(actual.average==multi.average,"Entry changed normalization");
+     }
+     const auto same=processor->routingRevision();
+     require(editor->setRoutingWireEntry(0,1,7,same,recall)&&processor->routingRevision()==same,"Identical entry was not a no-op");
+     require(!editor->setRoutingWireEntry(0,1,0,revision,recall),"Stale entry menu accepted");
+     juce::MemoryBlock state;processor->getStateInformation(state);processor->setStateInformation(state.getData(),(int)state.getSize());
+     require(!editor->setRoutingWireEntry(0,1,0,processor->routingRevision(),recall),"Old recall entry menu accepted");
+     processor->setRoutingMode(0);require(!editor->setRoutingWireEntry(0,1,0,processor->routingRevision(),processor->stateRecallRevision()),"Entry outside custom mode accepted");processor->setRoutingMode(3);
+     auto missing=multi;missing.rows[1].sources&=~2u;require(processor->setRowRouting(missing),"Missing entry setup failed");
+     require(!editor->setRoutingWireEntry(0,1,0,processor->routingRevision(),processor->stateRecallRevision()),"Entry edited via absent wire");
+     require(processor->setRowRouting(multi),"Entry restore failed");editor->selectRoutingWireAt(point);
+     require(editor->setRoutingWireEntry(0,1,7,processor->routingRevision(),processor->stateRecallRevision()),"Entry H rejected");
+     require(editor->selectedRoutingWire()==std::array<int,2>{-1,-1},"Entry edit retained old focus");
+     capture("wire-entry-h-"+juce::String(size.x)+"x"+juce::String(size.y)+".png",size.x,size.y);
+     processor->getStateInformation(state);processor->setStateInformation(state.getData(),(int)state.getSize());
+     require(processor->getRowRouting().rows[1].entryColumn==7&&processor->getRowRouting().rows[1].sources==multi.rows[1].sources,"Entry/multiple inputs did not persist");
+     require(processor->setRowRouting(original),"Final entry restore failed");editor->setEditorsVisible(false);
+    }
     // A new preset/state is a new editing context, even with identical routing.
     editor->selectRoutingWireAt(point);
     const auto revision=processor->stateRecallRevision();

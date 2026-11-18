@@ -96,6 +96,20 @@ public:
   }
   return true;
  }
+ // Entry is shared by every source feeding the destination row.
+ bool setRowDestinationEntry(int source,int destination,int entry,unsigned expectedRouting,std::uint64_t expectedRecall){
+  if(source<0||destination<=source||destination>=4||entry<0||entry>7)return false;
+  std::lock_guard<std::recursive_mutex> move(gridMoveMutex);
+  std::lock_guard<std::mutex> lock(rowRoutingMutex);
+  if(routingMode.load()!=3||rowRoutingVersion.load()!=expectedRouting||stateRecallRevision()!=expectedRecall)return false;
+  auto& row=rowRouting.rows[(std::size_t)destination];
+  if(!(row.sources&(2u<<source)))return false;
+  if(row.entryColumn!=entry){
+   row.entryColumn=entry;
+   rowRoutingVersion.fetch_add(1,std::memory_order_release);
+  }
+  return true;
+ }
  int getRoutingMode() const noexcept {return routingMode.load();}
  unsigned loopStatus()const noexcept{return loopState.load();}
  // Message/control-thread operations; never call from processBlock.
