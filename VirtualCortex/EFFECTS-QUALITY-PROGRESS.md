@@ -1,6 +1,6 @@
 # Effects quality — current status
 
-Delivered application: **6.37.0**, code `b38534c1fcebbd8ba23e23b46fbf0cb360e4b821`, Windows CI [44186016423](https://github.com/mikey423a/VirtualCortex/actions/runs/44186016423). See [release verification](ROUTING-6.37.md). The 6.34–6.37 changes concern routing UI/state focus, source-tap menu editing and accurate preset-loading feedback; DSP algorithms remain unchanged from 6.33.
+Delivered application: **6.38.0**, code `5be53d3a6b811c470fab90e2f52541cca00be168`, Windows CI [44241454309](https://github.com/mikey423a/VirtualCortex/actions/runs/44241454309). See [release verification](ROUTING-6.38.md). The 6.34–6.38 changes concern routing UI/state focus, source-tap and whole-row destination-entry menu editing and accurate preset-loading feedback; DSP algorithms remain unchanged from 6.33.
 
 ## Verified application behavior
 

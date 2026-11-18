@@ -2,13 +2,13 @@
 
 Windows x64 standalone guitar amplifier/effects application and VST3, built with JUCE 8.0.10 and ASIO enabled.
 
-## Current verified milestone: 6.37.0
+## Current verified milestone: 6.38.0
 
-[Windows build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/44186016423) · [Source-tap editing, verification and next steps](VirtualCortex/ROUTING-6.37.md)
+[Windows build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/44241454309) · [Destination-entry editing, verification and next steps](VirtualCortex/ROUTING-6.38.md)
 
-Right-click an existing row-to-row wire in Custom row mixer mode and choose its source tap: Before A or After A–H. Only that connection changes; other sources, taps, row settings and destination entry remain intact. Stale actions are rejected. Save the preset to retain the change. Existing disconnect and accurate preset-file feedback remain available. DSP algorithms, default preset sound and preset format are unchanged.
+Right-click an existing row-to-row wire in Custom row mixer mode and choose Destination entry — ALL row N inputs, then Enter at A–H. This changes the shared entry for every incoming source in that row, preserving source masks, per-connection taps and mix settings. Per-connection source-tap editing remains available. Stale actions are rejected. Save the preset to retain the change. Existing disconnect and accurate preset-file feedback remain available. DSP algorithms, default preset sound and preset format are unchanged.
 
-Actual Windows EXE/VST3 compilation, all 48 regressions, pluginval strictness 5, standalone 10-second startup, installer install/uninstall and downloaded archive/package hashes passed. Native Before-A source-tap PNGs were inspected at 2560x1440 and 822x600: source dot, destination arrow, routing caption, inactive dimming and four rounded-square rows remain visible. These are editor snapshots after invoking the shared action, not physical OS popup interaction.
+Actual Windows EXE/VST3 compilation, all 48 regressions, pluginval strictness 5, standalone 10-second startup, installer install/uninstall and downloaded archive/package hashes passed. Native entry-H PNGs were inspected at 2560x1440 and 822x600: source dot, destination arrow, routing caption, inactive dimming and four rounded-square rows remain visible. These are editor snapshots after invoking the shared action, not physical OS popup interaction.
 
 Installer unsigned. Anubis/Windows11 hardware and subjective listening remain user-side. Physical OS popup/submenu interaction remains unverified. No proprietary DSP equivalence or complete playable catalog claim.
 
