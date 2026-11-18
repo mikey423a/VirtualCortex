@@ -74,17 +74,23 @@ public:
  // May be called at a block boundary by the audio callback. Coefficients are
  // copied into fixed-size storage; both old and new FIRs run for 128 samples.
  // Never call concurrently with process(); use the pending update queue.
- // An update arriving mid-transition starts from the currently selected FIR.
+ // Finish an active fade before starting the latest queued target; no allocation.
  static constexpr std::size_t irFadeSamples = 128;
  static constexpr std::size_t neuralFadeSamples = 128;
  bool setCabinetIR(std::size_t row,std::size_t col,const float* taps,std::size_t count) noexcept {
   if (!SignalGrid::valid(row,col) || count>maxIrTaps || (count && !taps)) return false;
   for(std::size_t i=0;i<count;++i) if(!std::isfinite(taps[i])) return false;
   auto& ir=(*irs_)[row][col];
-  // Re-sending the selected IR must not restart a crossfade or overwrite
-  // the previous FIR during an in-flight transition.
+  // Returning to the active target cancels any queued replacement.
   if (ir.current.count == count &&
-      (count == 0 || std::equal(taps, taps + count, ir.current.taps.begin()))) return true;
+      (count == 0 || std::equal(taps, taps + count, ir.current.taps.begin()))) {
+   ir.hasPending=false;return true;
+  }
+  if(ir.transition){
+   ir.pending.count=count;
+   for(std::size_t i=0;i<count;++i)ir.pending.taps[i]=taps[i];
+   ir.hasPending=true;return true;
+  }
   ir.previous=ir.current;
   ir.current.count=count;
   for(std::size_t i=0;i<count;++i) ir.current.taps[i]=taps[i];
@@ -94,7 +100,8 @@ public:
   return true;
  }
  std::size_t cabinetIRLength(std::size_t row,std::size_t col) const noexcept {
-  return SignalGrid::valid(row,col) ? (*irs_)[row][col].current.count : 0;
+  if(!SignalGrid::valid(row,col))return 0;
+  const auto& ir=(*irs_)[row][col];return ir.hasPending?ir.pending.count:ir.current.count;
  }
 
 public:
@@ -148,6 +155,8 @@ public:
   // transition from the previous stream. Retain the selected model/IR but
   // discard obsolete crossfade state and previous FIR coefficients.
   for (auto& lane:*irs_) for (auto& ir:lane) {
+   if(ir.hasPending)ir.current=ir.pending;
+   ir.hasPending=false;
    ir.transition=false;
    ir.fade=0;
    ir.previous.count=0;
@@ -194,7 +203,13 @@ public:
     if(++slot.fade>=neuralFadeSamples) slot.transition=false;
    }
    for (auto& lane:*irs_) for (auto& ir:lane) if (ir.transition) {
-    if (++ir.fade >= irFadeSamples) { ir.transition=false; ir.previous.count=0; }
+    if (++ir.fade >= irFadeSamples) {
+     ir.transition=false;ir.previous.count=0;
+     if(ir.hasPending){
+      ir.previous=ir.current;ir.current=ir.pending;ir.hasPending=false;ir.fade=0;
+      ir.transition=(ir.previous.count!=0||ir.current.count!=0);
+     }
+    }
    }
   }
   if(frames) hasProcessed_=true;
@@ -206,7 +221,7 @@ private:
  std::array<std::array<std::unique_ptr<StereoReverb>,8>,4> reverbSlots_{};
  std::array<std::array<std::unique_ptr<StereoDelay>,8>,4> stereoSlots_{};
  struct FIR { std::array<float,maxIrTaps> taps{}; std::size_t count=0; };
- struct CabinetIR { FIR current{}, previous{}; std::size_t fade=0; bool transition=false; };
+ struct CabinetIR { FIR current{}, previous{}, pending{}; std::size_t fade=0; bool transition=false,hasPending=false; };
  struct Channel {
   RepeatFeedback repeatLoop;
   GainUtility utility;
