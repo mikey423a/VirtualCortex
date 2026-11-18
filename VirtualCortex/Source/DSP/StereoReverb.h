@@ -27,7 +27,7 @@ public:
   for(auto& d:pre)d.prepare((std::size_t)std::ceil(fs*.7)+8);
   for(std::size_t ch=0;ch<2;++ch)for(std::size_t j=0;j<4;++j){auto& a=diffusers[ch][j];a.length=fs*(.0031+.0017*j+.00037*ch);a.delay.prepare((std::size_t)std::ceil(a.length)+4);}
   preCurrent=preTarget=1;preFade=0;preFading=false;preBlend=0;
-  coefficientsValid=false;lowState={};highState={};inputLow={};inputHigh={};phase=0;envelope=0;idle=0;counter=0;awake=false;initialized=false;cfg={};smooth={};mix=0;wetGain=1;coefficient=std::exp(-1./(fs*.02));
+  coefficientsValid=false;controlCoefficientsValid=false;lowState={};highState={};inputLow={};inputHigh={};phase=0;envelope=0;idle=0;counter=0;awake=false;initialized=false;cfg={};smooth={};mix=0;wetGain=1;coefficient=std::exp(-1./(fs*.02));
  }
  bool active()const noexcept{return awake;}
  void configure(StereoReverbParameters p)noexcept{
@@ -35,14 +35,19 @@ public:
   p.decay=safe(p.decay,.2f,20,2.5f);p.size=safe(p.size,.5f,2,1);p.preDelay=safe(p.preDelay,0,500,20);p.diffusion=safe(p.diffusion,0,1,.7f);p.early=safe(p.early,0,1,.2f);p.mix=safe(p.mix,0,1,.2f);
   p.lowDecay=safe(p.lowDecay,.25f,2,1);p.highDecay=safe(p.highDecay,.1f,1,.5f);p.lowFreq=safe(p.lowFreq,80,1000,250);p.highFreq=safe(p.highFreq,1500,16000,4000);p.modRate=safe(p.modRate,.05f,4,.35f);p.modDepth=safe(p.modDepth,0,2,.3f);
   p.width=safe(p.width,0,1.5f,1);p.ducking=safe(p.ducking,0,1,0);p.release=safe(p.release,20,2000,300);p.wetLevel=safe(p.wetLevel,-24,12,0);p.inputHP=safe(p.inputHP,20,1000,40);p.inputLP=safe(p.inputLP,1000,20000,16000);
-  cfg=p;attack=std::exp(-1./(fs*.005));release=std::exp(-1./(fs*.001*p.release));wetTarget=std::pow(10.f,p.wetLevel/20.f);
+  // Repeated host block updates must not recalculate unchanged exponentials.
+  // prepare invalidates the cache because envelope coefficients depend on fs.
+  if(!controlCoefficientsValid)attack=std::exp(-1./(fs*.005));
+  if(!controlCoefficientsValid||p.release!=cfg.release)release=std::exp(-1./(fs*.001*p.release));
+  if(!controlCoefficientsValid||p.wetLevel!=cfg.wetLevel)wetTarget=std::pow(10.f,p.wetLevel/20.f);
+  controlCoefficientsValid=true;cfg=p;
   if(p.enabled){awake=true;idle=0;}if(!initialized){smooth=p;mix=0;wetGain=wetTarget;preCurrent=preTarget=p.preDelay*.001*fs+1;initialized=true;updateCoefficients();}
  }
  std::array<float,2> process(float left,float right)noexcept{
   if(!std::isfinite(left))left=0;
   if(!std::isfinite(right))right=0;
   if(!awake||pre[0].data.empty())return {left,right};
-  auto move=[&](float& x,float target){float next=(float)(target+coefficient*(x-target));x=(next==x||std::abs(next-target)<1.e-7f)?target:next;};
+  auto move=[&](float& x,float target){if(x==target)return;float next=(float)(target+coefficient*(x-target));x=(next==x||std::abs(next-target)<1.e-7f)?target:next;};
   move(mix,cfg.enabled?cfg.mix:0);move(wetGain,wetTarget);
   move(smooth.decay,cfg.decay);move(smooth.size,cfg.size);move(smooth.preDelay,cfg.preDelay);move(smooth.diffusion,cfg.diffusion);move(smooth.early,cfg.early);move(smooth.lowDecay,cfg.lowDecay);move(smooth.highDecay,cfg.highDecay);move(smooth.lowFreq,cfg.lowFreq);move(smooth.highFreq,cfg.highFreq);move(smooth.modRate,cfg.modRate);move(smooth.modDepth,cfg.modDepth);move(smooth.width,cfg.width);move(smooth.ducking,cfg.ducking);move(smooth.inputHP,cfg.inputHP);move(smooth.inputLP,cfg.inputLP);
   if(counter++%32==0)updateCoefficients();
@@ -96,7 +101,7 @@ private:
   lowC=pole(smooth.lowFreq);highC=pole(smooth.highFreq);inputHPC=pole(smooth.inputHP);inputLPC=pole(smooth.inputLP);
   for(std::size_t i=0;i<8;++i){double t=times[i]*smooth.size;gMid[i]=(float)std::pow(.001,t/smooth.decay);gLow[i]=(float)std::pow(.001,t/(smooth.decay*smooth.lowDecay));float gHigh=(float)std::pow(.001,t/(smooth.decay*smooth.highDecay));highRatio[i]=gHigh/gMid[i];}
  }
- std::array<float,8> coefficientKey{};bool coefficientsValid=false;
+ std::array<float,8> coefficientKey{};bool coefficientsValid=false,controlCoefficientsValid=false;
  inline static constexpr std::array<double,8> times{{.0293,.0371,.0419,.0473,.0539,.0611,.0677,.0793}};
  std::array<Delay,8> tank;std::array<Delay,2> pre;std::array<std::array<Allpass,4>,2> diffusers;
  std::array<float,8> lowState{},highState{},gMid{},gLow{},highRatio{};std::array<float,2> inputHigh{},inputLow{};
@@ -105,3 +110,4 @@ private:
  float mix=0,wetGain=1,wetTarget=1,lowC=0,highC=0,inputHPC=0,inputLPC=0;bool awake=false,initialized=false;
 };
 }
+

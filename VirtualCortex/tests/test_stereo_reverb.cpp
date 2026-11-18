@@ -22,7 +22,9 @@ std::vector<std::array<float,2>> band(const std::vector<std::array<float,2>>& in
  for(auto& f:out)for(int ch=0;ch<2;++ch){double x=f[ch],y=b0*x+z1[ch];z1[ch]=-a1*y+z2[ch];z2[ch]=b2*x-a2*y;f[ch]=(float)y;}
  return out;
 }
+#include "ReverbControlChecks.h"
 int main(){
+ reverbControlEquivalence();reverbControlBenchmark();
  // Paired live-control characterization. Identical engines establish an exact
  // pre-change reference; first-difference metrics include musical signal slope,
  // so they are diagnostics, not an audibility or aliasing measurement.
@@ -167,3 +169,4 @@ int main(){
  }
  std::cout<<"PASS stereo FDN decay, decorrelation, early timing, width, damping, ducking, automation and reset\n";
 }
+
