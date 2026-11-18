@@ -2,15 +2,15 @@
 
 Windows x64 standalone guitar amplifier/effects application and VST3, built with JUCE 8.0.10 and ASIO enabled.
 
-## Current verified milestone: 6.36.0
+## Current verified milestone: 6.37.0
 
-[Windows build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/44182466428) · [Preset loading, verification and next steps](VirtualCortex/PRESET-6.36.md)
+[Windows build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/44186016423) · [Source-tap editing, verification and next steps](VirtualCortex/ROUTING-6.37.md)
 
-Preset files now report missing, unreadable, oversized or invalid input instead of falsely reporting success. Rejected files retain the current serialized state and selected wire; successful recall clears stale wire focus. File reads are bounded to the existing 1 MiB limit plus a sentinel byte. DSP algorithms, legacy preset sound and preset format remain unchanged. The 6.35 wire-disconnection action, four rounded-square grid rows and full-width layout are retained.
+Right-click an existing row-to-row wire in Custom row mixer mode and choose its source tap: Before A or After A–H. Only that connection changes; other sources, taps, row settings and destination entry remain intact. Stale actions are rejected. Save the preset to retain the change. Existing disconnect and accurate preset-file feedback remain available. DSP algorithms, default preset sound and preset format are unchanged.
 
-Actual Windows EXE/VST3 compilation, all 48 regressions, pluginval strictness 5, standalone 10-second startup, installer install/uninstall and package hashes passed. Native preset-rejected and preset-loaded PNGs were inspected at 2560x1440 and 822x600: rejected files retain yellow wire focus, successful recall clears it, and four rounded-square rows/full-width layout are preserved.
+Actual Windows EXE/VST3 compilation, all 48 regressions, pluginval strictness 5, standalone 10-second startup, installer install/uninstall and downloaded archive/package hashes passed. Native Before-A source-tap PNGs were inspected at 2560x1440 and 822x600: source dot, destination arrow, routing caption, inactive dimming and four rounded-square rows remain visible. These are editor snapshots after invoking the shared action, not physical OS popup interaction.
 
-The installer is unsigned. Anubis/Windows 11 hardware and subjective listening remain user-side. Native tests exercise the shared file-load/menu handlers; physical OS dialog/menu interaction remains unfinished. No proprietary DSP equivalence or complete playable catalog is claimed.
+Installer unsigned. Anubis/Windows11 hardware and subjective listening remain user-side. Physical OS popup/submenu interaction remains unverified. No proprietary DSP equivalence or complete playable catalog claim.
 
 Verified effects test/measurement work is tracked in [effects quality](VirtualCortex/EFFECTS-QUALITY-PROGRESS.md) and [reverb characterization](VirtualCortex/REVERB-DECAY-PROGRESS.md); it does not change the delivered application version.
 
