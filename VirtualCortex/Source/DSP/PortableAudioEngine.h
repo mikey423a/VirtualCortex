@@ -103,6 +103,13 @@ public:
  bool setNeuralAmp(std::size_t row,std::size_t col,const NeuralAmpModel* model) noexcept {
   if(!SignalGrid::valid(row,col) || (model && !model->valid())) return false;
   auto& slot=(*neural_)[row][col];
+  // Re-publishing the selected model (or an already selected clear) must not
+  // erase temporal history or restart an in-flight transition. Compare values,
+  // not addresses: queued/file-loaded models are separate copies.
+  if ((!model && !slot.enabled) ||
+      (model && slot.enabled && model->weights==slot.model.weights &&
+       model->bias==slot.model.bias && model->outputWeights==slot.model.outputWeights &&
+       model->outputBias==slot.model.outputBias)) return true;
   slot.previousModel=slot.model;
   slot.previousEnabled=slot.enabled;
   if(model) slot.model=*model;
