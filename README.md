@@ -2,17 +2,17 @@
 
 Windows x64 standalone guitar amplifier/effects application and VST3, built with JUCE 8.0.10 and ASIO enabled.
 
-## Current verified milestone: 6.38.0
+## Current verified milestone: 6.39.0
 
-[Windows build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/44241454309) · [Destination-entry editing, verification and next steps](VirtualCortex/ROUTING-6.38.md)
+[Windows build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/44282299743) · [Model-transition fix and verification](VirtualCortex/MODEL-TRANSITION-6.39.md)
 
-Right-click an existing row-to-row wire in Custom row mixer mode and choose Destination entry — ALL row N inputs, then Enter at A–H. This changes the shared entry for every incoming source in that row, preserving source masks, per-connection taps and mix settings. Per-connection source-tap editing remains available. Stale actions are rejected. Save the preset to retain the change. Existing disconnect and accurate preset-file feedback remain available. DSP algorithms, default preset sound and preset format are unchanged.
+Reloading identical original VCMLP1 weights now retains temporal history and an ongoing crossfade. Repeated clear commands no longer cut short the fade to the basic amplifier. Genuine model changes retain the existing fade; device restart still resets histories. No NAM algorithm, preset schema or default preset sound change. Per-connection source-tap and whole-row destination-entry editing from 6.37/6.38 remain available.
 
-Actual Windows EXE/VST3 compilation, all 48 regressions, pluginval strictness 5, standalone 10-second startup, installer install/uninstall and downloaded archive/package hashes passed. Native entry-H PNGs were inspected at 2560x1440 and 822x600: source dot, destination arrow, routing caption, inactive dimming and four rounded-square rows remain visible. These are editor snapshots after invoking the shared action, not physical OS popup interaction.
+Actual Windows EXE/VST3 compilation, all 48 regressions, pluginval strictness 5, standalone startup, installer install/uninstall and downloaded archive/package hashes passed. Native grid screenshots reviewed at 2560x1440 and 822x600. Full build identifiers, numerical evidence and limitations are in the release notes.
 
-Installer unsigned. Anubis/Windows11 hardware and subjective listening remain user-side. Physical OS popup/submenu interaction remains unverified. No proprietary DSP equivalence or complete playable catalog claim.
+Installer unsigned. Anubis/Windows11 hardware and subjective listening remain user-side. Physical OS popup/file-dialog interaction, broader audio topology-transition handling and optional compatible effects improvements remain unfinished. No arbitrary-model click-free, proprietary DSP equivalence or complete playable catalog claim.
 
-Verified effects test/measurement work is tracked in [effects quality](VirtualCortex/EFFECTS-QUALITY-PROGRESS.md) and [reverb characterization](VirtualCortex/REVERB-DECAY-PROGRESS.md); it does not change the delivered application version.
+See [effects quality](VirtualCortex/EFFECTS-QUALITY-PROGRESS.md) and [reverb characterization](VirtualCortex/REVERB-DECAY-PROGRESS.md) for remaining work.
 
 The sections below describe earlier milestones and their historical scope.
 

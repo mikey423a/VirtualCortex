@@ -1,6 +1,6 @@
 # Effects quality — current status
 
-Delivered application: **6.38.0**, code `5be53d3a6b811c470fab90e2f52541cca00be168`, Windows CI [44241454309](https://github.com/mikey423a/VirtualCortex/actions/runs/44241454309). See [release verification](ROUTING-6.38.md). The 6.34–6.38 changes concern routing UI/state focus, source-tap and whole-row destination-entry menu editing and accurate preset-loading feedback; DSP algorithms remain unchanged from 6.33.
+Delivered application: **6.39.0**, code `cc644c1643a2222bb7635a11aceaa757a4dbbff2`, Windows CI [44282299743](https://github.com/mikey423a/VirtualCortex/actions/runs/44282299743). See [release verification](MODEL-TRANSITION-6.39.md). This fixes temporal-history reset/crossfade interruption from duplicate original VCMLP1 model or clear commands. New exact regression passes at three rates/four routing modes. Reverb/delay algorithms are unchanged; no new sonic-equivalence claim.
 
 ## Verified application behavior
 
