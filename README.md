@@ -2,11 +2,11 @@
 
 Windows x64 standalone guitar amplifier/effects application and VST3, built with JUCE 8.0.10 and ASIO enabled.
 
-## Current verified milestone: 6.39.0
+## Current verified milestone: 6.40.0
 
-[Windows build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/44282299743) · [Model-transition fix and verification](VirtualCortex/MODEL-TRANSITION-6.39.md)
+[Windows build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/44292050163) · [Cabinet IR transition fix and verification](VirtualCortex/IR-TRANSITION-6.40.md)
 
-Reloading identical original VCMLP1 weights now retains temporal history and an ongoing crossfade. Repeated clear commands no longer cut short the fade to the basic amplifier. Genuine model changes retain the existing fade; device restart still resets histories. No NAM algorithm, preset schema or default preset sound change. Per-connection source-tap and whole-row destination-entry editing from 6.37/6.38 remain available.
+Rapid cabinet IR replacements now finish the active 128-sample fade before fading to the latest requested IR. Returning to the active target cancels a queued change; device restart retains the latest selection. Ordinary single updates and steady cabinet sound are unchanged. The 6.39 duplicate-model fix, preset feedback and routing controls remain available.
 
 Actual Windows EXE/VST3 compilation, all 48 regressions, pluginval strictness 5, standalone startup, installer install/uninstall and downloaded archive/package hashes passed. Native grid screenshots reviewed at 2560x1440 and 822x600. Full build identifiers, numerical evidence and limitations are in the release notes.
 

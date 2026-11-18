@@ -1,4 +1,4 @@
-# 6.40 queued cabinet IR transitions — candidate
+# 6.40 queued cabinet IR transitions — verified
 
 Rapid cabinet IR replacements no longer overwrite either FIR of an ongoing 128-sample crossfade. One fixed-storage pending target retains the latest request; when the current fade completes, the next fade starts from its endpoint. Returning to the active target cancels any queued replacement. Invalid inputs leave the queue untouched. The selected IR length reports the latest requested target. Device restart commits that latest selection, discarding obsolete fades/history. Slot swaps carry the entire state.
 
@@ -6,6 +6,15 @@ This changes only overlapping cabinet IR transitions. Ordinary single updates, s
 
 Expanded cabinet_ir_crossfade regression uses analytical one-tap output at 44.1/48/96 kHz in four routing modes. Covers rapid multiple targets, latest-wins, invalid request, queued cancellation, both channels, restart with pending target and queued removal. Fails against unmodified 6.39 and passes locally with fix. Existing add/remove fade and duplicate-update regressions retained.
 
-Version 6.40.0 candidate. Windows build/regression/pluginval/startup/installer/hash verification pending; latest delivered app remains 6.39. GUI unchanged except version footer.
+Version 6.40.0 verified November 18, 2026. Compiled code 4c0545b2c94e665db1718b125e2cb075da9f3215. Windows CI https://github.com/mikey423a/VirtualCortex/actions/runs/44292050163 (job 134759449184) completed successfully: actual EXE/VST3 compilation, all 48 regressions, pluginval strictness 5, standalone 10-second startup, installer install/uninstall. Downloaded archive digests and all four package manifest hashes independently matched. Separate Steinberg validator not configured; pluginval passed.
+
+Windows archive SHA256: e9274014bd1dd9fee8f57ec5e1b022a60d55222ed00fc93c4bf9c1463bafc2c1.
+Logs archive SHA256: e4f26ffd7c3d9ab2098278acdb1a5c6eabe47d381acf71b8dc5ef793c2766f66.
+Installer SHA256: 84c641e773f2b2c4681fc6ef75435bbf10439ee817431383a52faffb78eb678d.
+VST3 ZIP SHA256: 245c145c04876db7a6eb61888090809c7d2c931a9f176b0f74523054c32b343e.
+
+Native entry-H screenshots inspected at 2560x1440 and 822x600: four rounded-square rows, routing arrows/captions, inactive dimming and full-width layout preserved. GUI unchanged except version footer. Physical OS menu/file-dialog interaction remains unverified.
+
+Local GCC -O2 regression failed on 6.39 and passed with the fix. ASan/UBSan passed with leak detection disabled. Existing duplicate-IR, restart and audio-safety tests passed locally. An additional local operator-new probe detected no allocations during the tested processing paths, including queued promotion; this probe is not a separate Windows CI target. No app-wide CPU, subjective audibility or universal click-free claim. Installer unsigned.
 
 Next: optional compatible effects quality, topology transition policy and physical OS interaction. No amp profiling or additional looper development. Anubis/Windows11 hardware and subjective listening remain user-side.

@@ -1,6 +1,6 @@
 # Effects quality — current status
 
-Delivered application: **6.39.0**, code `cc644c1643a2222bb7635a11aceaa757a4dbbff2`, Windows CI [44282299743](https://github.com/mikey423a/VirtualCortex/actions/runs/44282299743). See [release verification](MODEL-TRANSITION-6.39.md). This fixes temporal-history reset/crossfade interruption from duplicate original VCMLP1 model or clear commands. New exact regression passes at three rates/four routing modes. Reverb/delay algorithms are unchanged; no new sonic-equivalence claim.
+Delivered application: **6.40.0**, code `4c0545b2c94e665db1718b125e2cb075da9f3215`, Windows CI [44292050163](https://github.com/mikey423a/VirtualCortex/actions/runs/44292050163). See [release verification](IR-TRANSITION-6.40.md). Rapid cabinet IR requests now queue the latest target until the active fade finishes; ordinary updates and steady response remain unchanged. Analytical transition regression passed at three rates/four routing modes. The 6.39 duplicate model-history fix remains. Reverb/delay algorithms are unchanged; no sonic-equivalence or universal click-free claim.
 
 ## Verified application behavior
 
