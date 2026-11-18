@@ -27,3 +27,8 @@ Strymon/Eventide/Neural DSP are quality aspirations. No proprietary equivalence,
 ## Verified 6.35 routing milestone
 
 Delivered application 6.35, code a74129e652e3df9884b4c0080c2a058171aeb716, CI 44082073363: all 48 regressions, Windows EXE/VST3, pluginval5, startup, installer install/uninstall and downloaded hashes passed. Native disconnected-grid screenshots reviewed at 2560x1440/822x600. Right-click row-wire disconnection removes only the chosen source and rejects stale routing/recall actions. No DSP change or new effects-quality claim. See [6.35 verification and remaining work](ROUTING-6.35.md). Physical menu interaction, selected-wire tap editing, preset rejection feedback and audio topology-transition improvements remain next steps.
+
+
+## 6.40 IR transition follow-up verification
+
+Test code 74d512c8b371d05e008da0178902b2c945f5782f passed Windows CI [44355281102](https://github.com/mikey423a/VirtualCortex/actions/runs/44355281102): all 48 regressions and existing binary/pluginval/startup/installer/hash gates. Full 4096-tap histories now tested through portable slot movement, queued removal and buffer partitioning at three rates/four routing modes, with ordinary operator-new guards during processing. See [exact scope and hashes](IR-HISTORY-TESTS.md). Application code and delivered 6.40 installer are unchanged. Next implementation should advance compatible optional effects quality or topology-transition handling; do not repeat completed IR checks.
