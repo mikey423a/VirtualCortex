@@ -1,6 +1,6 @@
 # Effects quality — current status
 
-Delivered application: **6.40.0**, code `4c0545b2c94e665db1718b125e2cb075da9f3215`, Windows CI [44292050163](https://github.com/mikey423a/VirtualCortex/actions/runs/44292050163). See [release verification](IR-TRANSITION-6.40.md). Rapid cabinet IR requests now queue the latest target until the active fade finishes; ordinary updates and steady response remain unchanged. Analytical transition regression passed at three rates/four routing modes. The 6.39 duplicate model-history fix remains. Reverb/delay algorithms are unchanged; no sonic-equivalence or universal click-free claim.
+Delivered application: **6.41.0**, code `e9fbbcb64fdf8b6ee931c3504dde8da46d930d98`, Windows CI [44402148003](https://github.com/mikey423a/VirtualCortex/actions/runs/44402148003). See [reverb control efficiency verification](REVERB-CONTROLS-6.41.md). Settled reverb controls and unchanged envelope/wet-gain settings avoid redundant calculations. Frozen 6.40 renders matched bit-for-bit across tested automation/restarts. One paired Windows microbenchmark measured 1.88% lower steady time and 2.03% lower automated time; no app-wide or sonic claim. Previous IR/model transition fixes retained.
 
 ## Verified application behavior
 

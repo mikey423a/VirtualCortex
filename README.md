@@ -2,17 +2,17 @@
 
 Windows x64 standalone guitar amplifier/effects application and VST3, built with JUCE 8.0.10 and ASIO enabled.
 
-## Current verified milestone: 6.40.0
+## Current verified milestone: 6.41.0
 
-[Windows build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/44292050163) · [Cabinet IR transition fix and verification](VirtualCortex/IR-TRANSITION-6.40.md)
+[Windows build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/44402148003) · [Reverb control efficiency and verification](VirtualCortex/REVERB-CONTROLS-6.41.md)
 
-Rapid cabinet IR replacements now finish the active 128-sample fade before fading to the latest requested IR. Returning to the active target cancels a queued change; device restart retains the latest selection. Ordinary single updates and steady cabinet sound are unchanged. The 6.39 duplicate-model fix, preset feedback and routing controls remain available.
+Stereo Reverb avoids redundant calculations for settled controls and unchanged ducking/wet-level settings. Frozen 6.40 comparisons check exact audio under automation, sanitization, bypass and sample-rate restarts. This is a performance change, not a new reverb sound or proprietary algorithm. Existing IR/model transitions, presets and routing controls are preserved.
 
-Actual Windows EXE/VST3 compilation, all 48 regressions, pluginval strictness 5, standalone startup, installer install/uninstall and downloaded archive/package hashes passed. Native grid screenshots reviewed at 2560x1440 and 822x600. Full build identifiers, numerical evidence and limitations are in the release notes.
+Actual Windows EXE/VST3 compilation, all 48 regressions, pluginval strictness 5, standalone startup, installer install/uninstall and downloaded archive/package hashes passed. See release notes for exact benchmark scope and identifiers.
 
-Installer unsigned. Anubis/Windows11 hardware and subjective listening remain user-side. Physical OS popup/file-dialog interaction, broader audio topology-transition handling and optional compatible effects improvements remain unfinished. No arbitrary-model click-free, proprietary DSP equivalence or complete playable catalog claim.
+Installer unsigned. Anubis/Windows11 hardware and subjective listening remain user-side. Physical OS popup/file-dialog interaction, broader audio topology-transition handling and optional compatible sonic improvements remain unfinished. No proprietary DSP equivalence or complete playable catalog claim.
 
-See [effects quality](VirtualCortex/EFFECTS-QUALITY-PROGRESS.md) and [reverb characterization](VirtualCortex/REVERB-DECAY-PROGRESS.md) for remaining work.
+See [effects quality](VirtualCortex/EFFECTS-QUALITY-PROGRESS.md) for remaining work.
 
 The sections below describe earlier milestones and their historical scope.
 
