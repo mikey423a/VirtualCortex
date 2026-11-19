@@ -70,7 +70,77 @@ static void checkRowOutputBlending(double rate,bool average){
  std::cout<<"ROW_OUTPUT rate="<<rate<<" average="<<average<<" immediate_step="<<rawStep
           <<" blended_step="<<blendedStep<<" restored_tail_energy="<<tail<<"\n";
 }
+static void checkConnectionBlending(double rate,bool average){
+ using Mode=vc::ParallelGrid::Mode;
+ auto instant=std::make_unique<vc::PortableAudioEngine>();
+ auto smooth=std::make_unique<vc::PortableAudioEngine>();
+ auto delay=std::make_unique<vc::PortableAudioEngine>();
+ auto reference=std::make_unique<vc::PortableAudioEngine>();
+ vc::SignalGrid grid,delayGrid,reverbGrid;
+ grid.set(0,0,{vc::BlockType::GridStereoDelay,true});
+ grid.set(1,0,{vc::BlockType::GridStereoReverb,true});
+ delayGrid.set(0,0,*grid.get(0,0));
+ reverbGrid.set(1,0,*grid.get(1,0));
+ vc::RowRouting routes;
+ routes.average=average;
+ routes.rows[0].output=false;
+ routes.rows[1].sources=3;
+ for(auto* engine:{instant.get(),smooth.get(),delay.get(),reference.get()}){
+  const bool delayOnly=engine==delay.get(), reverbOnly=engine==reference.get();
+  engine->prepare(rate,64);
+  if(!reverbOnly)engine->prepareStereoSlot(0,0);
+  if(!delayOnly)engine->prepareReverbSlot(1,0);
+  check(engine->configure(delayOnly?delayGrid:reverbOnly?reverbGrid:grid,{!reverbOnly,!delayOnly,false,false}),"Connection fixture grid");
+  vc::SlotParameters p;
+  p.mix=.83f;p.time=.003f;p.rate=.018f;p.feedback=.65f;
+  check(engine->setSlotParameters(0,0,p)&&engine->setSlotParameters(1,0,p),"Connection fixture controls");
+  auto initial=routes;
+  initial.smoothSources=engine==smooth.get();
+  if(delayOnly)initial.rows[0].output=true;
+  if(reverbOnly)initial.rows[1].sources=1;
+  check(engine->setRowRouting(initial),"Connection fixture routing");
+  engine->enableSourceConnectionBlending(true);
+ }
+ const int start=static_cast<int>(rate/2),duration=static_cast<int>(std::lround(rate*.005));
+ std::array<int,2> ramp{duration,duration};
+ std::array<float,2> previousRaw{},previousSmooth{};
+ double rawStep=0,blendStep=0,tail=0;
+ for(int i=0;i<start+5*duration+6000;++i){
+  const int offset=i-start;
+  const bool edit=offset==0||offset==duration/2||offset==duration||offset==3*duration;
+  if(edit){
+   // Remove delay, reconnect mid-fade, then remove both sources and restore IN.
+   routes.rows[1].sources=offset==0||offset==3*duration?1:offset==duration/2?3:0;
+   check(instant->setRowRouting(routes),"Immediate connection edit");
+   auto blended=routes;blended.smoothSources=true;
+   check(smooth->setRowRouting(blended),"Smoothed connection edit");
+  }
+  const float x=offset<2*duration?.13f*std::cos(offset*.0341f):0.f;
+  std::array<float,2> raw{x,-.53f*x},y=raw,d=raw,expected{};
+  check(delay->process(d.data(),1,2,Mode::Custom),"Render independent source delay");
+  for(unsigned source=0;source<2;++source)
+   ramp[source]=std::clamp(ramp[source]+((routes.rows[1].sources&(1u<<source))?1:-1),0,duration);
+  const double direct=double(ramp[0])/duration,wet=double(ramp[1])/duration;
+  for(int ch=0;ch<2;++ch)expected[ch]=static_cast<float>((direct*raw[ch]+wet*d[ch])/(average?std::max(1.,direct+wet):1.));
+  check(reference->process(expected.data(),1,2,Mode::Custom)&&instant->process(raw.data(),1,2,Mode::Custom)
+      &&smooth->process(y.data(),1,2,Mode::Custom),"Render downstream reverb");
+  for(int ch=0;ch<2;++ch){
+   check(std::abs(y[ch]-expected[ch])<2.e-6f,"Downstream reverb disagrees with weighted source reference");
+   if(offset==0){
+    rawStep=std::max(rawStep,double(std::abs(raw[ch]-previousRaw[ch])));
+    blendStep=std::max(blendStep,double(std::abs(y[ch]-previousSmooth[ch])));
+   }
+   if(offset>=4*duration)tail+=y[ch]*y[ch];
+  }
+  previousRaw=raw;previousSmooth=y;
+ }
+ check(rawStep>.001&&tail>.00001,"Connection fixture needs a step and live reverb tail");
+ if(rate==48000.)check(blendStep<rawStep*.5,"48 kHz connection fade discontinuity not reduced");
+ std::cout<<"SOURCE_CONNECTION rate="<<rate<<" average="<<average<<" immediate_step="<<rawStep
+          <<" blended_step="<<blendStep<<" retained_tail_energy="<<tail<<"\n";
+}
 int main(){try{
+ for(double rate:{44100.,48000.,96000.})for(bool average:{false,true})checkConnectionBlending(rate,average);
  for(double rate:{44100.,48000.,96000.})for(bool average:{false,true})checkRowOutputBlending(rate,average);
  for(double sampleRate:{44100.,48000.,96000.}) for(auto type:{vc::BlockType::GridStereoDelay,vc::BlockType::GridStereoReverb}){
   auto routed=std::make_unique<vc::PortableAudioEngine>();

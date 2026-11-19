@@ -90,5 +90,33 @@ int main(){try{
    check(near(out[0],.25f-.5f*weight)&&near(out[1],-.5f+weight),"Stereo tap blend or queued return incorrect");
   }
  }
+
+ {
+  vc::SignalGrid grid;
+  grid.set(0,0,{vc::BlockType::Gain,true});
+  vc::ParallelGrid engine;
+  check(engine.configure(grid,{true,true,false,false}),"Connection fixture grid");
+  vc::RowRouting route;
+  route.rows[0].output=false;
+  route.rows[1].sources=2;
+  route.rows[1].sourceTaps[0]=1;
+  engine.setRowRouting(route);
+  engine.prepareMixer(48000);
+  engine.setSmoothSources(true);
+  auto tick=[&]{return engine.processStereoFrame({.25f,-.5f},vc::ParallelGrid::Mode::Custom,
+   [](auto,auto,auto,std::array<float,2> in){return std::array<float,2>{-in[0],-in[1]};});};
+  check(tick()==std::array<float,2>{-.25f,.5f},"First connected source unexpectedly ramps");
+  route.rows[1].sources=0;
+  route.rows[1].sourceTaps[0]=0; // An atomic preset edit may also change the tap.
+  engine.setRowRouting(route);
+  for(int i=1;i<=240;++i){
+   const auto out=tick();
+   const float weight=(240-i)/240.f;
+   check(near(out[0],-.25f*weight)&&near(out[1],.5f*weight),"Disconnect fade jumped to different tap or normalized away the fade");
+  }
+  route.rows[1].sources=1;
+  engine.setRowRouting(route);
+  check(near(tick()[0],.25f/240),"Direct input did not fade in");
+ }
  std::cout<<"PASS: custom split/merge oracle, channel isolation, unity levels, invalid cycles, smooth polarity and mute\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

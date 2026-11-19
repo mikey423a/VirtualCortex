@@ -159,12 +159,16 @@ public:
  void enableRowOutputBlending(bool active) noexcept {
   routing_.setSmoothRowOutputs(active && smoothRowOutputsRequested_);
  }
+ void enableSourceConnectionBlending(bool active) noexcept {
+  routing_.setSmoothSources(active && smoothSourcesRequested_);
+ }
  void enableSourceTapBlending(bool active) noexcept {routing_.setSmoothSourceTaps(active && smoothSourceTapsRequested_);}
  bool setRowRouting(const RowRouting& c)noexcept{if (!routing_.setRowRouting(c)) return false;
   smoothSourceTapsRequested_=c.smoothSourceTaps;
   smoothRowEntriesRequested_=c.smoothRowEntries;
   smoothRoutingModesRequested_=c.smoothRoutingModes;
   smoothRowOutputsRequested_=c.smoothRowOutputs;
+  smoothSourcesRequested_=c.smoothSources;
   return true;}
  void prepare(double sampleRate, std::size_t maxDelaySamples = 0) {
   modeTransition_ = {};
@@ -425,6 +429,7 @@ private:
  bool smoothRoutingModesRequested_=false;
  bool smoothRowEntriesRequested_=false;
  bool smoothRowOutputsRequested_=false;
+ bool smoothSourcesRequested_=false;
  ParallelGrid routing_;
  bool hasProcessed_=false;
  double rate_=48000.0;

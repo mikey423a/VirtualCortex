@@ -361,6 +361,13 @@ int main(int argc,char** argv){
    outputFade->setToggleState(true,juce::dontSendNotification);
    outputFade->onClick();
    require(processor->getRowRouting().smoothRowOutputs,"Output smoothing control not bound");
+   auto* connectionFade=dynamic_cast<juce::ToggleButton*>(panel->findChildWithID("route-smooth-connections"));
+   require(connectionFade&&connectionFade->isVisible()&&!connectionFade->getBounds().isEmpty()
+       &&panel->getLocalBounds().contains(connectionFade->getBounds()),"Connection smoothing control hidden or clipped");
+   require(!connectionFade->getToggleState(),"Connection smoothing must default off");
+   connectionFade->setToggleState(true,juce::dontSendNotification);
+   connectionFade->onClick();
+   require(processor->getRowRouting().smoothSources,"Connection smoothing control not bound");
    juce::MemoryBlock smoothPreset;
    processor->getStateInformation(smoothPreset);
    auto legacyXml=juce::AudioProcessor::getXmlFromBinary(smoothPreset.getData(),int(smoothPreset.getSize()));
@@ -369,11 +376,13 @@ int main(int argc,char** argv){
    legacyXml->removeAttribute("smoothRowEntries");
    legacyXml->removeAttribute("smoothRoutingModes");
    legacyXml->removeAttribute("smoothRowOutputs");
+   legacyXml->removeAttribute("smoothSources");
    juce::MemoryBlock legacyPreset;
    juce::AudioProcessor::copyXmlToBinary(*legacyXml,legacyPreset);
    processor->setStateInformation(legacyPreset.getData(),int(legacyPreset.getSize()));
    require(!processor->getRowRouting().smoothRoutingModes,"Legacy preset failed to reset mode smoothing");
    require(!processor->getRowRouting().smoothRowOutputs,"Legacy preset failed to reset output smoothing");
+   require(!processor->getRowRouting().smoothSources,"Legacy preset failed to reset connection smoothing");
    require(!processor->getRowRouting().smoothRowEntries,"Legacy preset failed to reset entry smoothing");
    require(!processor->getRowRouting().smoothSourceTaps,"Legacy preset failed to reset tap smoothing");
    processor->setStateInformation(smoothPreset.getData(),int(smoothPreset.getSize()));
@@ -382,6 +391,9 @@ int main(int argc,char** argv){
    require(processor->getRowRouting().smoothRowEntries&&entryFade->getToggleState(),"Preset failed to restore entry smoothing");
    require(processor->getRowRouting().smoothRoutingModes&&modeFade->getToggleState(),"Preset failed to restore mode smoothing");
    require(processor->getRowRouting().smoothRowOutputs&&outputFade->getToggleState(),"Preset failed to restore output smoothing");
+   require(processor->getRowRouting().smoothSources&&connectionFade->getToggleState(),"Preset failed to restore connection smoothing");
+   capture("smooth-connections-2560x1440.png",2560,1440);
+   capture("smooth-connections-822x600.png",822,600);
    capture("smooth-row-outputs-2560x1440.png",2560,1440);
    capture("smooth-row-outputs-822x600.png",822,600);
    capture("smooth-source-taps-2560x1440.png",2560,1440);
@@ -394,6 +406,8 @@ int main(int argc,char** argv){
    modeFade->onClick();
    outputFade->setToggleState(false,juce::dontSendNotification);
    outputFade->onClick();
+   connectionFade->setToggleState(false,juce::dontSendNotification);
+   connectionFade->onClick();
    dynamic_cast<juce::Button*>(panel->findChildWithID("routing-close"))->onClick();require(!panel->isVisible(),"Routing close failed");
    editor->setEditorsVisible(true);capture("custom-grid-editors-2560x1440.png",2560,1440);capture("custom-grid-editors-822x600.png",822,600);
    editor->setEditorsVisible(false);capture("custom-grid-2560x1440.png",2560,1440);capture("custom-grid-1920x1080.png",1920,1080);capture("custom-grid-1600x900.png",1600,900);

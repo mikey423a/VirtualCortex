@@ -82,27 +82,51 @@ public:
   if (enabled != smoothOutputs_) outputStates_ = {};
   smoothOutputs_ = enabled;
  }
- void prepareMixer(double rate)noexcept {tapStates_={};entryStates_={};outputStates_={};tapFrames_=static_cast<unsigned>(std::lround((std::isfinite(rate)?std::clamp(rate,8000.,192000.):48000.)*.005));mixerCoefficient_=std::exp(-1./((std::isfinite(rate)?std::clamp(rate,8000.,192000.):48000.)*.01));gains_=targets_;}
+ void setSmoothSources(bool enabled) noexcept {
+  if (enabled != smoothSources_) sourceStates_ = {};
+  smoothSources_ = enabled;
+ }
+ void prepareMixer(double rate)noexcept {tapStates_={};entryStates_={};outputStates_={};sourceStates_={};tapFrames_=static_cast<unsigned>(std::lround((std::isfinite(rate)?std::clamp(rate,8000.,192000.):48000.)*.005));mixerCoefficient_=std::exp(-1./((std::isfinite(rate)?std::clamp(rate,8000.,192000.):48000.)*.01));gains_=targets_;}
  template<class DSP>
  std::array<float,2> processCustom(std::array<float,2> input,DSP&& dsp)noexcept {
   for(auto& x:input)if(!std::isfinite(x))x=0;
   std::array<std::array<std::array<float,2>,9>,4> taps{};std::array<std::array<float,2>,4> bus{};std::array<double,2> sum{};double outputs=0;
   for(unsigned r=0;r<4;++r){
    for(int ch=0;ch<2;++ch){const float t=targets_[r][ch];gains_[r][ch]=(float)(t+mixerCoefficient_*(gains_[r][ch]-t));if(std::abs(gains_[r][ch]-t)<1.e-7f)gains_[r][ch]=t;}
-   if(!enabled_[r]){if(smoothTaps_)tapStates_[r]={};if(smoothEntries_)entryStates_[r]={};if(smoothOutputs_)outputStates_[r]={};continue;}const auto& route=custom_.rows[r];std::array<double,2> incoming{};unsigned count=0;
-   if(route.sources&1u){incoming={input[0],input[1]};++count;}
+   if(!enabled_[r]){
+    if(smoothTaps_)tapStates_[r]={};
+    if(smoothEntries_)entryStates_[r]={};
+    if(smoothOutputs_)outputStates_[r]={};
+    if(smoothSources_)sourceStates_[r]={};
+    continue;
+   }
+   const auto& route=custom_.rows[r];
+   const double inputWeight=sourceWeight(sourceStates_[r][0],(route.sources&1u)!=0);
+   std::array<double,2> incoming{};
+   if(inputWeight>0.)incoming={inputWeight*input[0],inputWeight*input[1]};
+   double count=inputWeight;
    for(unsigned from=0;from<r;++from){
     auto& transition=tapStates_[r][from];
-    if(!(route.sources&(2u<<from))||!enabled_[from]){
-     if(smoothTaps_) transition={};
+    auto& source=sourceStates_[r][from+1];
+    if(!enabled_[from]){
+     if(smoothTaps_)transition={};
+     if(smoothSources_)source={};
      continue;
     }
-    const int requested=route.sourceTaps[from];
-    const auto signal=smoothTaps_ ? transition.read(taps[from],requested,tapFrames_) : taps[from][requested];
-    for(int ch=0;ch<2;++ch) incoming[ch]+=signal[ch];
-    ++count;
+    const bool connected=(route.sources&(2u<<from))!=0;
+    const double weight=sourceWeight(source,connected);
+    if(weight==0.){
+     if(smoothTaps_)transition={};
+     continue;
+    }
+    // Keep reading the last connected tap throughout the disconnect fade.
+    if(connected)source.tap=route.sourceTaps[from];
+    const auto signal=smoothTaps_ ? transition.read(taps[from],source.tap,tapFrames_) : taps[from][source.tap];
+    for(int ch=0;ch<2;++ch)incoming[ch]+=weight*signal[ch];
+    count+=weight;
    }
-   std::array<float,2> frame{};for(int ch=0;ch<2;++ch)frame[ch]=(float)(incoming[ch]/(custom_.average&&count?count:1));
+   const double inputDivisor=custom_.average?std::max(1.,count):1.;
+   std::array<float,2> frame{};for(int ch=0;ch<2;++ch)frame[ch]=(float)(incoming[ch]/inputDivisor);
    if(route.channel){const float mono=route.channel==1?frame[0]:route.channel==2?frame[1]:(frame[0]+frame[1])*.5f;frame={mono,mono};}
    const auto& plan=lanes_[r].plan();std::size_t index=0;
    auto storeTap=[&](unsigned boundary){for(int ch=0;ch<2;++ch){const float value=frame[ch]*gains_[r][ch];taps[r][boundary][ch]=std::isfinite(value)?value:0.f;}};
@@ -228,6 +252,16 @@ private:
    return wetFrames;
   }
  };
+ struct SourceState {
+  SwitchRamp ramp{};
+  int tap=0;
+ };
+ double sourceWeight(SourceState& state,bool connected) const noexcept {
+  return smoothSources_ ? static_cast<double>(state.ramp.step(connected,tapFrames_))/tapFrames_
+                        : (connected ? 1. : 0.);
+ }
+ bool smoothSources_=false;
+ std::array<std::array<SourceState,4>,4> sourceStates_{};
  bool smoothEntries_=false;
  std::array<std::array<SwitchRamp,8>,4> entryStates_{};
  bool smoothOutputs_=false;
