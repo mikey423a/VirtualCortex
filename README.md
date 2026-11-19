@@ -2,11 +2,11 @@
 
 Windows x64 standalone guitar amplifier/effects application and VST3, built with JUCE 8.0.10 and ASIO enabled.
 
-## Current verified milestone: 6.49.0
+## Current verified milestone: 6.50.0
 
-[Windows build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/44503146399) · [Grid Stereo Reverb Tail Detail](validation/GRID-REVERB-DETAIL-6.49.md) · [Stereo Reverb Tail Detail](validation/REVERB-TAIL-DETAIL-6.48.md) · [Live Detail Read smoothing](validation/MODULATION-TOGGLE-6.47.md) · [Modulation detail and verification](validation/MODULATION-DETAIL-6.46.md) · [Routing-mode smoothing and verification](validation/MODE-TRANSITION-6.45.md) · [Row-entry smoothing and verification](validation/ROW-ENTRY-6.44.md) · [Grid symbols and verification](validation/GRID-SYMBOLS-6.43.md) · [Source-tap smoothing and verification](validation/source-tap-transition/6.42-release.md)
+[Windows build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/44512215846) · [Row output smoothing](validation/ROW-OUTPUT-6.50.md) · [Grid Stereo Reverb Tail Detail](validation/GRID-REVERB-DETAIL-6.49.md) · [Stereo Reverb Tail Detail](validation/REVERB-TAIL-DETAIL-6.48.md) · [Live Detail Read smoothing](validation/MODULATION-TOGGLE-6.47.md) · [Modulation detail and verification](validation/MODULATION-DETAIL-6.46.md) · [Routing-mode smoothing and verification](validation/MODE-TRANSITION-6.45.md) · [Row-entry smoothing and verification](validation/ROW-ENTRY-6.44.md) · [Grid symbols and verification](validation/GRID-SYMBOLS-6.43.md) · [Source-tap smoothing and verification](validation/source-tap-transition/6.42-release.md)
 
-Custom Routing now has optional 5 ms smoothing for source taps, row entries, and switches between Parallel, Series and Custom. The options are stored per preset and default off for old presets. All 48 regressions and Windows packaging checks passed.
+Custom Routing now has optional 5 ms smoothing for source taps, row entries, row outputs, and switches between Parallel, Series and Custom. The options are stored per preset and default off for old presets. All 48 regressions and Windows packaging checks passed.
 
 Chorus, Flanger and Vibrato offer an optional per-slot Detail Read for more accurate fractional delay interpolation. Live changes to Detail Read blend over 5 ms.
 
