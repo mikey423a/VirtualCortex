@@ -90,8 +90,33 @@ void CortexBlockButton::drawIcon(juce::Graphics& g,juce::Rectangle<float> r,int 
   const float heights[]={4,12,7,17};for(int i=0;i<4;++i)g.drawRect(cx+(i*5-9)*u,cy+(9-heights[i])*u,3*u,heights[i]*u,1.2f);return;
  }
  if(type==0){g.drawLine(cx-5*u,cy,cx+5*u,cy,1.2f);g.drawLine(cx,cy-5*u,cx,cy+5*u,1.2f);return;}
- if(type>=16&&type<=21){const char* symbols[]={"VI","RM","GN","CUT","EQ","RV"};drawCaption(g,symbols[type-16],r.toNearestInt(),r.getWidth()*.38f,colour,juce::Justification::centred,true);return;}
- if(type>=11&&type<=15){const char* symbols[]={"CH","FL","PH","WA","BC"};drawCaption(g,symbols[type-11],r.toNearestInt(),r.getWidth()*.45f,colour,juce::Justification::centred,true);return;}
+ // Render compact effect silhouettes at every grid and sidebar scale.
+ if(type==20)type=4;
+ if(type==21)type=6;
+ if(type>=11&&type<=19){
+  const auto stroke=juce::PathStrokeType(1.3f*u);
+  if(type==18||type==19){
+   p.startNewSubPath(cx-10*u,cy+7*u);
+   if(type==19){p.lineTo(cx-5*u,cy-5*u);p.lineTo(cx+5*u,cy-5*u);p.lineTo(cx+10*u,cy+7*u);}
+   else{p.lineTo(cx+9*u,cy-8*u);p.lineTo(cx+9*u,cy+7*u);p.closeSubPath();}
+  }else if(type==15){
+   p.startNewSubPath(cx-10*u,cy+8*u);
+   for(int step=0;step<4;++step){auto x=cx+(-10+5*step)*u;auto y=cy+(4-4*step)*u;p.lineTo(x,y);p.lineTo(x+5*u,y);}
+  }else{
+   const int curves=(type==11||type==12||type==13||type==17)?2:1;
+   for(int curve=0;curve<curves;++curve){
+    for(int i=0;i<=32;++i){
+     const float t=i/32.f;
+     const float cycles=type==16?2.5f:type==17?1.f+curve:1.f;
+     const float phase=curve*(type==13?3.14159f:type==12?1.57f:.65f);
+     const float x=cx+(20*t-10)*u;
+     const float y=cy+(type==14?8.f-15.f*std::sin(t*3.14159f):7.f*std::sin(t*6.2831853f*cycles+phase))*u;
+     if(i==0)p.startNewSubPath(x,y);else p.lineTo(x,y);
+    }
+   }
+  }
+  g.strokePath(p,stroke);return;
+ }
  if(type==8){g.drawLine(cx-10*u,cy+7*u,cx-3*u,cy-6*u,1.5f);g.drawLine(cx-3*u,cy-6*u,cx+10*u,cy-9*u,1.5f);return;}
  if(type==9||type==10){g.drawRoundedRectangle(r.reduced(3*u,1*u),2*u,1.4f);g.drawLine(cx-5*u,cy,cx+5*u,cy,1.2f);g.fillEllipse(cx-2*u,cy+5*u,4*u,4*u);return;}
  if(type==2){g.drawRoundedRectangle(r.reduced(2*u,5*u),1.f,1.4f);g.drawLine(r.getX()+5*u,cy,r.getRight()-5*u,cy,1.2f);return;}
