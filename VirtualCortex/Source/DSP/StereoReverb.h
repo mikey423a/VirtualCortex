@@ -16,7 +16,18 @@ class StereoReverb {
  struct Delay {
   std::vector<float> data;std::size_t index=0;
   void prepare(std::size_t size){data.assign(size,0);index=0;}
-  float read(double delay)const noexcept {delay=std::clamp(delay,1.,(double)data.size()-2);double pos=(double)index-delay;if(pos<0)pos+=data.size();auto a=(std::size_t)pos;auto b=a+1==data.size()?0:a+1;float f=(float)(pos-a);return data[a]+f*(data[b]-data[a]);}
+  float read(double delay) const noexcept {
+   const auto size = data.size();
+   delay = std::clamp(delay, 1., static_cast<double>(size)-2.);
+   double position = static_cast<double>(index)-delay;
+   if (position < 0.) position += static_cast<double>(size);
+   // A tiny negative offset can round up to size after wrapping.
+   if (position >= static_cast<double>(size)) position = 0.;
+   const auto first = static_cast<std::size_t>(position);
+   const auto second = first+1 == size ? 0 : first+1;
+   const float fraction = static_cast<float>(position-first);
+   return data[first]+fraction*(data[second]-data[first]);
+  }
   void write(float x)noexcept {data[index]=std::abs(x)<1.e-20f?0.f:x;if(++index==data.size())index=0;}
  };
  struct Allpass {Delay delay;double length=1;float process(float x,float g)noexcept{float d=delay.read(length),y=d-g*x;delay.write(x+g*y);return y;}};
@@ -110,4 +121,5 @@ private:
  float mix=0,wetGain=1,wetTarget=1,lowC=0,highC=0,inputHPC=0,inputLPC=0;bool awake=false,initialized=false;
 };
 }
+
 

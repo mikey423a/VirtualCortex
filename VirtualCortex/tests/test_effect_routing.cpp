@@ -32,13 +32,14 @@ int main(){try{
   routes.rows[0].sources=1;check(routed->setRowRouting(routes),"reconnect");
   for(int i=0;i<2400;++i){float l=i==0?.1f:0.f,r=i==0?-.2f:0.f;compare(tick(*routed,l,r),tick(*reference,l,r));}
  }
- for(double rate:{44100.,48000.,96000.}) for(auto type:{vc::BlockType::GridStereoDelay,vc::BlockType::GridStereoReverb}){
+ for(bool entryEdit:{false,true}) for(double rate:{44100.,48000.,96000.}) for(auto type:{vc::BlockType::GridStereoDelay,vc::BlockType::GridStereoReverb}){
   auto moving=std::make_unique<vc::PortableAudioEngine>();
   auto fixed=std::make_unique<vc::PortableAudioEngine>();
   vc::SignalGrid grid;
   grid.set(0,0,{type,true});
   vc::RowRouting routing;
-  routing.rows[0].output=false;
+  routing.rows[0].output=entryEdit;
+  routing.rows[1].output=!entryEdit;
   routing.rows[1].sources=2;
   routing.rows[1].sourceTaps[0]=8;
   for(auto* engine:{moving.get(),fixed.get()}){
@@ -51,27 +52,44 @@ int main(){try{
    params.mix=1;params.time=.003f;params.rate=.005f;params.feedback=.5f;
    check(engine->setSlotParameters(0,0,params),"Configure effect");
   }
-  routing.smoothSourceTaps=true;
-  routing.rows[1].sourceTaps[0]=0;
+  routing.smoothSourceTaps=!entryEdit;
+  routing.smoothRowEntries=entryEdit;
+  if(!entryEdit) routing.rows[1].sourceTaps[0]=0;
   moving->setRowRouting(routing);
   moving->enableSourceTapBlending(true);
+  moving->enableRowEntryBlending(true);
   const int change=int(rate/2),length=int(std::lround(rate*.005));
-  double tail=0,hardStep=0,softStep=0;
+  const int resume=change+length+500;
+  double tail=0,hardStep=0,softStep=0,resumedTail=0;
   float previous=0;
   for(int i=0;i<change+length+8000;++i){
    const float input=i<change+length?.2f*std::cos((i-change)*.043f):0.f;
    std::array<float,2> dry{input,-.73f*input},wet=dry,output=dry;
-   if(i==change){routing.rows[1].sourceTaps[0]=8;moving->setRowRouting(routing);}
-   check(fixed->process(wet.data(),1,2,vc::ParallelGrid::Mode::Custom),"Fixed render");
+   if(i==change){
+    if(entryEdit) routing.rows[0].entryColumn=1;
+    else routing.rows[1].sourceTaps[0]=8;
+    moving->setRowRouting(routing);
+   }
+   if(entryEdit&&i==resume){
+    routing.rows[0].entryColumn=0;
+    moving->setRowRouting(routing);
+   }
+   // Hold the reference effect at the same frame where the blend reaches dry.
+   if(!entryEdit||i<change+length-1||i>=resume)
+    check(fixed->process(wet.data(),1,2,vc::ParallelGrid::Mode::Custom),"Fixed render");
    check(moving->process(output.data(),1,2,vc::ParallelGrid::Mode::Custom),"Moving render");
-   const float w=std::clamp(float(i-change+1)/length,0.f,1.f);
+   const float progress=std::clamp(float(i-change+1)/length,0.f,1.f);
+   const float reentry=std::clamp(float(i-resume+1)/length,0.f,1.f);
+   const float w=entryEdit ? (i<resume ? 1.f-progress : reentry) : progress;
    for(int ch=0;ch<2;++ch)check(std::abs(output[ch]-(dry[ch]*(1-w)+wet[ch]*w))<2.e-6f,"Actual tap fade reference");
-   if(i==change){hardStep=std::abs(wet[0]-previous);softStep=std::abs(output[0]-previous);}
+   if(i==change){hardStep=std::abs((entryEdit?dry[0]:wet[0])-previous);softStep=std::abs(output[0]-previous);}
    previous=output[0];
-   if(i>=change+length)tail+=std::abs(output[0])+std::abs(output[1]);
+   if(i>=change+length&&(!entryEdit||i<resume))tail+=std::abs(output[0])+std::abs(output[1]);
+   if(entryEdit&&i>=resume)resumedTail+=std::abs(output[0])+std::abs(output[1]);
   }
-  check(tail>.001,"Lost effect tail after tap edit");
-  std::cout<<"TAP_EFFECT rate="<<rate<<" type="<<int(type)<<" hard_step="<<hardStep<<" blend_step="<<softStep<<" tail_abs_sum="<<tail<<"\n";
+  if(entryEdit){check(tail==0,"Fully skipped effect should be silent after input ends");check(resumedTail>.001,"Reentered effect lost its retained tail");}
+  else check(tail>.001,"Lost effect tail after tap edit");
+  std::cout<<(entryEdit?"ENTRY_EFFECT rate=":"TAP_EFFECT rate=")<<rate<<" type="<<int(type)<<" hard_step="<<hardStep<<" blend_step="<<softStep<<" tail_abs_sum="<<tail<<" resumed_tail="<<resumedTail<<"\n";
  }
  std::cout<<"PASS: actual stereo delay/reverb disconnected tails, skipped state and reconnection\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

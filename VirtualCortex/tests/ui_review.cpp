@@ -291,6 +291,13 @@ int main(int argc,char** argv){
    auto* smooth=dynamic_cast<juce::ToggleButton*>(panel->findChildWithID("route-smooth-taps"));
    require(routingEditor&&smooth,"Tap smoothing control missing");
    require(smooth->isVisible()&&!smooth->getBounds().isEmpty()&&panel->getLocalBounds().contains(smooth->getBounds()),"Tap smoothing control hidden or clipped");
+   auto* entryFade=dynamic_cast<juce::ToggleButton*>(panel->findChildWithID("route-smooth-entries"));
+   require(entryFade&&entryFade->isVisible()&&!entryFade->getBounds().isEmpty()
+       &&panel->getLocalBounds().contains(entryFade->getBounds()),"Entry smoothing control hidden or clipped");
+   require(!entryFade->getToggleState(),"Entry smoothing must default off");
+   entryFade->setToggleState(true,juce::dontSendNotification);
+   entryFade->onClick();
+   require(processor->getRowRouting().smoothRowEntries,"Entry smoothing control did not update routing");
    require(!smooth->getToggleState(),"Tap smoothing must default off");
    smooth->setToggleState(true,juce::dontSendNotification);
    smooth->onClick();
@@ -300,17 +307,22 @@ int main(int argc,char** argv){
    auto legacyXml=juce::AudioProcessor::getXmlFromBinary(smoothPreset.getData(),int(smoothPreset.getSize()));
    require(legacyXml!=nullptr,"Could not decode preset fixture");
    legacyXml->removeAttribute("smoothSourceTaps");
+   legacyXml->removeAttribute("smoothRowEntries");
    juce::MemoryBlock legacyPreset;
    juce::AudioProcessor::copyXmlToBinary(*legacyXml,legacyPreset);
    processor->setStateInformation(legacyPreset.getData(),int(legacyPreset.getSize()));
+   require(!processor->getRowRouting().smoothRowEntries,"Legacy preset failed to reset entry smoothing");
    require(!processor->getRowRouting().smoothSourceTaps,"Legacy preset failed to reset tap smoothing");
    processor->setStateInformation(smoothPreset.getData(),int(smoothPreset.getSize()));
    routingEditor->refresh();
    require(processor->getRowRouting().smoothSourceTaps&&smooth->getToggleState(),"Preset failed to restore tap smoothing");
+   require(processor->getRowRouting().smoothRowEntries&&entryFade->getToggleState(),"Preset failed to restore entry smoothing");
    capture("smooth-source-taps-2560x1440.png",2560,1440);
    capture("smooth-source-taps-822x600.png",822,600);
    smooth->setToggleState(false,juce::dontSendNotification);
    smooth->onClick();
+   entryFade->setToggleState(false,juce::dontSendNotification);
+   entryFade->onClick();
    dynamic_cast<juce::Button*>(panel->findChildWithID("routing-close"))->onClick();require(!panel->isVisible(),"Routing close failed");
    editor->setEditorsVisible(true);capture("custom-grid-editors-2560x1440.png",2560,1440);capture("custom-grid-editors-822x600.png",822,600);
    editor->setEditorsVisible(false);capture("custom-grid-2560x1440.png",2560,1440);capture("custom-grid-1920x1080.png",1920,1080);capture("custom-grid-1600x900.png",1600,900);
