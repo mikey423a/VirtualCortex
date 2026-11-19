@@ -260,6 +260,17 @@ private:
   std::size_t neuralIndex=0;
   std::size_t irPosition=0;
   float gate=0.f, cab=0.f, eq=0.f, reverb=0.f, phase=0.f, ringRate=-1.f, ringStep=0.f;
+  // A prepared or newly visited slot starts at its saved setting.
+  int detailReadFrames=-1;
+  float detailReadMix(bool enabled, int duration) noexcept {
+   const int target=enabled?duration:0;
+   if(detailReadFrames<0) detailReadFrames=target;
+   else if(detailReadFrames<target) ++detailReadFrames;
+   else if(detailReadFrames>target) --detailReadFrames;
+   if(detailReadFrames==0) return 0.f;
+   if(detailReadFrames==duration) return 1.f;
+   return static_cast<float>(detailReadFrames)/static_cast<float>(duration);
+  }
   std::vector<float> delay;
   std::size_t index=0;
  };
@@ -355,11 +366,11 @@ private:
    }
    case BlockType::Compressor:return s.compressor.process(x,p.drive,p.feedback,p.rate,p.depth,p.time,p.mix,fs);
    case BlockType::Overdrive:case BlockType::Distortion:return s.clippingDrive.process(x,p.drive,p.rate,p.depth,p.mix,fs,b==BlockType::Distortion);
-   case BlockType::Chorus:case BlockType::Flanger:return modulatedDelay(x,s.delay,s.index,s.phase,p.mix,p.time,p.feedback,p.rate,p.depth,fs,b==BlockType::Flanger,p.detailedModulation);
+   case BlockType::Chorus:case BlockType::Flanger:return modulatedDelay(x,s.delay,s.index,s.phase,p.mix,p.time,p.feedback,p.rate,p.depth,fs,b==BlockType::Flanger,s.detailReadMix(p.detailedModulation,static_cast<int>(modeFadeFrames_)));
    case BlockType::Phaser:return s.phaser.process(x,p.mix,p.time,p.feedback,p.rate,p.depth,fs);
    case BlockType::Wah:return s.wah.process(x,p.drive,p.mix,p.time,p.feedback,p.rate,p.depth,fs);
    case BlockType::BitCrusher:return s.crusher.process(x,p.drive,p.mix,p.time,p.depth);
-   case BlockType::Vibrato:return modulatedDelay(x,s.delay,s.index,s.phase,p.mix,p.time,0.f,p.rate,p.depth,fs,false,p.detailedModulation);
+   case BlockType::Vibrato:return modulatedDelay(x,s.delay,s.index,s.phase,p.mix,p.time,0.f,p.rate,p.depth,fs,false,s.detailReadMix(p.detailedModulation,static_cast<int>(modeFadeFrames_)));
    case BlockType::RingModulator:{if(p.rate!=s.ringRate){s.ringRate=p.rate;s.ringStep=2.f*pi*(10.f*std::pow(200.f,p.rate))/fs;}const float wet=x*(1.f-p.depth+p.depth*std::sin(s.phase));s.phase+=s.ringStep;if(s.phase>=2.f*pi)s.phase-=2.f*pi;return (1.f-p.mix)*x+p.mix*wet;}
    case BlockType::Gain:return s.utility.process(x,p.drive,p.feedback,fs);
    case BlockType::LowHighCut:return s.cuts.process(x,p.drive,p.time,p.mix,fs);

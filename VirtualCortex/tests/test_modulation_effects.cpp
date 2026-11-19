@@ -106,5 +106,54 @@ int main(){
             <<" detail_db="<<10.*std::log10(cubicEnergy/referenceEnergy)<<"\n";
   }
  }
+ // Exercise live toggles through the real grid with continuously running
+ // feedback. Fixed-mode engines provide both endpoints for each sample.
+ for(double fs:{44100.,48000.,96000.}) {
+  for(auto type:{vc::BlockType::Chorus,vc::BlockType::Flanger,vc::BlockType::Vibrato}) {
+   auto moving=std::make_unique<vc::PortableAudioEngine>();
+   auto linear=std::make_unique<vc::PortableAudioEngine>();
+   auto cubic=std::make_unique<vc::PortableAudioEngine>();
+   vc::SignalGrid grid;
+   assert(grid.set(0,0,{type,true}));
+   vc::SlotParameters controls;
+   controls.mix=1.f;controls.feedback=.8f;controls.depth=.8f;controls.rate=.4f;
+   for(auto* engine:{moving.get(),linear.get(),cubic.get()}) {
+    engine->prepare(fs,4096);
+    assert(engine->configure(grid,{true,false,false,false}));
+    controls.detailedModulation=engine==cubic.get();
+    assert(engine->setSlotParameters(0,0,controls));
+   }
+   const int duration=static_cast<int>(std::lround(fs*.005));
+   const int first=5000,reverse=first+duration/2,enableAgain=first+3*duration;
+   int weightFrames=0;
+   double firstStep=0,hardStep=0;
+   for(int i=0;i<enableAgain+2*duration;++i) {
+    const bool enabled=(i>=first&&i<reverse)||i>=enableAgain;
+    if(i==first||i==reverse||i==enableAgain){
+     controls.detailedModulation=enabled;
+     assert(moving->setSlotParameters(0,0,controls));
+    }
+    if(enabled)weightFrames=std::min(duration,weightFrames+1);
+    else weightFrames=std::max(0,weightFrames-1);
+    const float weight=static_cast<float>(weightFrames)/duration;
+    std::array<float,2> a{.2f*std::sin(i*.87f),.15f*std::cos(i*.69f)},b=a,y=a;
+    assert(linear->process(a.data(),1,2));
+    assert(cubic->process(b.data(),1,2));
+    assert(moving->process(y.data(),1,2));
+    for(int ch=0;ch<2;++ch){
+     const float expected=weightFrames==duration ? b[ch] : a[ch]+weight*(b[ch]-a[ch]);
+     assert(std::abs(y[ch]-expected)<2.e-6f);
+     if(weightFrames==0||weightFrames==duration)assert(y[ch]==expected);
+     if(i==first) {
+      firstStep=std::max(firstStep,static_cast<double>(std::abs(y[ch]-a[ch])));
+      hardStep=std::max(hardStep,static_cast<double>(std::abs(b[ch]-a[ch])));
+     }
+    }
+   }
+   assert(hardStep>1.e-5&&firstStep<hardStep*.02);
+   std::cout<<"MOD_TOGGLE rate="<<fs<<" block="<<int(type)
+            <<" immediate_residual="<<hardStep<<" ramp_residual="<<firstStep<<"\n";
+  }
+ }
  std::cout<<"PASS: chorus/flanger delay, phaser magnitude, wah response, quantization/hold, dry mix and rate/grid matrix\n";
 }

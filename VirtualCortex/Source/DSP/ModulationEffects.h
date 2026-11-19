@@ -6,7 +6,7 @@
 #include <vector>
 namespace vc {
 // Original fractional-delay modulation. Storage is allocated by prepare(), never process().
-inline float modulatedDelay(float x,std::vector<float>& buffer,std::size_t& index,float& phase,float mix,float time,float feedback,float rate,float depth,float fs,bool flanger,bool detail=false) noexcept {
+inline float modulatedDelay(float x,std::vector<float>& buffer,std::size_t& index,float& phase,float mix,float time,float feedback,float rate,float depth,float fs,bool flanger,float detailMix=0.f) noexcept {
  const float lfo=.5f+.5f*std::sin(phase);
  const float milliseconds=flanger?(.2f+5.f*time+3.f*depth*lfo):(5.f+20.f*time+10.f*depth*lfo);
  const float distance=std::clamp(fs*.001f*milliseconds,1.f,(float)(buffer.size()-1));
@@ -19,15 +19,16 @@ inline float modulatedDelay(float x,std::vector<float>& buffer,std::size_t& inde
  // Use the wider interpolation only for the audible read. The feedback
  // path keeps its bounded linear interpolation in both modes.
  float wet = delayed;
- if (detail && whole>=2 && whole+2<buffer.size() && fraction!=0.f) {
+ if (detailMix>0.f && whole>=2 && whole+2<buffer.size() && fraction!=0.f) {
   const auto size=buffer.size();
   // The write index has already advanced. The surrounding reads refer to
   // the original read position, which excludes the current input sample.
   const float newer=buffer[(read+1)%size];
   const float older2=buffer[(older+size-1)%size];
   const float a=buffer[read], b=buffer[older];
-  wet=a+.5f*fraction*((b-newer)+fraction*((2.f*newer-5.f*a+4.f*b-older2)
+  const float cubic=a+.5f*fraction*((b-newer)+fraction*((2.f*newer-5.f*a+4.f*b-older2)
       +fraction*(3.f*(a-b)+older2-newer)));
+  wet = detailMix>=1.f ? cubic : delayed+detailMix*(cubic-delayed);
  }
  return (1.f-mix)*x+mix*wet;
 }
