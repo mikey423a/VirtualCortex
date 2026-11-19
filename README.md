@@ -2,17 +2,11 @@
 
 Windows x64 standalone guitar amplifier/effects application and VST3, built with JUCE 8.0.10 and ASIO enabled.
 
-## Current verified milestone: 6.41.0
+## Current verified milestone: 6.42.0
 
-[Windows build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/44402148003) · [Reverb control efficiency and verification](VirtualCortex/REVERB-CONTROLS-6.41.md)
+[Windows build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/44443526608) · [Source-tap smoothing and verification](validation/source-tap-transition/6.42-release.md)
 
-Stereo Reverb avoids redundant calculations for settled controls and unchanged ducking/wet-level settings. Frozen 6.40 comparisons check exact audio under automation, sanitization, bypass and sample-rate restarts. This is a performance change, not a new reverb sound or proprietary algorithm. Existing IR/model transitions, presets and routing controls are preserved.
-
-Actual Windows EXE/VST3 compilation, all 48 regressions, pluginval strictness 5, standalone startup, installer install/uninstall and downloaded archive/package hashes passed. See release notes for exact benchmark scope and identifiers.
-
-Installer unsigned. Anubis/Windows11 hardware and subjective listening remain user-side. Physical OS popup/file-dialog interaction, broader audio topology-transition handling and optional compatible sonic improvements remain unfinished. No proprietary DSP equivalence or complete playable catalog claim.
-
-See [effects quality](VirtualCortex/EFFECTS-QUALITY-PROGRESS.md) for remaining work.
+Custom Routing now has an optional 5 ms fade for source-tap edits. It is stored per preset and defaults off for old presets. All 48 regressions and Windows packaging checks passed.
 
 The sections below describe earlier milestones and their historical scope.
 
