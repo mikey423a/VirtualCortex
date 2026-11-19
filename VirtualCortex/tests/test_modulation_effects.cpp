@@ -72,5 +72,39 @@ int main(){
   assert(legacy==detail&&legacyIndex==detailIndex&&legacyPhase==detailPhase);
   std::cout<<"MOD_DETAIL rate="<<fs<<" squared_error_ratio="<<newError/oldError<<"\n";
  }
+ // Compare moving reads with a band-limited source evaluated at the current
+ // fractional position. This reference includes the intentional pitch sweep.
+ for(float fs:{44100.f,48000.f,96000.f}) for(bool flanger:{false,true}) {
+  for(float hz:{1000.f,6500.f}) {
+   std::vector<float> linear(4096),cubic(4096);
+   std::size_t linearIndex=0,cubicIndex=0;
+   float linearPhase=0,cubicPhase=0;
+   constexpr float time=.23f,rate=.37f,depth=.81f;
+   const double omega=6.283185307179586*hz/fs;
+   double linearError=0,cubicError=0,linearEnergy=0,cubicEnergy=0,referenceEnergy=0;
+   for(int i=0;i<static_cast<int>(fs);++i) {
+    const float x=static_cast<float>(.2*std::sin(omega*i));
+    const float lfo=.5f+.5f*std::sin(linearPhase);
+    const float ms=flanger ? .2f+5.f*time+3.f*depth*lfo : 5.f+20.f*time+10.f*depth*lfo;
+    const float distance=std::clamp(fs*.001f*ms,1.f,4095.f);
+    const float a=vc::modulatedDelay(x,linear,linearIndex,linearPhase,1.f,time,0.f,rate,depth,fs,flanger);
+    const float b=vc::modulatedDelay(x,cubic,cubicIndex,cubicPhase,1.f,time,0.f,rate,depth,fs,flanger,true);
+    if(i<4096)continue;
+    const double expected=.2*std::sin(omega*(i-static_cast<double>(distance)));
+    linearError+=(a-expected)*(a-expected);
+    cubicError+=(b-expected)*(b-expected);
+    linearEnergy+=a*a;
+    cubicEnergy+=b*b;
+    referenceEnergy+=expected*expected;
+   }
+   assert(linearPhase==cubicPhase&&linear==cubic);
+   assert(cubicError<.5*linearError);
+   assert(std::abs(cubicEnergy/referenceEnergy-1.)<std::abs(linearEnergy/referenceEnergy-1.));
+   std::cout<<"MOD_SWEEP rate="<<fs<<" flanger="<<flanger<<" hz="<<hz
+            <<" error_ratio="<<cubicError/linearError
+            <<" linear_db="<<10.*std::log10(linearEnergy/referenceEnergy)
+            <<" detail_db="<<10.*std::log10(cubicEnergy/referenceEnergy)<<"\n";
+  }
+ }
  std::cout<<"PASS: chorus/flanger delay, phaser magnitude, wah response, quantization/hold, dry mix and rate/grid matrix\n";
 }
