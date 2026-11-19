@@ -24,7 +24,7 @@ public:
   switch(type){
    case 30:{StereoDelayParameters p;p.enabled=true;p.timeL=v[0];p.timeR=v[1];p.feedback=v[2];p.cross=v[3];p.lowCut=v[4];p.highCut=v[5];p.mix=v[6];p.modRate=v[7];p.modDepth=v[8];p.ducking=v[9];p.duckRelease=v[10];p.width=v[11];p.wetLevel=v[12];p.glide=v[13];p.filterMix=v[17];p.diffusion=v[18];p.pingPong=v[19]>.5f;p.tape=v[20]>.5f;
     if(v[21]>.5f){p.timeL=sequenceStepMilliseconds(v[0],tempo(14),v[15],true);p.timeR=sequenceStepMilliseconds(v[1],tempo(14),v[16],true);}delay->configure(p);break;}
-   case 31:{StereoReverbParameters p;p.enabled=true;p.decay=v[0];p.size=v[1];p.preDelay=v[2];p.diffusion=v[3];p.early=v[4];p.mix=v[5];p.lowDecay=v[6];p.highDecay=v[7];p.lowFreq=v[8];p.highFreq=v[9];p.modRate=v[10];p.modDepth=v[11];p.width=v[12];p.ducking=v[13];p.release=v[14];p.wetLevel=v[15];p.inputHP=v[16];p.inputLP=v[17];p.preGlide=v[18]>.5f;reverb->configure(p);break;}
+   case 31:{StereoReverbParameters p;p.enabled=true;p.decay=v[0];p.size=v[1];p.preDelay=v[2];p.diffusion=v[3];p.early=v[4];p.mix=v[5];p.lowDecay=v[6];p.highDecay=v[7];p.lowFreq=v[8];p.highFreq=v[9];p.modRate=v[10];p.modDepth=v[11];p.width=v[12];p.ducking=v[13];p.release=v[14];p.wetLevel=v[15];p.inputHP=v[16];p.inputLP=v[17];p.preGlide=v[18]>.5f;p.detailRead=v[19]>.5f;reverb->configure(p);break;}
    case 32:{std::array<MultiHeadEcho::Head,4> heads;for(int i=0;i<4;++i)heads[i]={v[4*i],v[4*i+1],v[4*i+2],v[4*i+3]};echo->configure(heads);break;}
    case 33:{IntervalEcho::Parameters p;p.enabled=true;p.time=v[0];p.feedback=v[1];p.a=v[2];p.b=v[3];p.step=sequenceStepMilliseconds(v[4],tempo(7),v[8],v[9]>.5f);p.cutoff=v[5];p.mix=v[6];pitch->configure(p);break;}
    case 34:loop->configure(v[0],v[1],v[2],v[3]>.5f,true);break;

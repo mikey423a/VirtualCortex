@@ -32,7 +32,7 @@ inline constexpr std::array<AdvancedDefinition,7> advancedDefinitions{{
   {"sdTape","PITCH GLIDE",0.f,1.f,0.f,true},
   {"sdSync","TEMPO SYNC",0.f,1.f,0.f,true},
  }}},
- {"Grid Stereo Reverb",19,{{
+ {"Grid Stereo Reverb",20,{{
   {"srDecay","DECAY (s)",0.2f,20.0f,2.5f,false},
   {"srSize","SIZE",0.5f,2.0f,1.0f,false},
   {"srPreDelay","PRE DELAY (ms)",0.0f,500.0f,20.0f,false},
@@ -52,6 +52,7 @@ inline constexpr std::array<AdvancedDefinition,7> advancedDefinitions{{
   {"srInputHP","INPUT HIGH PASS (Hz)",20.0f,1000.0f,40.0f,false},
   {"srInputLP","INPUT LOW PASS (Hz)",1000.0f,20000.0f,16000.0f,false},
   {"srPreGlide","PRE DELAY GLIDE",0.f,1.f,1.f,true},
+  {"srDetailRead","TAIL DETAIL",0.f,1.f,0.f,true},
  }}},
  {"Grid Four-head Echo",17,{{
   {"mh1Time","HEAD 1 TIME (ms)",1.0f,4000.0f,100.0f,false},

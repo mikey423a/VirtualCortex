@@ -283,6 +283,25 @@ int main(int argc,char** argv){
      if(auto* button=dynamic_cast<juce::ToggleButton*>(control)){button->setToggleState(true,juce::dontSendNotification);button->onClick();}
      require(std::abs(processor->getAdvancedValues(2,7)[i]-value)<.01f,"Advanced slot control unbound");
      if(i%8==0)capture("advanced-"+juce::String(type)+"-page-"+juce::String(i/8+1)+"-2560x1440.png",2560,1440);
+     if(type==31&&i==19){
+      capture("grid-reverb-tail-detail-2560x1440.png",2560,1440);
+      capture("grid-reverb-tail-detail-822x600.png",822,600);
+      require(processor->getAdvancedValues(1,7)[i]==0.f,"Grid Tail Detail leaked to a different slot");
+      require(processor->parameters.getRawParameterValue("srDetailRead")->load()<.5f,"Grid Tail Detail leaked to post-chain reverb");
+      juce::MemoryBlock saved;
+      processor->getStateInformation(saved);
+      auto legacy=juce::AudioProcessor::getXmlFromBinary(saved.getData(),(int)saved.getSize());
+      require(legacy!=nullptr,"Grid reverb preset XML invalid");
+      const juce::String property{"slot_2_7_advanced_srDetailRead"};
+      require(legacy->hasAttribute(property),"Grid Tail Detail missing from preset");
+      legacy->removeAttribute(property);
+      juce::MemoryBlock oldPreset;
+      juce::AudioProcessor::copyXmlToBinary(*legacy,oldPreset);
+      processor->setStateInformation(oldPreset.getData(),(int)oldPreset.getSize());
+      require(processor->getAdvancedValues(2,7)[i]==0.f,"Old grid reverb preset enabled Tail Detail");
+      processor->setStateInformation(saved.getData(),(int)saved.getSize());
+      require(processor->getAdvancedValues(2,7)[i]==1.f,"Grid reverb preset lost Tail Detail");
+     }
     }
    }
   }
