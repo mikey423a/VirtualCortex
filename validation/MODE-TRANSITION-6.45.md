@@ -1,0 +1,5 @@
+# Virtual Cortex 6.45 candidate
+
+Smooth routing modes (5 ms) is optional, per preset, and off for older presets. On a switch between Parallel, Series and Custom, the grid emits its last sample and fades the difference between it and the new mode's first sample over 5 ms. The new graph runs once. This correction acts at the grid output, before post-chain effects. Dual Mono switches immediately. This does not run or preserve a separate old graph.
+
+Local GCC regressions passed sustained stereo input through grid delay and reverb with Parallel to Series followed by Custom midway through the fade. The 48 kHz raw first-sample step peaked at 0.0650867, and the smoothed grid output had zero step on either switch frame. Steady samples after the second fade matched the immediate reference exactly, including tails. Tests also passed at 44.1 and 96 kHz. Native control, preset recall, Windows package and screenshot checks pending. Verified release remains 6.44. Next listen on Anubis and measure the complete post-effects signal during switching.

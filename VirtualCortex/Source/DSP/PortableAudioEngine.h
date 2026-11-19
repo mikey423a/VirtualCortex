@@ -147,6 +147,11 @@ public:
  const SlotParameters* getSlotParameters(std::size_t row,std::size_t col) const noexcept {
   return SignalGrid::valid(row,col) ? &parameters_[row][col] : nullptr;
  }
+ void enableRoutingModeSmoothing(bool active) noexcept {
+  const bool enabled = active && smoothRoutingModesRequested_;
+  if (enabled != smoothRoutingModes_) modeTransition_ = {};
+  smoothRoutingModes_ = enabled;
+ }
  void enableRowEntryBlending(bool active) noexcept {
   routing_.setSmoothRowEntries(active && smoothRowEntriesRequested_);
  }
@@ -154,10 +159,13 @@ public:
  bool setRowRouting(const RowRouting& c)noexcept{if (!routing_.setRowRouting(c)) return false;
   smoothSourceTapsRequested_=c.smoothSourceTaps;
   smoothRowEntriesRequested_=c.smoothRowEntries;
+  smoothRoutingModesRequested_=c.smoothRoutingModes;
   return true;}
  void prepare(double sampleRate, std::size_t maxDelaySamples = 0) {
+  modeTransition_ = {};
   hasProcessed_=false;
   routing_.prepareMixer(sampleRate);
+  modeFadeFrames_ = static_cast<unsigned>(std::lround((std::isfinite(sampleRate) ? std::clamp(sampleRate,8000.,192000.) : 48000.)*.005));
   // A device restart or sample-rate change must not resume an unfinished
   // transition from the previous stream. Retain the selected model/IR but
   // discard obsolete crossfade state and previous FIR coefficients.
@@ -205,7 +213,12 @@ public:
      if(block==BlockType::GridStereoDelay&&stereoSlots_[row][col])return stereoSlots_[row][col]->process(frame[0],frame[1]);
      for(std::size_t c=0;c<channels;++c)frame[c]=mono(c,row,col,block,frame[c]);return frame;
     });
-   for(std::size_t c=0;c<channels;++c)samples[i*channels+c]=std::isfinite(result[c])?std::clamp(result[c],-1.f,1.f):0.f;
+   auto output = result;
+   for (auto& sample : output)
+    sample = std::isfinite(sample) ? std::clamp(sample,-1.f,1.f) : 0.f;
+   if (smoothRoutingModes_)
+    output = modeTransition_.process(mode, output, modeFadeFrames_);
+   for(std::size_t c=0;c<channels;++c) samples[i*channels+c]=output[c];
    for (auto& lane:*neural_) for (auto& slot:lane) if(slot.transition) {
     if(++slot.fade>=neuralFadeSamples) slot.transition=false;
    }
@@ -361,6 +374,39 @@ private:
   }
  }
  bool smoothSourceTapsRequested_=false;
+ // At a mode edit, match the last emitted grid sample and ramp the
+ // correction to zero. The new graph processes each effect only once.
+ struct ModeTransition {
+  bool valid=false;
+  unsigned remaining=0;
+  ParallelGrid::Mode previousMode=ParallelGrid::Mode::Parallel;
+  std::array<float,2> previousOutput{}, correction{};
+  std::array<float,2> process(ParallelGrid::Mode mode, std::array<float,2> output,
+                              unsigned length) noexcept {
+   if (mode == ParallelGrid::Mode::DualMono) {
+    *this = {};
+    return output;
+   }
+   if (valid && mode != previousMode) {
+    for (unsigned ch=0; ch<2; ++ch) correction[ch] = previousOutput[ch]-output[ch];
+    remaining = length;
+    output = previousOutput;
+    --remaining;
+   } else if (remaining != 0) {
+    const float weight = static_cast<float>(remaining--)/static_cast<float>(length);
+    for (unsigned ch=0; ch<2; ++ch)
+     output[ch] = std::clamp(output[ch]+weight*correction[ch],-1.f,1.f);
+   }
+   previousOutput = output;
+   previousMode = mode;
+   valid = true;
+   return output;
+  }
+ };
+ ModeTransition modeTransition_{};
+ unsigned modeFadeFrames_=240;
+ bool smoothRoutingModes_=false;
+ bool smoothRoutingModesRequested_=false;
  bool smoothRowEntriesRequested_=false;
  ParallelGrid routing_;
  bool hasProcessed_=false;

@@ -13,6 +13,7 @@ struct RowRouting {
  std::array<RowRoute,4> rows{};bool average=true;
  bool smoothSourceTaps=false;
  bool smoothRowEntries=false;
+ bool smoothRoutingModes=false;
  static bool valid(const RowRouting& c)noexcept {
   for(unsigned r=0;r<4;++r){const auto& p=c.rows[r];if(p.sources&~((1u<<(r+1))-1u))return false;
    if(p.entryColumn<0||p.entryColumn>7)return false;for(auto tap:p.sourceTaps)if(tap<0||tap>8)return false;

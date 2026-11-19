@@ -395,6 +395,7 @@ void VirtualCortexProcessor::processBlock(juce::AudioBuffer<float>& b,juce::Midi
  const auto liveGrid=getEditableGrid();const bool gridActive=!bypass&&cached.gridMode->load()>.5f;
  gridAudio.enableSourceTapBlending(gridActive && route==3);
  gridAudio.enableRowEntryBlending(gridActive && route==3);
+ gridAudio.enableRoutingModeSmoothing(gridActive && !dual);
  for(int r=0;r<4;++r)for(int c=0;c<8;++c){const auto block=*liveGrid.get(r,c);
   if(!gridActive||!isGridLaneEnabled(r)||!block.enabled||(int)block.type!=35||advancedControls[r][c].values[10].load()<=.5f)
    emitGridNote(midi,r*8+c,-1,0,0);
@@ -738,6 +739,7 @@ void VirtualCortexProcessor::getStateInformation(juce::MemoryBlock& dest){
  auto state=parameters.copyState();
  state.setProperty("routingMode",getRoutingMode(),nullptr);
  const auto savedRoutes=getRowRouting();
+ state.setProperty("smoothRoutingModes",savedRoutes.smoothRoutingModes,nullptr);
  state.setProperty("smoothRowEntries",savedRoutes.smoothRowEntries,nullptr);
  state.setProperty("smoothSourceTaps",savedRoutes.smoothSourceTaps,nullptr);
  state.setProperty("rowRoutingAverage",savedRoutes.average,nullptr);
@@ -782,6 +784,7 @@ bool VirtualCortexProcessor::restoreStateInformation(const void* data,int size){
   auto restored=juce::ValueTree::fromXml(*xml);
   setRoutingMode((int)restored.getProperty("routingMode",0));
   vc::RowRouting routes;
+  routes.smoothRoutingModes=(bool)restored.getProperty("smoothRoutingModes",false);
   routes.smoothRowEntries=(bool)restored.getProperty("smoothRowEntries",false);
   routes.smoothSourceTaps=(bool)restored.getProperty("smoothSourceTaps",false);routes.average=(bool)restored.getProperty("rowRoutingAverage",true);
   for(int r=0;r<4;++r){const auto key="route_"+juce::String(r)+"_";auto& p=routes.rows[r];p.entryColumn=(int)restored.getProperty(key+"entry",0);for(int from=0;from<4;++from)p.sourceTaps[from]=(int)restored.getProperty(key+"tap_"+juce::String(from),8);p.sources=(unsigned)(int)restored.getProperty(key+"sources",1);p.channel=(int)restored.getProperty(key+"channel",0);p.gainDb=(float)restored.getProperty(key+"gain",0.f);p.balance=(float)restored.getProperty(key+"balance",0.f);p.invert=(bool)restored.getProperty(key+"invert",false);p.output=(bool)restored.getProperty(key+"output",true);}

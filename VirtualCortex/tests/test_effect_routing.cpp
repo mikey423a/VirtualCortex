@@ -91,5 +91,56 @@ int main(){try{
   else check(tail>.001,"Lost effect tail after tap edit");
   std::cout<<(entryEdit?"ENTRY_EFFECT rate=":"TAP_EFFECT rate=")<<rate<<" type="<<int(type)<<" hard_step="<<hardStep<<" blend_step="<<softStep<<" tail_abs_sum="<<tail<<" resumed_tail="<<resumedTail<<"\n";
  }
+ for(double rate:{44100.,48000.,96000.}) {
+  using Mode=vc::ParallelGrid::Mode;
+  auto classic=std::make_unique<vc::PortableAudioEngine>();
+  auto smoothed=std::make_unique<vc::PortableAudioEngine>();
+  vc::SignalGrid grid;
+  grid.set(0,0,{vc::BlockType::GridStereoDelay,true});
+  grid.set(1,0,{vc::BlockType::GridStereoReverb,true});
+  vc::RowRouting routes;
+  routes.rows[1].sources=2;
+  routes.rows[0].output=false;
+  for(auto* engine:{classic.get(),smoothed.get()}) {
+   engine->prepare(rate,64);
+   engine->prepareStereoSlot(0,0);
+   engine->prepareReverbSlot(1,0);
+   check(engine->configure(grid,{true,true,false,false}),"Mode fixture grid");
+   routes.smoothRoutingModes=engine==smoothed.get();
+   check(engine->setRowRouting(routes),"Mode fixture routing");
+   engine->enableRoutingModeSmoothing(true);
+   vc::SlotParameters controls;
+   controls.mix=1.f;
+   controls.feedback=.5f;
+   controls.time=.005f;
+   check(engine->setSlotParameters(0,0,controls)&&engine->setSlotParameters(1,0,controls),"Mode fixture effects");
+  }
+  const int change=static_cast<int>(rate/2);
+  const int duration=static_cast<int>(std::lround(rate*.005));
+  std::array<float,2> previous{},previousRaw{};
+  int fadeEnd=0;
+  double step=0,tail=0;
+  for(int i=0;i<change+8000;++i) {
+   const bool first=i==change;
+   const bool second=i==change+duration/2;
+   const auto mode=i<change ? Mode::Parallel : i<change+duration/2 ? Mode::Series : Mode::Custom;
+   const float input=i<change+duration?.2f*std::cos((i-change)*.043f):0.f;
+   std::array<float,2> raw{input,-.73f*input},smoothedFrame=raw;
+   check(classic->process(raw.data(),1,2,mode),"Immediate mode render");
+   check(smoothed->process(smoothedFrame.data(),1,2,mode),"Smoothed mode render");
+   if(first||second) {
+    fadeEnd=i+duration;
+    check(smoothedFrame==previous,"Mode change discontinuity");
+    step=std::max(step,static_cast<double>(std::abs(raw[0]-previousRaw[0])));
+   } else if(i>=fadeEnd) {
+    check(smoothedFrame==raw,"Mode blend changed the steady effect history");
+    if(i>change+2*duration)tail+=std::abs(raw[0])+std::abs(raw[1]);
+   }
+   previous=smoothedFrame;
+   previousRaw=raw;
+  }
+  check(step>.001&&tail>.001,"Mode fixture must exercise a discontinuity and retain an effect tail");
+  std::cout<<"MODE_EFFECT rate="<<rate<<" immediate_peak_switch_step="<<step<<" smooth_switch_step=0 tail_abs_sum="<<tail<<"\n";
+ }
  std::cout<<"PASS: actual stereo delay/reverb disconnected tails, skipped state and reconnection\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

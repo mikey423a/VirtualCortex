@@ -24,12 +24,18 @@ public:
   smoothEntries.setTooltip("Fade affected effects when changing the first slot in a row.");
   smoothEntries.onClick=[this]{commit();};
   addAndMakeVisible(smoothEntries);
+  smoothModes.setButtonText("Smooth routing modes (5 ms)");
+  smoothModes.setComponentID("route-smooth-modes");
+  smoothModes.setTooltip("Soften switches between Parallel, Series and Custom. Dual Mono switches immediately.");
+  smoothModes.onClick=[this]{commit();};
+  addAndMakeVisible(smoothModes);
   close.onClick=[this]{setVisible(false);};close.setComponentID("routing-close");addAndMakeVisible(close);
   use.onClick=[this]{activate();};use.setComponentID("routing-use");addAndMakeVisible(use);
   const char* names[]={"PARALLEL","SPLIT / REJOIN","TWO CHAINS"};
   for(int i=0;i<3;++i){presets[i].setButtonText(names[i]);presets[i].setComponentID("route-preset-"+juce::String(i));presets[i].onClick=[this,i]{vc::RowRouting c;
     c.smoothSourceTaps=smoothTaps.getToggleState();
     c.smoothRowEntries=smoothEntries.getToggleState();
+    c.smoothRoutingModes=smoothModes.getToggleState();
     if(i==1){c.rows[1].sources=2;c.rows[2].sources=2;c.rows[3].sources=12;for(int r=0;r<3;++r)c.rows[r].output=false;}
     if(i==2){c.average=false;c.rows[0].channel=1;c.rows[0].output=false;c.rows[1].sources=2;c.rows[1].balance=-1;c.rows[2].channel=2;c.rows[2].output=false;c.rows[3].sources=8;c.rows[3].balance=1;}
     processor.setRowRouting(c);for(int r=0;r<4;++r)processor.setGridLaneEnabled(r,true);refresh();activate();};addAndMakeVisible(presets[i]);}
@@ -40,13 +46,14 @@ public:
    if(!gain[r].isMouseButtonDown()&&!gain[r].hasKeyboardFocus(true))gain[r].setValue(c.rows[r].gainDb,juce::dontSendNotification);
    if(!balance[r].isMouseButtonDown()&&!balance[r].hasKeyboardFocus(true))balance[r].setValue(c.rows[r].balance,juce::dontSendNotification);
    invert[r].setToggleState(c.rows[r].invert,juce::dontSendNotification);output[r].setToggleState(c.rows[r].output,juce::dontSendNotification);
-  }smoothEntries.setToggleState(c.smoothRowEntries,juce::dontSendNotification);smoothTaps.setToggleState(c.smoothSourceTaps,juce::dontSendNotification);average.setToggleState(c.average,juce::dontSendNotification);refreshing=false;repaint();
+  }smoothModes.setToggleState(c.smoothRoutingModes,juce::dontSendNotification);smoothEntries.setToggleState(c.smoothRowEntries,juce::dontSendNotification);smoothTaps.setToggleState(c.smoothSourceTaps,juce::dontSendNotification);average.setToggleState(c.average,juce::dontSendNotification);refreshing=false;repaint();
  }
  void resized()override {
   close.setBounds(getWidth()-110,14,96,32);use.setBounds(getWidth()-300,14,180,32);
   for(int r=0;r<4;++r){int y=128+r*108;entries[r].setBounds(12,y+49,90,28);for(int from=0;from<4;++from)taps[r][from].setBounds(169+from*64,y+49,62,28);lanes[r].setBounds(12,y+8,90,36);for(int s=0;s<5;++s)sources[r][s].setBounds(105+s*64,y+8,62,36);channels[r].setBounds(440,y+10,135,32);gain[r].setBounds(590,y,150,65);balance[r].setBounds(760,y,150,65);invert[r].setBounds(930,y+10,70,32);output[r].setBounds(1010,y+10,90,32);}
   smoothTaps.setBounds(24,544,360,32);
-  smoothEntries.setBounds(404,544,360,32);
+  smoothEntries.setBounds(404,544,320,32);
+  smoothModes.setBounds(744,544,353,32);
   average.setBounds(24,580,400,36);for(int i=0;i<3;++i)presets[i].setBounds(445+i*215,580,205,36);
   for(int i=0;i<getNumChildComponents();++i){auto* child=getChildComponent(i);if(child==&close||child==&use)continue;const auto r=child->getBounds();child->setBounds(px(r.getX()),r.getY(),px(r.getRight())-px(r.getX()),r.getHeight());}
  }
@@ -62,8 +69,8 @@ private:
  int px(int x)const{return juce::roundToInt(x*getWidth()/1121.f);}
  VirtualCortexProcessor& processor;bool refreshing=false;
  std::array<std::array<juce::ToggleButton,5>,4> sources;std::array<juce::ComboBox,4>channels,entries;std::array<std::array<juce::ComboBox,4>,4>taps;
- std::array<juce::Slider,4>gain,balance;std::array<juce::ToggleButton,4>invert,output,lanes;juce::ToggleButton average,smoothTaps,smoothEntries;
+ std::array<juce::Slider,4>gain,balance;std::array<juce::ToggleButton,4>invert,output,lanes;juce::ToggleButton average,smoothTaps,smoothEntries,smoothModes;
  juce::TextButton close{"CLOSE"},use{"USE CUSTOM"};std::array<juce::TextButton,3>presets;
  void activate(){processor.setRoutingMode(3);if(auto* p=processor.parameters.getParameter("gridMode"))p->setValueNotifyingHost(1.f);if(onChange)onChange();repaint();}
- void commit(){if(refreshing)return;vc::RowRouting c;c.smoothRowEntries=smoothEntries.getToggleState();c.smoothSourceTaps=smoothTaps.getToggleState();c.average=average.getToggleState();for(int r=0;r<4;++r){auto& p=c.rows[r];p.entryColumn=entries[r].getSelectedId()-1;for(int from=0;from<4;++from)p.sourceTaps[from]=taps[r][from].getSelectedId()-1;p.sources=0;for(int s=0;s<=r;++s)if(sources[r][s].getToggleState())p.sources|=1u<<s;p.channel=channels[r].getSelectedId()-1;p.gainDb=(float)gain[r].getValue();p.balance=(float)balance[r].getValue();p.invert=invert[r].getToggleState();p.output=output[r].getToggleState();}processor.setRowRouting(c);refresh();if(onChange)onChange();}
+ void commit(){if(refreshing)return;vc::RowRouting c;c.smoothRoutingModes=smoothModes.getToggleState();c.smoothRowEntries=smoothEntries.getToggleState();c.smoothSourceTaps=smoothTaps.getToggleState();c.average=average.getToggleState();for(int r=0;r<4;++r){auto& p=c.rows[r];p.entryColumn=entries[r].getSelectedId()-1;for(int from=0;from<4;++from)p.sourceTaps[from]=taps[r][from].getSelectedId()-1;p.sources=0;for(int s=0;s<=r;++s)if(sources[r][s].getToggleState())p.sources|=1u<<s;p.channel=channels[r].getSelectedId()-1;p.gainDb=(float)gain[r].getValue();p.balance=(float)balance[r].getValue();p.invert=invert[r].getToggleState();p.output=output[r].getToggleState();}processor.setRowRouting(c);refresh();if(onChange)onChange();}
 };
