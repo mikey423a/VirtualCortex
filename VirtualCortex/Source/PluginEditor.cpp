@@ -199,6 +199,14 @@ VirtualCortexEditor::VirtualCortexEditor(VirtualCortexProcessor& p):AudioProcess
  removeButton.onClick=[this]{juce::PopupMenu menu;menu.addItem(1,"Remove selected block");menu.addItem(2,"Toggle selected block bypass");auto safe=juce::Component::SafePointer<VirtualCortexEditor>(this);menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&removeButton),[safe](int item){if(!safe)return;if(item==1)safe->insertBlock(0);if(item==2)safe->toggleSelectedSlot();});};
  slotEnabled.onClick=[this]{toggleSelectedSlot();};addAndMakeVisible(slotEnabled);
  repeatFxButton.setComponentID("repeat-fx");repeatFxButton.setTooltip("Filter the repeat return path; dry input and first repeat stay unfiltered. Grid Delay only.");repeatFxButton.onClick=[this]{auto p=processor.getGridSlotParameters((size_t)selectedRow,(size_t)selectedColumn);p.repeatFx=repeatFxButton.getToggleState();processor.setGridSlotParameters((size_t)selectedRow,(size_t)selectedColumn,p);lastView=-1;updateView();};addChildComponent(repeatFxButton);
+ detailedModulationButton.setComponentID("detail-modulation");
+ detailedModulationButton.setTooltip("Use cubic interpolation for a brighter fractional delay read. Chorus, Flanger and Vibrato.");
+ detailedModulationButton.onClick=[this]{
+  auto p=processor.getGridSlotParameters(selectedRow,selectedColumn);
+  p.detailedModulation=detailedModulationButton.getToggleState();
+  processor.setGridSlotParameters(selectedRow,selectedColumn,p);
+ };
+ addChildComponent(detailedModulationButton);
  for(int r=0;r<4;++r){auto& lane=laneButtons[(size_t)r];lane.setButtonText("ROW "+juce::String(r+1));lane.setComponentID("lane-"+juce::String(r));lane.setTooltip("Enable parallel row: same input, averaged with other enabled rows in Grid mode");lane.setClickingTogglesState(true);lane.onClick=[this,r]{processor.setGridLaneEnabled((size_t)r,laneButtons[(size_t)r].getToggleState());refreshGridControls();};addAndMakeVisible(lane);
   for(int c=0;c<8;++c){auto& b=gridCells[(size_t)r][(size_t)c];b.setComponentID("grid-"+juce::String(r)+"-"+juce::String(c));b.onClick=[this,r,c]{selectSlot(r,c);};
    b.onGridDrop=[this,r,c](const juce::MouseEvent& e){moveGridSlotToPosition(r,c,e.getEventRelativeTo(this).position);};b.setTooltip("Drag to move; dropping on another block swaps both devices.");addAndMakeVisible(b);}
@@ -335,7 +343,7 @@ void VirtualCortexEditor::refreshGridControls(){
  for(int c=0;c<8;++c)quickSelectors[(size_t)c].setToggleState(c==processor.selectedScene(),juce::dontSendNotification);
  slotEnabled.setToggleState(grid.get((size_t)selectedRow,(size_t)selectedColumn)->enabled,juce::dontSendNotification);
 }
-void VirtualCortexEditor::refreshSlotControls(){const auto p=processor.getGridSlotParameters((size_t)selectedRow,(size_t)selectedColumn);repeatFxButton.setToggleState(p.repeatFx,juce::dontSendNotification);const float values[]={p.drive,p.mix,p.time,p.feedback,p.rate,p.depth};for(int i=0;i<6;++i)if(!slotSliders[(size_t)i].isMouseButtonDown())slotSliders[(size_t)i].setValue(values[i],juce::dontSendNotification);irName.setText(processor.getCabinetIRName(),juce::dontSendNotification);gridIRName.setText(processor.getGridCabinetIRName((size_t)selectedRow,(size_t)selectedColumn),juce::dontSendNotification);neuralName.setText(processor.getGridNeuralModelName((size_t)selectedRow,(size_t)selectedColumn),juce::dontSendNotification);
+void VirtualCortexEditor::refreshSlotControls(){const auto p=processor.getGridSlotParameters((size_t)selectedRow,(size_t)selectedColumn);repeatFxButton.setToggleState(p.repeatFx,juce::dontSendNotification);detailedModulationButton.setToggleState(p.detailedModulation,juce::dontSendNotification);const float values[]={p.drive,p.mix,p.time,p.feedback,p.rate,p.depth};for(int i=0;i<6;++i)if(!slotSliders[(size_t)i].isMouseButtonDown())slotSliders[(size_t)i].setValue(values[i],juce::dontSendNotification);irName.setText(processor.getCabinetIRName(),juce::dontSendNotification);gridIRName.setText(processor.getGridCabinetIRName((size_t)selectedRow,(size_t)selectedColumn),juce::dontSendNotification);neuralName.setText(processor.getGridNeuralModelName((size_t)selectedRow,(size_t)selectedColumn),juce::dontSendNotification);
  neuralName.setTooltip(neuralName.getText());
  for(auto& k:knobs)if(!k.value.isBeingEdited())k.value.setText(k.slider.getTextFromValue(k.slider.getValue()),juce::dontSendNotification);
  for(size_t i=0;i<6;++i)if(!slotValues[i].isBeingEdited())slotValues[i].setText(slotSliders[i].getTextFromValue(slotSliders[i].getValue()),juce::dontSendNotification);
@@ -361,6 +369,7 @@ void VirtualCortexEditor::updateView(){refreshGridControls();const int type=curr
  if(type==21)slotLabels={"DRIVE","MIX","DECAY","DAMPING","PRE DELAY","DIFFUSION"};
  if(type==5&&gm)slotLabels={"LOOP HIGH PASS","MIX","TIME","FEEDBACK","LOOP FILTER MIX","LOOP LOW PASS"};
  repeatFxButton.setVisible(gm&&type==5);
+ detailedModulationButton.setVisible(gm&&(type==11||type==12||type==16));
  for(int i=0;i<3;++i){stereoPages[(std::size_t)i].setVisible(type==23);stereoPages[(std::size_t)i].setToggleState(i==stereoPage,juce::dontSendNotification);}
  for(int i=0;i<3;++i){reverbPages[(std::size_t)i].setVisible(type==24);reverbPages[(std::size_t)i].setToggleState(i==reverbPage,juce::dontSendNotification);}
  for(int i=0;i<4;++i){echoPages[i].setVisible(type==25);echoPages[i].setToggleState(i==echoPage,juce::dontSendNotification);}switches[16].button.setVisible(type==25);
@@ -409,7 +418,7 @@ void VirtualCortexEditor::resized(){
  for(int j=0;j<(int)indices.size();++j){const int i=indices[(size_t)j];const int x=302+(j%5)*174,y=354+(j/5)*118;
   const auto knob=juce::Rectangle<int>(x+92,y+43,76,76),value=juce::Rectangle<int>(x+6,y+83,92,28);
   if(gridMode()&&!masterPage){slotSliders[(size_t)i].setBounds(knob);slotValues[(size_t)i].setBounds(value);}else{knobs[(size_t)i].slider.setBounds(knob);knobs[(size_t)i].value.setBounds(value);}}
- for(auto& sw:switches)if(&sw!=&switches[6]&&&sw!=&switches[9])sw.button.setBounds(1137,318,36,35);slotEnabled.setBounds(1137,318,36,35);repeatFxButton.setBounds(838,492,245,32);
+ for(auto& sw:switches)if(&sw!=&switches[6]&&&sw!=&switches[9])sw.button.setBounds(1137,318,36,35);slotEnabled.setBounds(1137,318,36,35);repeatFxButton.setBounds(838,492,245,32);detailedModulationButton.setBounds(838,492,245,32);
  switches[10].button.setBounds(1137,318,36,35);for(int i=11;i<14;++i)switches[(std::size_t)i].button.setBounds(650+(i-11)*170,489,165,34);
  for(int i=0;i<3;++i){stereoPages[(std::size_t)i].setBounds(650+i*170,537,165,32);reverbPages[(std::size_t)i].setBounds(650+i*170,537,165,32);}
  for(int i=0;i<4;++i)echoPages[i].setBounds(480+i*170,537,165,32);
@@ -433,6 +442,7 @@ void VirtualCortexEditor::resized(){
  for(auto& b:loopButtons)b.setVisible(false);
   for(auto& b:echoPages)b.setVisible(false);
   for(auto& button:stereoPages)button.setVisible(false);for(auto& button:reverbPages)button.setVisible(false);
+  detailedModulationButton.setVisible(false);
   repeatFxButton.setVisible(false);slotEnabled.setVisible(false);removeButton.setVisible(false);loadIRButton.setVisible(false);loadGridIRButton.setVisible(false);loadNeuralButton.setVisible(false);clearNeuralButton.setVisible(false);irName.setVisible(false);gridIRName.setVisible(false);neuralName.setVisible(false);
  }
  else removeButton.setVisible(true);
@@ -500,7 +510,7 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
 
  g.setColour(panel);g.fillRect(layoutRect({302,598,172,232}));g.setColour(juce::Colour(0xff070707));g.drawRect(layoutRect({302,598,172,36}),1);drawCaption(g,"Gig view",{343,599,125,33},20.f,juce::Colours::white,juce::Justification::centredLeft,true);drawCaption(g,"Parameter Editor",{310,796,156,32},14.f,muted);
  }
- drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.45.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
+ drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.46.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
 }
 void VirtualCortexEditor::applyPreset(int index){auto set=[this](const char* id,float value){if(auto* p=processor.parameters.getParameter(id))p->setValueNotifyingHost(p->convertTo0to1(value));};if(index<2)return;set("gridMode",0.f);
  if(index==2){set("drive",.12f);set("tone",.7f);set("level",.65f);set("delayMix",.12f);set("reverbMix",.25f);set("ampBias",0.f);set("delayOn",1.f);set("reverbOn",1.f);}

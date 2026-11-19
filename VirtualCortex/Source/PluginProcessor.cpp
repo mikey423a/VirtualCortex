@@ -701,6 +701,7 @@ bool VirtualCortexProcessor::storeScene(int index) {
    slot.setProperty("drive",p.drive,nullptr);slot.setProperty("mix",p.mix,nullptr);
    slot.setProperty("time",p.time,nullptr);slot.setProperty("feedback",p.feedback,nullptr);
    slot.setProperty("rate",p.rate,nullptr);slot.setProperty("depth",p.depth,nullptr);
+   slot.setProperty("detailedModulation",p.detailedModulation,nullptr);
    slot.setProperty("repeatFx",p.repeatFx,nullptr);saveAdvanced(slot,(int)r,(int)c,"advanced_");snapshot.addChild(slot,-1,nullptr);
   }
  }
@@ -727,6 +728,7 @@ bool VirtualCortexProcessor::recallScene(int index) {
    p.drive=value.getProperty("drive",p.drive);p.mix=value.getProperty("mix",p.mix);
    p.time=value.getProperty("time",p.time);p.feedback=value.getProperty("feedback",p.feedback);
    p.rate=value.getProperty("rate",p.rate);p.depth=value.getProperty("depth",p.depth);
+   p.detailedModulation=(bool)value.getProperty("detailedModulation",false);
    p.repeatFx=value.getProperty("repeatFx",false);setGridSlotParameters(r,c,p);loadAdvanced(value,r,c,"advanced_");
    block.enabled=value.getProperty("enabled",true);setGridBlock(r,c,block);
   }
@@ -767,6 +769,7 @@ void VirtualCortexProcessor::getStateInformation(juce::MemoryBlock& dest){
   state.setProperty(key+"drive",p.drive,nullptr);state.setProperty(key+"mix",p.mix,nullptr);
   state.setProperty(key+"time",p.time,nullptr);state.setProperty(key+"feedback",p.feedback,nullptr);
   state.setProperty(key+"rate",p.rate,nullptr);state.setProperty(key+"depth",p.depth,nullptr);
+  state.setProperty(key+"detailedModulation",p.detailedModulation,nullptr);
   state.setProperty(key+"repeatFx",p.repeatFx,nullptr);saveAdvanced(state,(int)row,(int)col,key+"advanced_");
   state.setProperty(key+"irPath",gridIRPaths[row][col],nullptr);
   state.setProperty(key+"neuralPath",gridNeuralPaths[row][col],nullptr);
@@ -824,6 +827,7 @@ bool VirtualCortexProcessor::restoreStateInformation(const void* data,int size){
    if(restored.hasProperty(key+"feedback"))p.feedback=static_cast<float>(restored.getProperty(key+"feedback"));
    if(restored.hasProperty(key+"rate"))p.rate=static_cast<float>(restored.getProperty(key+"rate"));
    if(restored.hasProperty(key+"depth"))p.depth=static_cast<float>(restored.getProperty(key+"depth"));
+   p.detailedModulation=(bool)restored.getProperty(key+"detailedModulation",false);
    p.repeatFx=static_cast<bool>(restored.getProperty(key+"repeatFx",false));
    setGridSlotParameters(row,col,p);loadAdvanced(restored,(int)row,(int)col,key+"advanced_");
    const auto neuralPath=restored.getProperty(key+"neuralPath").toString();

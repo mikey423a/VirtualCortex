@@ -145,7 +145,27 @@ int main(int argc,char** argv){
   require(processor->parameters.getRawParameterValue("gridMode")->load()>.5f,"New device selection did not enable Grid mode");
   require(processor->getEditableGrid().get(3,6)->type==vc::BlockType::Chorus,"Chorus browser selection inserted wrong block");
   require(std::abs(processor->getGridSlotParameters(3,6).rate-.04f)<1.e-5f,"Chorus preset parameters not applied");
-  editor->setEditorsVisible(true);capture("chorus-browser-preset.png",1184,864);
+  editor->setEditorsVisible(true);
+  auto* detailRead=dynamic_cast<juce::ToggleButton*>(editor->findChildWithID("detail-modulation"));
+  require(detailRead&&detailRead->isVisible()&&!detailRead->getToggleState(),"Modulation detail control missing or defaults on");
+  detailRead->setToggleState(true,juce::dontSendNotification);
+  detailRead->onClick();
+  require(processor->getGridSlotParameters(3,6).detailedModulation,"Detail read did not bind");
+  juce::MemoryBlock detailState;
+  processor->getStateInformation(detailState);
+  auto legacyDetail=juce::AudioProcessor::getXmlFromBinary(detailState.getData(),(int)detailState.getSize());
+  require(legacyDetail!=nullptr,"Detail preset fixture decode");
+  legacyDetail->removeAttribute("slot_3_6_detailedModulation");
+  juce::MemoryBlock legacyDetailState;
+  juce::AudioProcessor::copyXmlToBinary(*legacyDetail,legacyDetailState);
+  processor->setStateInformation(legacyDetailState.getData(),(int)legacyDetailState.getSize());
+  require(!processor->getGridSlotParameters(3,6).detailedModulation,"Legacy preset enabled detail read");
+  processor->setStateInformation(detailState.getData(),(int)detailState.getSize());
+  require(processor->getGridSlotParameters(3,6).detailedModulation,"Detail read preset recall failed");
+  editor->selectSlot(3,6);
+  capture("chorus-detail-read-2560x1440.png",2560,1440);
+  capture("chorus-detail-read-822x600.png",822,600);
+  capture("chorus-browser-preset.png",1184,864);
   auto* category=dynamic_cast<juce::ComboBox*>(editor->findChildWithID("device-category"));require(category&&category->getNumItems()==36,"Expanded category selector missing");
   for(int type:{16,17,18,19,20,21}){
    editor->selectSlot(1,type-16);category->setSelectedId(type,juce::sendNotificationSync);

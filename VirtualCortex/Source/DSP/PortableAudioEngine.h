@@ -25,6 +25,7 @@ namespace vc {
 struct SlotParameters {
  float drive=0.5f, mix=0.2f, time=0.5f, feedback=0.35f, rate=0.5f, depth=0.5f;
  bool repeatFx=false;
+ bool detailedModulation=false;
  static bool valid(const SlotParameters& p) noexcept {
   const float values[]={p.drive,p.mix,p.time,p.feedback,p.rate,p.depth};
   for (float v:values) if (!std::isfinite(v) || v<0.f || v>1.f) return false;
@@ -354,11 +355,11 @@ private:
    }
    case BlockType::Compressor:return s.compressor.process(x,p.drive,p.feedback,p.rate,p.depth,p.time,p.mix,fs);
    case BlockType::Overdrive:case BlockType::Distortion:return s.clippingDrive.process(x,p.drive,p.rate,p.depth,p.mix,fs,b==BlockType::Distortion);
-   case BlockType::Chorus:case BlockType::Flanger:return modulatedDelay(x,s.delay,s.index,s.phase,p.mix,p.time,p.feedback,p.rate,p.depth,fs,b==BlockType::Flanger);
+   case BlockType::Chorus:case BlockType::Flanger:return modulatedDelay(x,s.delay,s.index,s.phase,p.mix,p.time,p.feedback,p.rate,p.depth,fs,b==BlockType::Flanger,p.detailedModulation);
    case BlockType::Phaser:return s.phaser.process(x,p.mix,p.time,p.feedback,p.rate,p.depth,fs);
    case BlockType::Wah:return s.wah.process(x,p.drive,p.mix,p.time,p.feedback,p.rate,p.depth,fs);
    case BlockType::BitCrusher:return s.crusher.process(x,p.drive,p.mix,p.time,p.depth);
-   case BlockType::Vibrato:return modulatedDelay(x,s.delay,s.index,s.phase,p.mix,p.time,0.f,p.rate,p.depth,fs,false);
+   case BlockType::Vibrato:return modulatedDelay(x,s.delay,s.index,s.phase,p.mix,p.time,0.f,p.rate,p.depth,fs,false,p.detailedModulation);
    case BlockType::RingModulator:{if(p.rate!=s.ringRate){s.ringRate=p.rate;s.ringStep=2.f*pi*(10.f*std::pow(200.f,p.rate))/fs;}const float wet=x*(1.f-p.depth+p.depth*std::sin(s.phase));s.phase+=s.ringStep;if(s.phase>=2.f*pi)s.phase-=2.f*pi;return (1.f-p.mix)*x+p.mix*wet;}
    case BlockType::Gain:return s.utility.process(x,p.drive,p.feedback,fs);
    case BlockType::LowHighCut:return s.cuts.process(x,p.drive,p.time,p.mix,fs);

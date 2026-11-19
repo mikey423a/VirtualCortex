@@ -43,5 +43,34 @@ int main(){
  // Modulation is audible compared with the stationary version for each delay mode.
  for(bool flange:{false,true}){std::vector<float> a(30000),b(30000);std::size_t ai=0,bi=0;float ap=0,bp=0;double difference=0;
   for(int i=0;i<48000;++i){float x=.1f*std::sin(i*.13f);difference+=std::abs(vc::modulatedDelay(x,a,ai,ap,.5f,.5f,.2f,.3f,.8f,48000,flange)-vc::modulatedDelay(x,b,bi,bp,.5f,.5f,.2f,.3f,0,48000,flange));}assert(difference>100);}
+ // Measure the fractional read against a continuous-time sinusoid.
+ for(float fs:{44100.f,48000.f,96000.f}) {
+  std::vector<float> legacy(4096),detail(4096);
+  std::size_t legacyIndex=0,detailIndex=0;
+  float legacyPhase=0,detailPhase=0;
+  const float distance=std::floor(fs*.005f)+.5f;
+  const float time=(distance/(fs*.001f)-5.f)/20.f;
+  constexpr double omega=6.283185307179586/6.;
+  double oldError=0,newError=0;
+  for(int i=0;i<10000;++i) {
+   const float input=.2f*static_cast<float>(std::sin(omega*i));
+   const float a=vc::modulatedDelay(input,legacy,legacyIndex,legacyPhase,1.f,time,0.f,0.f,0.f,fs,false);
+   const float b=vc::modulatedDelay(input,detail,detailIndex,detailPhase,1.f,time,0.f,0.f,0.f,fs,false,true);
+   if(i<2000)continue;
+   const double expected=.2*std::sin(omega*(static_cast<double>(i)-distance));
+   oldError+=(a-expected)*(a-expected);
+   newError+=(b-expected)*(b-expected);
+  }
+  assert(newError<.05*oldError);
+  // The optional output read must not change the feedback history.
+  for(int i=0;i<12000;++i) {
+   const float input=i%71==0?.6f:0.f;
+   vc::modulatedDelay(input,legacy,legacyIndex,legacyPhase,1.f,time,1.f,.6f,1.f,fs,true);
+   const float y=vc::modulatedDelay(input,detail,detailIndex,detailPhase,1.f,time,1.f,.6f,1.f,fs,true,true);
+   assert(std::isfinite(y));
+  }
+  assert(legacy==detail&&legacyIndex==detailIndex&&legacyPhase==detailPhase);
+  std::cout<<"MOD_DETAIL rate="<<fs<<" squared_error_ratio="<<newError/oldError<<"\n";
+ }
  std::cout<<"PASS: chorus/flanger delay, phaser magnitude, wah response, quantization/hold, dry mix and rate/grid matrix\n";
 }
