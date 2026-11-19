@@ -70,16 +70,30 @@ public:
    targets_[r]={gain*(p.balance>0?1-p.balance:1),gain*(p.balance<0?1+p.balance:1)};
   }return true;
  }
- void prepareMixer(double rate)noexcept {mixerCoefficient_=std::exp(-1./((std::isfinite(rate)?std::clamp(rate,8000.,192000.):48000.)*.01));gains_=targets_;}
+ void setSmoothSourceTaps(bool enabled) noexcept {
+  if (enabled != smoothTaps_) tapStates_ = {};
+  smoothTaps_ = enabled;
+ }
+ void prepareMixer(double rate)noexcept {tapStates_={};tapFrames_=static_cast<unsigned>(std::lround((std::isfinite(rate)?std::clamp(rate,8000.,192000.):48000.)*.005));mixerCoefficient_=std::exp(-1./((std::isfinite(rate)?std::clamp(rate,8000.,192000.):48000.)*.01));gains_=targets_;}
  template<class DSP>
  std::array<float,2> processCustom(std::array<float,2> input,DSP&& dsp)noexcept {
   for(auto& x:input)if(!std::isfinite(x))x=0;
   std::array<std::array<std::array<float,2>,9>,4> taps{};std::array<std::array<float,2>,4> bus{};std::array<double,2> sum{};unsigned outputs=0;
   for(unsigned r=0;r<4;++r){
    for(int ch=0;ch<2;++ch){const float t=targets_[r][ch];gains_[r][ch]=(float)(t+mixerCoefficient_*(gains_[r][ch]-t));if(std::abs(gains_[r][ch]-t)<1.e-7f)gains_[r][ch]=t;}
-   if(!enabled_[r])continue;const auto& route=custom_.rows[r];std::array<double,2> incoming{};unsigned count=0;
+   if(!enabled_[r]){if(smoothTaps_)tapStates_[r]={};continue;}const auto& route=custom_.rows[r];std::array<double,2> incoming{};unsigned count=0;
    if(route.sources&1u){incoming={input[0],input[1]};++count;}
-   for(unsigned from=0;from<r;++from)if((route.sources&(2u<<from))&&enabled_[from]){for(int ch=0;ch<2;++ch)incoming[ch]+=taps[from][route.sourceTaps[from]][ch];++count;}
+   for(unsigned from=0;from<r;++from){
+    auto& transition=tapStates_[r][from];
+    if(!(route.sources&(2u<<from))||!enabled_[from]){
+     if(smoothTaps_) transition={};
+     continue;
+    }
+    const int requested=route.sourceTaps[from];
+    const auto signal=smoothTaps_ ? transition.read(taps[from],requested,tapFrames_) : taps[from][requested];
+    for(int ch=0;ch<2;++ch) incoming[ch]+=signal[ch];
+    ++count;
+   }
    std::array<float,2> frame{};for(int ch=0;ch<2;++ch)frame[ch]=(float)(incoming[ch]/(custom_.average&&count?count:1));
    if(route.channel){const float mono=route.channel==1?frame[0]:route.channel==2?frame[1]:(frame[0]+frame[1])*.5f;frame={mono,mono};}
    const auto& plan=lanes_[r].plan();std::size_t index=0;
@@ -155,6 +169,28 @@ public:
  }
  bool laneEnabled(std::size_t row) const noexcept { return row<SignalGrid::rows && enabled_[row]; }
 private:
+ struct TapTransition {
+  int current=-1, target=-1;
+  unsigned elapsed=0;
+  std::array<float,2> read(const std::array<std::array<float,2>,9>& taps,int requested,unsigned length) noexcept {
+   if(current<0) current=target=requested;
+   if(current==target) target=requested;
+   if(current==target) return taps[current];
+   if(++elapsed>=length){
+    current=target;
+    elapsed=0;
+    return taps[current];
+   }
+   const float weight=static_cast<float>(elapsed)/length;
+   std::array<float,2> result{};
+   for(unsigned ch=0;ch<2;++ch)
+    result[ch]=taps[current][ch]*(1.f-weight)+taps[target][ch]*weight;
+   return result;
+  }
+ };
+ bool smoothTaps_=false;
+ unsigned tapFrames_=240;
+ std::array<std::array<TapTransition,4>,4> tapStates_{};
  RowRouting custom_{};
  std::array<std::array<float,2>,4> targets_{{{1,1},{1,1},{1,1},{1,1}}},gains_=targets_;
  double mixerCoefficient_=0;

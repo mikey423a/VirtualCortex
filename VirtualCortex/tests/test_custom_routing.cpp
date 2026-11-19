@@ -66,5 +66,29 @@ int main(){try{
   check(tick({0,0})==std::array<float,2>{.125f,-.25f},"Reenabled slot lost retained tail");
  }
 
+ {
+  vc::SignalGrid grid;
+  grid.set(0,0,{vc::BlockType::Gain,true});
+  vc::ParallelGrid engine;
+  check(engine.configure(grid,{true,true,false,false}),"Tap test grid");
+  vc::RowRouting routes;
+  routes.rows[0].output=false;
+  routes.rows[1].sources=2;
+  routes.rows[1].sourceTaps[0]=0;
+  engine.setRowRouting(routes);
+  engine.prepareMixer(48000);
+  engine.setSmoothSourceTaps(true);
+  auto tick=[&](){return engine.processStereoFrame({.25f,-.5f},vc::ParallelGrid::Mode::Custom,
+   [](auto,auto,auto,std::array<float,2> in){return std::array<float,2>{-in[0],-in[1]};});};
+  tick();
+  routes.rows[1].sourceTaps[0]=1;
+  engine.setRowRouting(routes);
+  for(int frame=1;frame<=480;++frame){
+   if(frame==100){routes.rows[1].sourceTaps[0]=0;engine.setRowRouting(routes);}
+   const float weight=frame<=240?frame/240.f:(480-frame)/240.f;
+   const auto out=tick();
+   check(near(out[0],.25f-.5f*weight)&&near(out[1],-.5f+weight),"Stereo tap blend or queued return incorrect");
+  }
+ }
  std::cout<<"PASS: custom split/merge oracle, channel isolation, unity levels, invalid cycles, smooth polarity and mute\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
