@@ -2,7 +2,76 @@
 #include <iostream>
 #include <stdexcept>
 static void check(bool b,const char* m){if(!b)throw std::runtime_error(m);}
+static void checkRowOutputBlending(double rate,bool average){
+ using Mode=vc::ParallelGrid::Mode;
+ auto instant=std::make_unique<vc::PortableAudioEngine>();
+ auto smooth=std::make_unique<vc::PortableAudioEngine>();
+ auto delayOnly=std::make_unique<vc::PortableAudioEngine>();
+ auto reverbOnly=std::make_unique<vc::PortableAudioEngine>();
+ vc::SignalGrid grid;
+ grid.set(0,0,{vc::BlockType::GridStereoDelay,true});
+ grid.set(1,0,{vc::BlockType::GridStereoReverb,true});
+ vc::RowRouting routes;
+ routes.average=average;
+ routes.rows[1].sources=2; // The muted delay must still feed the downstream reverb.
+ for(auto* engine:{instant.get(),smooth.get(),delayOnly.get(),reverbOnly.get()}){
+  engine->prepare(rate,64);
+  engine->prepareStereoSlot(0,0);
+  engine->prepareReverbSlot(1,0);
+  check(engine->configure(grid,{true,true,false,false}),"Output blend fixture grid");
+  vc::SlotParameters p;
+  p.mix=1.f;
+  p.time=.003f;
+  p.rate=.02f;
+  p.feedback=.7f;
+  check(engine->setSlotParameters(0,0,p)&&engine->setSlotParameters(1,0,p),"Output blend fixture controls");
+  auto initial=routes;
+  initial.smoothRowOutputs=engine==smooth.get();
+  initial.rows[0].output=engine!=reverbOnly.get();
+  initial.rows[1].output=engine!=delayOnly.get();
+  check(engine->setRowRouting(initial),"Output blend fixture routing");
+  engine->enableRowOutputBlending(true);
+ }
+ const int start=static_cast<int>(rate/2),duration=static_cast<int>(std::lround(rate*.005));
+ std::array<int,2> ramp{duration,duration};
+ std::array<float,2> previousRaw{},previousSmooth{};
+ double rawStep=0,blendedStep=0,tail=0;
+ for(int i=0;i<start+4*duration+5000;++i){
+  // Reverse one OUT command mid-fade, then turn both off and restore just reverb.
+  const int offset=i-start;
+  const bool edit=offset==0||offset==duration/2||offset==duration||offset==3*duration;
+  if(edit){
+   routes.rows[0].output=offset==duration/2;
+   routes.rows[1].output=offset!=duration;
+   check(instant->setRowRouting(routes),"Immediate output edit");
+   auto blended=routes;
+   blended.smoothRowOutputs=true;
+   check(smooth->setRowRouting(blended),"Smoothed output edit");
+  }
+  const float x=offset<duration?.13f*std::cos(offset*.0341f):0.f;
+  std::array<float,2> raw{x,-.53f*x},y=raw,a=raw,b=raw;
+  check(instant->process(raw.data(),1,2,Mode::Custom)&&smooth->process(y.data(),1,2,Mode::Custom)
+     &&delayOnly->process(a.data(),1,2,Mode::Custom)&&reverbOnly->process(b.data(),1,2,Mode::Custom),"Output blend render");
+  for(int r=0;r<2;++r)ramp[r]+=routes.rows[r].output?(ramp[r]<duration):-(ramp[r]>0);
+  const double w0=static_cast<double>(ramp[0])/duration,w1=static_cast<double>(ramp[1])/duration;
+  for(int ch=0;ch<2;++ch){
+   const auto expected=(w0*a[ch]+w1*b[ch])/(average?std::max(1.,w0+w1):1.);
+   check(std::abs(y[ch]-expected)<2.e-6,"Weighted row output reference");
+   if(offset==0){
+    rawStep=std::max(rawStep,double(std::abs(raw[ch]-previousRaw[ch])));
+    blendedStep=std::max(blendedStep,double(std::abs(y[ch]-previousSmooth[ch])));
+   }
+   if(offset>=4*duration){check(y[ch]==raw[ch],"Output fade altered the settled reverb history");tail+=y[ch]*y[ch];}
+  }
+  previousRaw=raw;
+  previousSmooth=y;
+ }
+ check(rawStep>.005&&blendedStep<rawStep*.35&&tail>.0001,"Output blend needs a measured step reduction and retained tail");
+ std::cout<<"ROW_OUTPUT rate="<<rate<<" average="<<average<<" immediate_step="<<rawStep
+          <<" blended_step="<<blendedStep<<" restored_tail_energy="<<tail<<"\n";
+}
 int main(){try{
+ for(double rate:{44100.,48000.,96000.})for(bool average:{false,true})checkRowOutputBlending(rate,average);
  for(double sampleRate:{44100.,48000.,96000.}) for(auto type:{vc::BlockType::GridStereoDelay,vc::BlockType::GridStereoReverb}){
   auto routed=std::make_unique<vc::PortableAudioEngine>();
   auto reference=std::make_unique<vc::PortableAudioEngine>();

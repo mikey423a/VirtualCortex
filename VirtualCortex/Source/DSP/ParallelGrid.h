@@ -78,14 +78,18 @@ public:
   if (enabled != smoothEntries_) entryStates_ = {};
   smoothEntries_ = enabled;
  }
- void prepareMixer(double rate)noexcept {tapStates_={};entryStates_={};tapFrames_=static_cast<unsigned>(std::lround((std::isfinite(rate)?std::clamp(rate,8000.,192000.):48000.)*.005));mixerCoefficient_=std::exp(-1./((std::isfinite(rate)?std::clamp(rate,8000.,192000.):48000.)*.01));gains_=targets_;}
+ void setSmoothRowOutputs(bool enabled) noexcept {
+  if (enabled != smoothOutputs_) outputStates_ = {};
+  smoothOutputs_ = enabled;
+ }
+ void prepareMixer(double rate)noexcept {tapStates_={};entryStates_={};outputStates_={};tapFrames_=static_cast<unsigned>(std::lround((std::isfinite(rate)?std::clamp(rate,8000.,192000.):48000.)*.005));mixerCoefficient_=std::exp(-1./((std::isfinite(rate)?std::clamp(rate,8000.,192000.):48000.)*.01));gains_=targets_;}
  template<class DSP>
  std::array<float,2> processCustom(std::array<float,2> input,DSP&& dsp)noexcept {
   for(auto& x:input)if(!std::isfinite(x))x=0;
-  std::array<std::array<std::array<float,2>,9>,4> taps{};std::array<std::array<float,2>,4> bus{};std::array<double,2> sum{};unsigned outputs=0;
+  std::array<std::array<std::array<float,2>,9>,4> taps{};std::array<std::array<float,2>,4> bus{};std::array<double,2> sum{};double outputs=0;
   for(unsigned r=0;r<4;++r){
    for(int ch=0;ch<2;++ch){const float t=targets_[r][ch];gains_[r][ch]=(float)(t+mixerCoefficient_*(gains_[r][ch]-t));if(std::abs(gains_[r][ch]-t)<1.e-7f)gains_[r][ch]=t;}
-   if(!enabled_[r]){if(smoothTaps_)tapStates_[r]={};if(smoothEntries_)entryStates_[r]={};continue;}const auto& route=custom_.rows[r];std::array<double,2> incoming{};unsigned count=0;
+   if(!enabled_[r]){if(smoothTaps_)tapStates_[r]={};if(smoothEntries_)entryStates_[r]={};if(smoothOutputs_)outputStates_[r]={};continue;}const auto& route=custom_.rows[r];std::array<double,2> incoming{};unsigned count=0;
    if(route.sources&1u){incoming={input[0],input[1]};++count;}
    for(unsigned from=0;from<r;++from){
     auto& transition=tapStates_[r][from];
@@ -123,9 +127,15 @@ public:
     storeTap(column+1);
    }
    for(int ch=0;ch<2;++ch){bus[r][ch]=frame[ch]*gains_[r][ch];if(!std::isfinite(bus[r][ch]))bus[r][ch]=0;}
-   if(route.output){++outputs;for(int ch=0;ch<2;++ch)sum[ch]+=bus[r][ch];}
+   const double weight = smoothOutputs_
+       ? static_cast<double>(outputStates_[r].step(route.output,tapFrames_))/tapFrames_
+       : (route.output ? 1. : 0.);
+   outputs+=weight;
+   if(weight>0.)for(int ch=0;ch<2;++ch)sum[ch]+=weight*bus[r][ch];
   }
-  std::array<float,2> out{};for(int ch=0;ch<2;++ch){out[ch]=(float)(sum[ch]/(custom_.average&&outputs?outputs:1));if(!std::isfinite(out[ch]))out[ch]=0;}return out;
+  // Keep a fading sole output audible proportionately by flooring the divisor.
+  const double divisor=custom_.average?std::max(1.,outputs):1.;
+  std::array<float,2> out{};for(int ch=0;ch<2;++ch){out[ch]=(float)(sum[ch]/divisor);if(!std::isfinite(out[ch]))out[ch]=0;}return out;
  }
  // DualMono: input/output L uses rows 1->2; R uses rows 3->4.
  // Callback carries channel and physical slot; no signal crosses chains.
@@ -204,9 +214,8 @@ private:
    return result;
   }
  };
- // Ramp each affected slot without evaluating any effect twice. After the
- // fade reaches zero the slot keeps its state, as with an immediate skip.
- struct EntryTransition {
+ // Advance a switch by one frame, including when it reverses mid-fade.
+ struct SwitchRamp {
   bool initialized=false;
   unsigned wetFrames=0;
   unsigned step(bool included, unsigned duration) noexcept {
@@ -220,7 +229,9 @@ private:
   }
  };
  bool smoothEntries_=false;
- std::array<std::array<EntryTransition,8>,4> entryStates_{};
+ std::array<std::array<SwitchRamp,8>,4> entryStates_{};
+ bool smoothOutputs_=false;
+ std::array<SwitchRamp,4> outputStates_{};
  bool smoothTaps_=false;
  unsigned tapFrames_=240;
  std::array<std::array<TapTransition,4>,4> tapStates_{};
