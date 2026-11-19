@@ -289,7 +289,8 @@ int main(int argc,char** argv){
    capture("custom-routing-2560x1440.png",2560,1440);capture("custom-routing-822x600.png",822,600);
    auto* routingEditor=dynamic_cast<RoutingEditor*>(panel);
    auto* smooth=dynamic_cast<juce::ToggleButton*>(panel->findChildWithID("route-smooth-taps"));
-   require(routingEditor&&smooth&&smooth->isShowing(),"Tap smoothing control missing");
+   require(routingEditor&&smooth,"Tap smoothing control missing");
+   require(smooth->isVisible()&&!smooth->getBounds().isEmpty()&&panel->getLocalBounds().contains(smooth->getBounds()),"Tap smoothing control hidden or clipped");
    require(!smooth->getToggleState(),"Tap smoothing must default off");
    smooth->setToggleState(true,juce::dontSendNotification);
    smooth->onClick();
