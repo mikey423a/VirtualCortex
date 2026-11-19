@@ -7,7 +7,7 @@ namespace vc {
 inline constexpr std::array<const char*,18> stereoReverbIDs{{"srDecay","srSize","srPreDelay","srDiffusion","srEarly","srMix","srLowDecay","srHighDecay","srLowFreq","srHighFreq","srModRate","srModDepth","srWidth","srDucking","srRelease","srWetLevel","srInputHP","srInputLP"}};
 struct StereoReverbParameters {
  float decay=2.5f,size=1,preDelay=20,diffusion=.7f,early=.2f,mix=.2f,lowDecay=1,highDecay=.5f,lowFreq=250,highFreq=4000,modRate=.35f,modDepth=.3f,width=1,ducking=0,release=300,wetLevel=0,inputHP=40,inputLP=16000;
- bool enabled=false,preGlide=true;
+ bool enabled=false,preGlide=true,detailRead=false;
 };
 // Original 8-line FDN. Orthogonal normalized Hadamard feedback; contractive
 // low/high shelves. Linear interpolation is a convex read, including modulation.
@@ -16,7 +16,7 @@ class StereoReverb {
  struct Delay {
   std::vector<float> data;std::size_t index=0;
   void prepare(std::size_t size){data.assign(size,0);index=0;}
-  float read(double delay) const noexcept {
+  float read(double delay, float* audible=nullptr, float detail=0.f) const noexcept {
    const auto size = data.size();
    delay = std::clamp(delay, 1., static_cast<double>(size)-2.);
    double position = static_cast<double>(index)-delay;
@@ -26,7 +26,19 @@ class StereoReverb {
    const auto first = static_cast<std::size_t>(position);
    const auto second = first+1 == size ? 0 : first+1;
    const float fraction = static_cast<float>(position-first);
-   return data[first]+fraction*(data[second]-data[first]);
+   const float linear=data[first]+fraction*(data[second]-data[first]);
+   if(audible) {
+    *audible=linear;
+    if(detail>0.f && fraction!=0.f && delay>=2. && delay<=static_cast<double>(size)-3.) {
+     const float previous=data[first==0?size-1:first-1];
+     const float next=data[second+1==size?0:second+1];
+     const float a=data[first],b=data[second];
+     const float cubic=a+.5f*fraction*((b-previous)+fraction*((2.f*previous-5.f*a+4.f*b-next)
+                  +fraction*(3.f*(a-b)+next-previous)));
+     *audible=detail>=1.f ? cubic : linear+detail*(cubic-linear);
+    }
+   }
+   return linear;
   }
   void write(float x)noexcept {data[index]=std::abs(x)<1.e-20f?0.f:x;if(++index==data.size())index=0;}
  };
@@ -38,6 +50,7 @@ public:
   for(auto& d:pre)d.prepare((std::size_t)std::ceil(fs*.7)+8);
   for(std::size_t ch=0;ch<2;++ch)for(std::size_t j=0;j<4;++j){auto& a=diffusers[ch][j];a.length=fs*(.0031+.0017*j+.00037*ch);a.delay.prepare((std::size_t)std::ceil(a.length)+4);}
   preCurrent=preTarget=1;preFade=0;preFading=false;preBlend=0;
+  detailFrames=0;detailDuration=static_cast<int>(std::lround(fs*.005));
   coefficientsValid=false;controlCoefficientsValid=false;lowState={};highState={};inputLow={};inputHigh={};phase=0;envelope=0;idle=0;counter=0;awake=false;initialized=false;cfg={};smooth={};mix=0;wetGain=1;coefficient=std::exp(-1./(fs*.02));
  }
  bool active()const noexcept{return awake;}
@@ -52,7 +65,7 @@ public:
   if(!controlCoefficientsValid||p.release!=cfg.release)release=std::exp(-1./(fs*.001*p.release));
   if(!controlCoefficientsValid||p.wetLevel!=cfg.wetLevel)wetTarget=std::pow(10.f,p.wetLevel/20.f);
   controlCoefficientsValid=true;cfg=p;
-  if(p.enabled){awake=true;idle=0;}if(!initialized){smooth=p;mix=0;wetGain=wetTarget;preCurrent=preTarget=p.preDelay*.001*fs+1;initialized=true;updateCoefficients();}
+  if(p.enabled){awake=true;idle=0;}if(!initialized){detailFrames=p.detailRead?detailDuration:0;smooth=p;mix=0;wetGain=wetTarget;preCurrent=preTarget=p.preDelay*.001*fs+1;initialized=true;updateCoefficients();}
  }
  std::array<float,2> process(float left,float right)noexcept{
   if(!std::isfinite(left))left=0;
@@ -82,9 +95,14 @@ public:
   }
   if(preFading&&++preFade>=fadeLength){preCurrent=preTarget;preFading=false;smooth.preDelay=(float)((preCurrent-1)*1000./fs);}
   std::array<float,8> feedback{};
+  const int detailTarget=cfg.detailRead?detailDuration:0;
+  if(detailFrames<detailTarget)++detailFrames;
+  else if(detailFrames>detailTarget)--detailFrames;
+  const float detail=detailFrames==0?0.f:static_cast<float>(detailFrames)/detailDuration;
   float wetL=0,wetR=0;
-  for(std::size_t i=0;i<8;++i){double length=times[i]*smooth.size*fs+std::sin(phase+i*.897597901)*smooth.modDepth*.001*fs;float d=tank[i].read(length);
-   wetL+=d*((i&4)?-.35355339f:.35355339f);wetR+=d*((i&2)?-.35355339f:.35355339f);
+  for(std::size_t i=0;i<8;++i){double length=times[i]*smooth.size*fs+std::sin(phase+i*.897597901)*smooth.modDepth*.001*fs;float audible=0.f;
+   const float d=tank[i].read(length,&audible,detail);
+   wetL+=audible*((i&4)?-.35355339f:.35355339f);wetR+=audible*((i&2)?-.35355339f:.35355339f);
    lowState[i]=(1-lowC)*d+lowC*lowState[i];float lowShaped=gMid[i]*d+(gLow[i]-gMid[i])*lowState[i];
    highState[i]=(1-highC)*lowShaped+highC*highState[i];feedback[i]=highRatio[i]*lowShaped+(1-highRatio[i])*highState[i];
   }
@@ -118,6 +136,7 @@ private:
  std::array<float,8> lowState{},highState{},gMid{},gLow{},highRatio{};std::array<float,2> inputHigh{},inputLow{};
  StereoReverbParameters cfg{},smooth{};double fs=48000,phase=0,envelope=0,coefficient=0,attack=0,release=0,idle=0;std::size_t counter=0;
  double preCurrent=1,preTarget=1;std::size_t preFade=0;float preBlend=0;bool preFading=false;
+ int detailFrames=0,detailDuration=240;
  float mix=0,wetGain=1,wetTarget=1,lowC=0,highC=0,inputHPC=0,inputLPC=0;bool awake=false,initialized=false;
 };
 }

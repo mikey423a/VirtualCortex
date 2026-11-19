@@ -49,6 +49,7 @@ VirtualCortexProcessor::VirtualCortexProcessor()
  const char* creativeFlagIDs[]={"ieOn","llOn","llReverse"};for(std::size_t i=0;i<3;++i)creativeFlags[i]=parameters.getRawParameterValue(creativeFlagIDs[i]);
  reverbEnabled=parameters.getRawParameterValue("stereoReverbOn");
  reverbPreGlide=parameters.getRawParameterValue("srPreGlide");
+ reverbDetailRead=parameters.getRawParameterValue("srDetailRead");
 
  vc::SignalGrid grid;
  grid.set(0,0,{vc::BlockType::Gate,true});grid.set(0,1,{vc::BlockType::Amp,true});
@@ -322,6 +323,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VirtualCortexProcessor::make
  addFloat("scBeats","Crusher step beats",0.125f,4.f,0.25f);
  addBool("scSync","Crusher tempo sync",false);
  addBool("scPitch","Crusher pitch sequence",false);
+ addBool("srDetailRead","Stereo reverb tail detail read",false);
  return p;
 }
 
@@ -560,7 +562,7 @@ void VirtualCortexProcessor::processStereoDelay(juce::AudioBuffer<float>& b){
   tempo=std::isfinite(tempo)?juce::jlimit(20.,300.,tempo):120.;stereoTempo.store(tempo,std::memory_order_relaxed);p.timeL=(float)(60000./tempo*value(15));p.timeR=(float)(60000./tempo*value(16));
  }
  auto rv=[this](std::size_t i){return reverbParameters[i]->load(std::memory_order_relaxed);};
- vc::StereoReverbParameters rp;rp.decay=rv(0);rp.size=rv(1);rp.preDelay=rv(2);rp.diffusion=rv(3);rp.early=rv(4);rp.mix=rv(5);rp.lowDecay=rv(6);rp.highDecay=rv(7);rp.lowFreq=rv(8);rp.highFreq=rv(9);rp.modRate=rv(10);rp.modDepth=rv(11);rp.width=rv(12);rp.ducking=rv(13);rp.release=rv(14);rp.wetLevel=rv(15);rp.inputHP=rv(16);rp.inputLP=rv(17);rp.enabled=reverbEnabled->load(std::memory_order_relaxed)>.5f;rp.preGlide=reverbPreGlide->load(std::memory_order_relaxed)>.5f;stereoReverb.configure(rp);
+ vc::StereoReverbParameters rp;rp.decay=rv(0);rp.size=rv(1);rp.preDelay=rv(2);rp.diffusion=rv(3);rp.early=rv(4);rp.mix=rv(5);rp.lowDecay=rv(6);rp.highDecay=rv(7);rp.lowFreq=rv(8);rp.highFreq=rv(9);rp.modRate=rv(10);rp.modDepth=rv(11);rp.width=rv(12);rp.ducking=rv(13);rp.release=rv(14);rp.wetLevel=rv(15);rp.inputHP=rv(16);rp.inputLP=rv(17);rp.enabled=reverbEnabled->load(std::memory_order_relaxed)>.5f;rp.preGlide=reverbPreGlide->load(std::memory_order_relaxed)>.5f;rp.detailRead=reverbDetailRead->load(std::memory_order_relaxed)>.5f;stereoReverb.configure(rp);
  std::array<vc::MultiHeadEcho::Head,4> heads;for(std::size_t i=0;i<4;++i)heads[i]={mhParameters[i*4]->load(),mhParameters[i*4+1]->load(),mhParameters[i*4+2]->load(),mhParameters[i*4+3]->load()};const bool mhOn=mhEnabled->load()>.5f;if(!mhOn)for(auto& h:heads)h.feedback=0;multiHead.configure(heads);const float mixTarget=mhOn?mhParameters[16]->load():0.f;const float mixCoefficient=(float)std::exp(-1./(fs*.01));
  vc::IntervalEcho::Parameters ip;ip.time=creativeParameters[0]->load();ip.feedback=creativeParameters[1]->load();ip.a=creativeParameters[2]->load();ip.b=creativeParameters[3]->load();ip.step=sequencerStep(creativeParameters[4]->load(),0);ip.cutoff=creativeParameters[5]->load();ip.mix=creativeParameters[6]->load();ip.enabled=creativeFlags[0]->load()>.5f;intervalEcho.configure(ip);
  layerLoom.configure(creativeParameters[7]->load(),creativeParameters[8]->load(),creativeParameters[9]->load(),creativeFlags[2]->load()>.5f,creativeFlags[1]->load()>.5f);layerLoom.command(loopCommands.exchange(0));
@@ -855,7 +857,7 @@ bool VirtualCortexProcessor::restoreStateInformation(const void* data,int size){
   const char* creativeIDs[]={"ieTime","ieFeedback","ieA","ieB","ieStep","ieCutoff","ieMix","llLevel","llRate","llCutoff","ieOn","llOn","llReverse"};for(auto id:creativeIDs)addDefault(id);
   const char* mhIDs[]={"mh1Time","mh1Level","mh1Pan","mh1Feedback","mh2Time","mh2Level","mh2Pan","mh2Feedback","mh3Time","mh3Level","mh3Pan","mh3Feedback","mh4Time","mh4Level","mh4Pan","mh4Feedback","mhMix","mhOn"};for(auto id:mhIDs)addDefault(id);
   for(const auto* id:vc::stereoDelayIDs)addDefault(id);for(const auto* id:vc::stereoDelayFlagIDs)addDefault(id);
-  for(const auto* id:vc::stereoReverbIDs)addDefault(id);addDefault("stereoReverbOn");addDefault("srPreGlide");
+  for(const auto* id:vc::stereoReverbIDs)addDefault(id);addDefault("stereoReverbOn");addDefault("srPreGlide");addDefault("srDetailRead");
   parameters.replaceState(restored);
   if(path.isEmpty() || !loadCabinetIR(juce::File(path))){
    std::lock_guard<std::mutex> guard(assetMutex);

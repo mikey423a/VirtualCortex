@@ -196,6 +196,13 @@ int main(int argc,char** argv){
   stereoPreset->onClick();require(processor->parameters.getRawParameterValue("sdDiffusion")->load()==0.f,"Standard preset retained diffusion");
   category->setSelectedId(24,juce::sendNotificationSync);auto* reverbPreset=dynamic_cast<juce::Button*>(editor->findChildWithID("device-4"));require(reverbPreset&&reverbPreset->isVisible(),"Stereo reverb preset missing");reverbPreset->onClick();require(processor->parameters.getRawParameterValue("stereoReverbOn")->load()>.5f,"Stereo reverb did not enable");require(processor->parameters.getRawParameterValue("srDucking")->load()>.7f,"Ducked preset missing");require(processor->parameters.getRawParameterValue("srPreGlide")->load()<.5f,"New reverb preset not using clean pre-delay");editor->setEditorsVisible(true);
   auto* glide=dynamic_cast<juce::ToggleButton*>(editor->findChildWithID("reverb-pre-glide"));require(glide&&glide->isVisible(),"Reverb pre-delay mode switch missing");glide->setToggleState(true,juce::sendNotificationSync);require(processor->parameters.getRawParameterValue("srPreGlide")->load()>.5f,"Pre-delay mode not bound");glide->setToggleState(false,juce::sendNotificationSync);
+  auto* tailDetail=dynamic_cast<juce::ToggleButton*>(editor->findChildWithID("reverb-tail-detail"));
+  require(tailDetail&&tailDetail->isVisible()&&!tailDetail->getToggleState(),"Reverb detail control missing or defaults on");
+  tailDetail->setToggleState(true,juce::sendNotificationSync);
+  require(processor->parameters.getRawParameterValue("srDetailRead")->load()>.5f,"Reverb detail control not bound");
+  capture("reverb-tail-detail-2560x1440.png",2560,1440);
+  capture("reverb-tail-detail-822x600.png",822,600);
+  tailDetail->setToggleState(false,juce::sendNotificationSync);
   for(int page=0;page<3;++page){auto* button=dynamic_cast<juce::Button*>(editor->findChildWithID("stereo-page-reverb-"+juce::String(page)));require(button&&button->isVisible(),"Stereo reverb page missing");button->onClick();const auto name=juce::String("stereo-reverb-page-")+juce::String(page)+".png";capture(name.toRawUTF8(),1184,864);}
   auto* width=dynamic_cast<juce::Slider*>(editor->findChildWithID("srWidth"));require(width&&width->isVisible(),"Reverb width missing");width->setValue(.5,juce::sendNotificationSync);require(std::abs(processor->parameters.getRawParameterValue("srWidth")->load()-.5f)<.001,"Reverb control not bound");editor->setEditorsVisible(false);for(int i=0;i<3;++i)require(!editor->findChildWithID("stereo-page-reverb-"+juce::String(i))->isVisible(),"Reverb page over grid view");capture("stereo-reverb-grid-only.png",1184,864);
 

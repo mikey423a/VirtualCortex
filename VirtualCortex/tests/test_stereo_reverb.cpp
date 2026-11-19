@@ -167,6 +167,40 @@ int main(){
   reused.prepare(rate);reused.configure(q);fresh.prepare(rate);fresh.configure(q);
   for(int i=0;i<24000;++i){float x=i==0?.1f:0.f;assert(reused.process(x,0)==fresh.process(x,0));}
  }
+ // The detail tap changes the audible projection of the same tank. A
+ // toggled render must follow the blend of the two continuously run endpoints.
+ for(double fs:{44100.,48000.,96000.}){
+  vc::StereoReverb linear,cubic,toggled;
+  Params controls;
+  controls.enabled=true;controls.mix=1;controls.early=0;
+  controls.modRate=.7f;controls.modDepth=1.1f;
+  for(auto* engine:{&linear,&cubic,&toggled}){
+   engine->prepare(fs);
+   controls.detailRead=engine==&cubic;
+   engine->configure(controls);
+  }
+  const int duration=static_cast<int>(std::lround(fs*.005));
+  const int on=static_cast<int>(fs*.25),off=on+2*duration;
+  double delta=0,tail=0;
+  for(int i=0;i<static_cast<int>(fs);++i) {
+   if(i==on||i==off){controls.detailRead=i==on;toggled.configure(controls);}
+   const float left=i<off?.12f*std::sin(i*.64f):0.f;
+   const float right=i<off?.09f*std::cos(i*.57f):0.f;
+   const auto a=linear.process(left,right),b=cubic.process(left,right),y=toggled.process(left,right);
+   const int weightFrames=i<off?std::clamp(i-on+1,0,duration):std::clamp(duration-(i-off+1),0,duration);
+   const float weight=static_cast<float>(weightFrames)/duration;
+   for(int ch=0;ch<2;++ch){
+    assert(std::isfinite(y[ch])&&std::abs(y[ch])<4.f);
+    assert(std::abs(y[ch]-(a[ch]+weight*(b[ch]-a[ch])))<2.e-6f);
+    if(weightFrames==0)assert(y[ch]==a[ch]);
+    if(weightFrames==duration)assert(y[ch]==b[ch]);
+    if(i>=off+duration)tail+=y[ch]*y[ch];
+    if(i>=on&&i<off)delta+=std::abs(a[ch]-b[ch]);
+   }
+  }
+  assert(delta>.001&&tail>.001);
+  std::cout<<"REVERB_DETAIL rate="<<fs<<" audible_abs_difference="<<delta<<" retained_tail_energy="<<tail<<"\n";
+ }
  std::cout<<"PASS stereo FDN decay, decorrelation, early timing, width, damping, ducking, automation and reset\n";
 }
 

@@ -164,6 +164,7 @@ private:
  std::array<std::atomic<float>*,18> reverbParameters{};
  std::atomic<float>* reverbEnabled=nullptr;
  std::atomic<float>* reverbPreGlide=nullptr;
+ std::atomic<float>* reverbDetailRead=nullptr;
  std::atomic<double> stereoTempo{120.0};
  // Stable APVTS parameter objects: avoid string/table lookups on the audio thread.
  struct CachedParameters {

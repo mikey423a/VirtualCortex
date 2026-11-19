@@ -187,8 +187,8 @@ VirtualCortexEditor::VirtualCortexEditor(VirtualCortexProcessor& p):AudioProcess
   k.value.onTextChange=[this,i]{auto& item=knobs[i];item.slider.setValue(item.slider.getValueFromText(item.value.getText()),juce::sendNotificationSync);};
   k.value.setText(k.slider.getTextFromValue(k.slider.getValue()),juce::dontSendNotification);
  }
- const std::array<const char*,26> switchesIds={"gateOn","ampOn","cabOn","delayOn","reverbOn","tremOn","bypass","eqOn","irOn","gridMode","stereoDelayOn","sdPingPong","sdTape","sdSync","stereoReverbOn","srPreGlide","mhOn","ieOn","llOn","llReverse","syOn","syMidi","scOn","ieSync","scSync","scPitch"};
- const std::array<const char*,26> switchesLabels={"ENABLED","ENABLED","ENABLED","ENABLED","ENABLED","ENABLED","BYPASS","ENABLED","USE IR","GRID ENGINE","ENABLED","PING PONG","TAPE GLIDE","TEMPO SYNC","ENABLED","PRE GLIDE","ENABLED","ENABLED","ENABLED","REVERSE","ENABLED","MIDI NOTES","ENABLED","TEMPO SYNC","TEMPO SYNC","PITCH SEQUENCE"};
+ const std::array<const char*,27> switchesIds={"gateOn","ampOn","cabOn","delayOn","reverbOn","tremOn","bypass","eqOn","irOn","gridMode","stereoDelayOn","sdPingPong","sdTape","sdSync","stereoReverbOn","srPreGlide","mhOn","ieOn","llOn","llReverse","syOn","syMidi","scOn","ieSync","scSync","scPitch","srDetailRead"};
+ const std::array<const char*,27> switchesLabels={"ENABLED","ENABLED","ENABLED","ENABLED","ENABLED","ENABLED","BYPASS","ENABLED","USE IR","GRID ENGINE","ENABLED","PING PONG","TAPE GLIDE","TEMPO SYNC","ENABLED","PRE GLIDE","ENABLED","ENABLED","ENABLED","REVERSE","ENABLED","MIDI NOTES","ENABLED","TEMPO SYNC","TEMPO SYNC","PITCH SEQUENCE","TAIL DETAIL"};
  for(size_t i=0;i<switches.size();++i){auto& s=switches[i];s.button.setButtonText(switchesLabels[i]);addChildComponent(s.button);s.attachment=std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.parameters,switchesIds[i],s.button);}
  routingSelector.setComponentID("grid-routing");routingSelector.addItem("Parallel rows",1);routingSelector.addItem("Series rows",2);routingSelector.addItem("Dual mono (grid only)",3);routingSelector.addItem("Custom row mixer",4);routingSelector.setSelectedId(processor.getRoutingMode()+1,juce::dontSendNotification);routingSelector.setTooltip("Dual: left rows 1-2, right rows 3-4. Global input/post effects are bypassed. Enable GRID ENGINE.");routingSelector.onChange=[this]{processor.setRoutingMode(routingSelector.getSelectedId()-1);if(routingSelector.getSelectedId()==4){routingPanel.refresh();routingPanel.setVisible(true);routingPanel.toFront(false);}repaint();};addAndMakeVisible(routingSelector);
  presetBox.addItem("Clean ambience",2);presetBox.addItem("Crunch rhythm",3);presetBox.addItem("Lead delay",4);presetBox.setTextWhenNothingSelected("1A Virtual Cortex MAIN");presetBox.onChange=[this]{applyPreset(presetBox.getSelectedId());};addAndMakeVisible(presetBox);
@@ -377,7 +377,7 @@ void VirtualCortexEditor::updateView(){refreshGridControls();const int type=curr
  knobs[76].slider.setEnabled(!intervalSync);knobs[76].value.setEnabled(!intervalSync);knobs[95].slider.setEnabled(!crusherSync);knobs[95].value.setEnabled(!crusherSync);
  trackingPageButton.setVisible(type==28||type==29);trackingPageButton.setButtonText(trackingPage?"MAIN":type==28?"ENVELOPES":"PITCH / STEPS");switches[20].button.setVisible(type==28);switches[21].button.setVisible(type==28);switches[22].button.setVisible(type==29);
  for(auto& b:loopButtons)b.setVisible(type==27);switches[17].button.setVisible(type==26);switches[18].button.setVisible(type==27);switches[19].button.setVisible(type==27);
- switches[14].button.setVisible(type==24);switches[15].button.setVisible(type==24);
+ switches[14].button.setVisible(type==24);switches[15].button.setVisible(type==24);switches[26].button.setVisible(type==24);
  if(type==23)for(int i=10;i<14;++i)switches[(std::size_t)i].button.setVisible(true);
  const auto colour=CortexBlockButton::colourFor(type);
  if(!gm||masterPage){for(int i:visibleKnobs()){knobs[(size_t)i].slider.setVisible(true);knobs[(size_t)i].value.setVisible(true);knobs[(size_t)i].slider.setColour(juce::Slider::rotarySliderFillColourId,colour);knobs[(size_t)i].slider.setEnabled(true);knobs[(size_t)i].value.setEnabled(true);}int enable=-1;switch(type){case 1:enable=0;break;case 2:enable=1;break;case 3:enable=2;break;case 4:enable=7;break;case 5:enable=3;break;case 6:enable=4;break;case 7:enable=5;break;}if(enable>=0)switches[(size_t)enable].button.setVisible(true);switches[8].button.setVisible(type==3&&!gm);}
@@ -428,6 +428,9 @@ void VirtualCortexEditor::resized(){
  trackingPageButton.setBounds(1000,537,165,32);switches[21].button.setBounds(1000,489,165,34);switches[20].button.setComponentID("power");switches[22].button.setComponentID("power");
  switches[16].button.setComponentID("power");
  switches[14].button.setComponentID("power");switches[14].button.setBounds(1138,318,34,34);
+ switches[26].button.setBounds(836,489,165,34);
+ switches[26].button.setComponentID("reverb-tail-detail");
+ switches[26].button.setTooltip("Use cubic interpolation on the audible reverb tail. The feedback and early reflections keep their existing settings.");
  switches[15].button.setBounds(650,489,165,34);switches[15].button.setComponentID("reverb-pre-glide");switches[15].button.setTooltip("Off: clean 20 ms pre-delay crossfade. On: pitch-changing glide. Size and modulation retain their moving reads.");
  switches[8].button.setBounds(309,489,150,34);removeButton.setBounds(302,318,35,35);
  for(auto* b:{&loadIRButton,&loadGridIRButton,&loadNeuralButton})b->setBounds(838,492,245,32);
@@ -510,7 +513,7 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
 
  g.setColour(panel);g.fillRect(layoutRect({302,598,172,232}));g.setColour(juce::Colour(0xff070707));g.drawRect(layoutRect({302,598,172,36}),1);drawCaption(g,"Gig view",{343,599,125,33},20.f,juce::Colours::white,juce::Justification::centredLeft,true);drawCaption(g,"Parameter Editor",{310,796,156,32},14.f,muted);
  }
- drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.47.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
+ drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.48.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
 }
 void VirtualCortexEditor::applyPreset(int index){auto set=[this](const char* id,float value){if(auto* p=processor.parameters.getParameter(id))p->setValueNotifyingHost(p->convertTo0to1(value));};if(index<2)return;set("gridMode",0.f);
  if(index==2){set("drive",.12f);set("tone",.7f);set("level",.65f);set("delayMix",.12f);set("reverbMix",.25f);set("ampBias",0.f);set("delayOn",1.f);set("reverbOn",1.f);}
