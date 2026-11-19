@@ -81,6 +81,18 @@ void CortexBlockButton::drawIcon(juce::Graphics& g,juce::Rectangle<float> r,int 
  if(type==30)type=5;else if(type==31)type=6;
  g.setColour(colour);const auto cx=r.getCentreX(),cy=r.getCentreY();const auto u=r.getWidth()/24.f;
  juce::Path p;
+ if(type==1){
+  // A fan of narrow gating envelopes, readable at sidebar and grid sizes.
+  for(float angle:{0.f,.48f,.96f,1.44f}){
+   juce::Path blade;
+   blade.startNewSubPath(0.f,0.f);
+   blade.lineTo(-1.8f*u,-17.f*u);
+   blade.quadraticTo(2.5f*u,-12.f*u,0.f,0.f);
+   blade.applyTransform(juce::AffineTransform::rotation(angle).translated(cx-7*u,cy+8*u));
+   g.strokePath(blade,juce::PathStrokeType(1.25f*u));
+  }
+  return;
+ }
  if(type==34){
   g.drawRoundedRectangle(r.reduced(1*u,3*u),2*u,1.2f);
   for(float offset:{-5.f,5.f}){g.drawEllipse(cx+(offset-3)*u,cy-5*u,6*u,6*u,1.2f);g.fillEllipse(cx+(offset-1)*u,cy-3*u,2*u,2*u);}
@@ -152,7 +164,15 @@ void CortexBlockButton::paintButton(juce::Graphics& g,bool over,bool){
  g.setColour(blockEnabled?colour:colour.withAlpha(.3f));g.drawRoundedRectangle(box,corner,outline);
  drawIcon(g,box.reduced(side*.24f),type,blockEnabled?juce::Colours::white:muted.withAlpha(.55f));
  if(hasKeyboardFocus(false)){g.setColour(mint.withAlpha(.7f));g.drawRoundedRectangle(box.expanded(4),corner+3,1.f);}
- if(expanded&&type){g.setColour(blockEnabled?(selected?colour:juce::Colour(0xffd5dbd8)):muted);g.setFont(12.f);g.drawFittedText(nameFor(type),4,86,getWidth()-8,32,juce::Justification::centred,2);if(!blockEnabled)drawCaption(g,inactiveCaption(),{4,118,getWidth()-8,14},9.f,muted,juce::Justification::centred);}
+ if(expanded&&type&&selected){
+  const float width=juce::jmin(bounds.getWidth()-4.f,
+      juce::jmax(side,12.f+7.f*nameFor(type).length()));
+  auto label=juce::Rectangle<float>(width,18.f).withCentre({box.getCentreX(),box.getBottom()+11.f});
+  g.setColour(juce::Colour(0xff292c2b));g.fillRoundedRectangle(label,3.f);
+  drawCaption(g,nameFor(type),label.toNearestInt(),11.f,blockEnabled?juce::Colours::white:muted,juce::Justification::centred);
+  if(!blockEnabled)drawCaption(g,inactiveCaption(),{4,118,getWidth()-8,14},9.f,muted,juce::Justification::centred);
+ }
+ else if(expanded&&type){g.setColour(blockEnabled?(selected?colour:juce::Colour(0xffd5dbd8)):muted);g.setFont(12.f);g.drawFittedText(nameFor(type),4,86,getWidth()-8,32,juce::Justification::centred,2);if(!blockEnabled)drawCaption(g,inactiveCaption(),{4,118,getWidth()-8,14},9.f,muted,juce::Justification::centred);}
  if(type){const auto badge=juce::Rectangle<float>(side*.38f,side*.38f).withCentre({box.getX()-1,box.getY()+(expanded?-1.f:2.f)});g.setColour(juce::Colours::white);g.fillEllipse(badge);drawCaption(g,caption,badge.toNearestInt(),side*.24f,juce::Colours::black,juce::Justification::centred);}
 }
 VirtualCortexEditor::VirtualCortexEditor(VirtualCortexProcessor& p):AudioProcessorEditor(&p),processor(p){
