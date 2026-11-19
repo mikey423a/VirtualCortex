@@ -319,6 +319,69 @@ int runProcessorAudioTests(){
    check(q->getRoutingMode()==0&&q->getRowRouting().rows[0].gainDb==0&&q->getRowRouting().rows[3].sources==1,"Legacy preset inherits stale custom settings");
    check(q->getRowRouting().rows[1].entryColumn==0&&q->getRowRouting().rows[1].sourceTaps[0]==8,"Legacy column defaults wrong");
   }
+  // Verify the live processor path, including stateful effects after the grid.
+  {
+   constexpr int blockSize=128, switchBlock=192, inputEnd=224, endBlock=416;
+   auto immediate=std::make_unique<VirtualCortexProcessor>();
+   auto smooth=std::make_unique<VirtualCortexProcessor>();
+   for(auto* processor:{immediate.get(),smooth.get()}){
+    layout(*processor,2,2);
+    grid(*processor,vc::BlockType::Empty);
+    vc::RowRouting routes;
+    routes.rows[0].gainDb=-12.f;
+    routes.smoothRoutingModes=processor==smooth.get();
+    check(processor->setRowRouting(routes),"Output transition setup failed");
+    processor->setRoutingMode(0);
+    set(*processor,"outputTrim",1.f);
+    set(*processor,"stereoDelayOn",1.f);
+    set(*processor,"sdSync",0.f);
+    set(*processor,"sdTimeL",42.f);
+    set(*processor,"sdTimeR",67.f);
+    set(*processor,"sdMix",.3f);
+    set(*processor,"sdFeedback",.5f);
+    set(*processor,"stereoReverbOn",1.f);
+    set(*processor,"srMix",.3f);
+    set(*processor,"srDecay",1.5f);
+    prepare(*processor,48000,blockSize);
+   }
+   juce::AudioBuffer<float> raw(2,blockSize), corrected(2,blockSize);
+   juce::MidiBuffer rawMidi,correctedMidi;
+   rawMidi.ensureSize(8192);
+   correctedMidi.ensureSize(8192);
+   std::array<float,2> prevRaw{},prevCorrected{};
+   double rawStep=0,correctedStep=0,rawTail=0,correctedTail=0;
+   for(int block=0;block<endBlock;++block){
+    if(block==switchBlock){
+     immediate->setRoutingMode(3);
+     smooth->setRoutingMode(3);
+    }
+    for(int i=0;i<blockSize;++i){
+     const int n=(block-switchBlock)*blockSize+i;
+     const float input=block<inputEnd ? .2f*std::cos(n*.03125f) : 0.f;
+     raw.setSample(0,i,input);raw.setSample(1,i,-.7f*input);
+     corrected.setSample(0,i,input);corrected.setSample(1,i,-.7f*input);
+    }
+    rawMidi.clear();correctedMidi.clear();
+    immediate->processBlock(raw,rawMidi);
+    smooth->processBlock(corrected,correctedMidi);
+    for(int ch=0;ch<2;++ch)for(int i=0;i<blockSize;++i){
+     const float a=raw.getSample(ch,i), b=corrected.getSample(ch,i);
+     check(std::isfinite(a)&&std::isfinite(b),"Nonfinite processor transition");
+     if(block<switchBlock) check(a==b,"Opt-in affected audio before mode switch");
+     if(block==switchBlock&&i==0){
+      rawStep=std::max(rawStep,static_cast<double>(std::abs(a-prevRaw[ch])));
+      correctedStep=std::max(correctedStep,static_cast<double>(std::abs(b-prevCorrected[ch])));
+     }
+     if(block>=inputEnd){rawTail+=a*a;correctedTail+=b*b;}
+     prevRaw[ch]=a;
+     prevCorrected[ch]=b;
+    }
+   }
+   std::cout<<"POST_CHAIN_MODE rate=48000 immediate_step="<<rawStep<<" smooth_step="<<correctedStep
+            <<" immediate_tail_energy="<<rawTail<<" smooth_tail_energy="<<correctedTail<<"\n";
+   check(rawStep>.01&&correctedStep<rawStep*.25,"Mode switch discontinuity reached final output");
+   check(rawTail>1.e-6&&correctedTail>1.e-6,"Post-chain tail lost after switching");
+  }
 #if VC_HAS_NAM
   {
    const auto file=folder.getChildFile("live-amp.nam");check(file.replaceWithText(R"({"version":"0.5.4","architecture":"Linear","config":{"receptive_field":2,"bias":false},"weights":[0.5,0.25],"sample_rate":48000,"metadata":{}})"),"NAM fixture failed");
