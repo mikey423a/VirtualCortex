@@ -147,7 +147,10 @@ public:
  const SlotParameters* getSlotParameters(std::size_t row,std::size_t col) const noexcept {
   return SignalGrid::valid(row,col) ? &parameters_[row][col] : nullptr;
  }
- bool setRowRouting(const RowRouting& c)noexcept{return routing_.setRowRouting(c);}
+ void enableSourceTapBlending(bool active) noexcept {routing_.setSmoothSourceTaps(active && smoothSourceTapsRequested_);}
+ bool setRowRouting(const RowRouting& c)noexcept{if (!routing_.setRowRouting(c)) return false;
+  smoothSourceTapsRequested_=c.smoothSourceTaps;
+  return true;}
  void prepare(double sampleRate, std::size_t maxDelaySamples = 0) {
   hasProcessed_=false;
   routing_.prepareMixer(sampleRate);
@@ -353,6 +356,7 @@ private:
    default: return x;
   }
  }
+ bool smoothSourceTapsRequested_=false;
  ParallelGrid routing_;
  bool hasProcessed_=false;
  double rate_=48000.0;
