@@ -2,9 +2,9 @@
 
 Windows x64 standalone guitar amplifier/effects application and VST3, built with JUCE 8.0.10 and ASIO enabled.
 
-## Current verified milestone: 6.42.0
+## Current verified milestone: 6.43.0
 
-[Windows build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/44443526608) · [Source-tap smoothing and verification](validation/source-tap-transition/6.42-release.md)
+[Windows build and downloads](https://github.com/mikey423a/VirtualCortex/actions/runs/44446446857) · [Grid symbols and verification](validation/GRID-SYMBOLS-6.43.md) · [Source-tap smoothing and verification](validation/source-tap-transition/6.42-release.md)
 
 Custom Routing now has an optional 5 ms fade for source-tap edits. It is stored per preset and defaults off for old presets. All 48 regressions and Windows packaging checks passed.
 
