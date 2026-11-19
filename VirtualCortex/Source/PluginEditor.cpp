@@ -140,6 +140,34 @@ void CortexBlockButton::drawIcon(juce::Graphics& g,juce::Rectangle<float> r,int 
  for(int i=1;i<=40;++i){float t=i/40.f;float yy=type==1?(t<.45f?-.55f:.55f):std::sin(t*6.2831853f*(type==7?1.f:2.f))*.7f;p.lineTo(r.getX()+t*r.getWidth(),cy+yy*r.getHeight()*.45f);}
  g.strokePath(p,juce::PathStrokeType(1.5f));
 }
+namespace {
+class GridRemoveBadge final : public juce::Button {
+public:
+ GridRemoveBadge():juce::Button("Remove selected block"){setComponentID("remove-block-badge");setTooltip("Remove this block");}
+ void paintButton(juce::Graphics& g,bool over,bool down) override {
+  auto r=getLocalBounds().toFloat().reduced(1.f);
+  g.setColour(over||down?juce::Colours::white:findColour(juce::TextButton::buttonColourId));
+  g.fillEllipse(r);
+  auto cross=r.reduced(r.getWidth()*.32f);
+  g.setColour(juce::Colours::black);
+  g.drawLine(cross.getX(),cross.getY(),cross.getRight(),cross.getBottom(),1.5f);
+  g.drawLine(cross.getRight(),cross.getY(),cross.getX(),cross.getBottom(),1.5f);
+  if(hasKeyboardFocus(false)){g.setColour(juce::Colours::white);g.drawEllipse(r,2.f);}
+ }
+};
+}
+juce::Rectangle<float> CortexBlockButton::tileBounds() const {
+ const bool expanded=getHeight()>100;
+ const auto bounds=getLocalBounds().toFloat();
+ const float side=expanded?juce::jmin(76.f,bounds.getWidth()-18.f):bounds.getHeight()-8.f;
+ return juce::Rectangle<float>(side,side).withCentre({bounds.getCentreX(),expanded?47.f:bounds.getCentreY()});
+}
+void CortexBlockButton::resized(){
+ if(!removeBadge)return;
+ auto tile=tileBounds();
+ int side=getHeight()>100?20:14;
+ removeBadge->setBounds(juce::Rectangle<int>(side,side).withCentre({juce::roundToInt(tile.getRight()-2),juce::jmax(side/2,juce::roundToInt(tile.getY()+2))}));
+}
 void CortexBlockButton::paintButton(juce::Graphics& g,bool over,bool){
  const auto bounds=getLocalBounds().toFloat();const auto colour=colourFor(type);
  if(rail){
@@ -155,25 +183,25 @@ void CortexBlockButton::paintButton(juce::Graphics& g,bool over,bool){
   auto box=juce::Rectangle<float>(48,48).withCentre({bounds.getCentreX(),43.f});g.setColour(selected?juce::Colour(0xff073d34):colour);g.drawRoundedRectangle(box,12.f,selected?3.f:1.5f);drawIcon(g,box.reduced(10),type,ink);
   drawCaption(g,type?nameFor(type):"Empty slot",{8,75,getWidth()-16,31},16.f,ink,juce::Justification::centred);return;
  }
- const bool expanded=getHeight()>100;const float centreY=expanded?47.f:bounds.getCentreY();
- if(type==0&&!selected&&!over){g.setColour(juce::Colour(0xff080a0a));g.fillRoundedRectangle(bounds.getCentreX()-8,centreY-8,16,16,3);drawIcon(g,{bounds.getCentreX()-7,centreY-7,14,14},0,juce::Colour(0xff48514e));return;}
- const float side=expanded?62.f:juce::jmin(62.f,bounds.getHeight()-10.f);auto box=juce::Rectangle<float>(side,side).withCentre({bounds.getCentreX(),centreY});
- // Preserve the reference rounded-square silhouette in compact and expanded rows.
- const float corner=side*.2f,outline=side*(selected?.08f:.027f);
- g.setColour(selected?colour.withAlpha(.16f):juce::Colour(over?0xff202524:0xff101111));g.fillRoundedRectangle(box,corner);
- g.setColour(blockEnabled?colour:colour.withAlpha(.3f));g.drawRoundedRectangle(box,corner,outline);
- drawIcon(g,box.reduced(side*.24f),type,blockEnabled?juce::Colours::white:muted.withAlpha(.55f));
- if(hasKeyboardFocus(false)){g.setColour(mint.withAlpha(.7f));g.drawRoundedRectangle(box.expanded(4),corner+3,1.f);}
+ const bool expanded=getHeight()>100;
+ if(type==0&&!selected&&!over)return;
+ const auto box=tileBounds();
+ const float side=box.getWidth(),corner=side*.22f;
+ const auto accent=blockEnabled?colour:colour.withAlpha(.35f);
+ g.setColour(over?juce::Colour(0xff303031):juce::Colour(0xff212123));
+ g.fillRoundedRectangle(box,corner);
+ g.setColour(accent);
+ g.drawRoundedRectangle(box,corner,selected?side*.075f:side*.035f);
+ drawIcon(g,box.reduced(side*.19f),type,blockEnabled?juce::Colours::white:muted);
+ if(hasKeyboardFocus(false)){g.setColour(mint.withAlpha(.7f));g.drawRoundedRectangle(box.expanded(2),corner+2,1.f);}
  if(expanded&&type&&selected){
-  const float width=juce::jmin(bounds.getWidth()-4.f,
-      juce::jmax(side,12.f+7.f*nameFor(type).length()));
-  auto label=juce::Rectangle<float>(width,18.f).withCentre({box.getCentreX(),box.getBottom()+11.f});
-  g.setColour(juce::Colour(0xff292c2b));g.fillRoundedRectangle(label,3.f);
-  drawCaption(g,nameFor(type),label.toNearestInt(),11.f,blockEnabled?juce::Colours::white:muted,juce::Justification::centred);
-  if(!blockEnabled)drawCaption(g,inactiveCaption(),{4,118,getWidth()-8,14},9.f,muted,juce::Justification::centred);
+  const float width=juce::jmin(bounds.getWidth()-4.f,juce::jmax(side,14.f+7.f*nameFor(type).length()));
+  const auto label=juce::Rectangle<float>(width,20.f).withCentre({box.getCentreX(),box.getBottom()+12.f});
+  g.setColour(juce::Colour(0xff383736));g.fillRoundedRectangle(label,4.f);
+  drawCaption(g,nameFor(type),label.toNearestInt(),12.f,juce::Colours::white,juce::Justification::centred,true);
  }
- else if(expanded&&type){g.setColour(blockEnabled?(selected?colour:juce::Colour(0xffd5dbd8)):muted);g.setFont(12.f);g.drawFittedText(nameFor(type),4,86,getWidth()-8,32,juce::Justification::centred,2);if(!blockEnabled)drawCaption(g,inactiveCaption(),{4,118,getWidth()-8,14},9.f,muted,juce::Justification::centred);}
- if(type){const auto badge=juce::Rectangle<float>(side*.38f,side*.38f).withCentre({box.getX()-1,box.getY()+(expanded?-1.f:2.f)});g.setColour(juce::Colours::white);g.fillEllipse(badge);drawCaption(g,caption,badge.toNearestInt(),side*.24f,juce::Colours::black,juce::Justification::centred);}
+ if(expanded&&type&&!blockEnabled)
+  drawCaption(g,inactiveCaption(),{2,116,getWidth()-4,16},10.f,muted,juce::Justification::centred);
 }
 VirtualCortexEditor::VirtualCortexEditor(VirtualCortexProcessor& p):AudioProcessorEditor(&p),processor(p){
  setLookAndFeel(&look);
@@ -209,6 +237,9 @@ VirtualCortexEditor::VirtualCortexEditor(VirtualCortexProcessor& p):AudioProcess
  addChildComponent(detailedModulationButton);
  for(int r=0;r<4;++r){auto& lane=laneButtons[(size_t)r];lane.setButtonText("ROW "+juce::String(r+1));lane.setComponentID("lane-"+juce::String(r));lane.setTooltip("Enable parallel row: same input, averaged with other enabled rows in Grid mode");lane.setClickingTogglesState(true);lane.onClick=[this,r]{processor.setGridLaneEnabled((size_t)r,laneButtons[(size_t)r].getToggleState());refreshGridControls();};addAndMakeVisible(lane);
   for(int c=0;c<8;++c){auto& b=gridCells[(size_t)r][(size_t)c];b.setComponentID("grid-"+juce::String(r)+"-"+juce::String(c));b.onClick=[this,r,c]{selectSlot(r,c);};
+   b.removeBadge=std::make_unique<GridRemoveBadge>();
+   b.addChildComponent(*b.removeBadge);
+   b.removeBadge->onClick=[this,r,c]{if(selectedRow==r&&selectedColumn==c)insertBlock(0);};
    b.onGridDrop=[this,r,c](const juce::MouseEvent& e){moveGridSlotToPosition(r,c,e.getEventRelativeTo(this).position);};b.setTooltip("Drag to move; dropping on another block swaps both devices.");addAndMakeVisible(b);}
  }
  for(int c=0;c<8;++c){auto& b=stomps[(size_t)c];b.stomp=true;b.caption=juce::String::charToString((juce::juce_wchar)('A'+c));b.onClick=[this,c]{selectSlot(selectedRow,c);toggleSelectedSlot();};addAndMakeVisible(b);}
@@ -338,7 +369,7 @@ void VirtualCortexEditor::refreshGridControls(){
   const auto& selectedRoute=routes.rows[(std::size_t)selectedWireDestination];
   if(!custom||!(selectedRoute.sources&(2u<<selectedWireSource))||selectedRoute.sourceTaps[(std::size_t)selectedWireSource]!=selectedWireTap||selectedRoute.entryColumn!=selectedWireEntry){selectedWireSource=selectedWireDestination=-1;repaint();}
  }
- for(int r=0;r<4;++r){routeButtons[r].setButtonText(custom?(routes.rows[r].output?"OUT":"BUS"):"ROUTE");routeButtons[r].setToggleState(gridMode()&&processor.isGridLaneEnabled(r)&&custom&&routes.rows[r].output,juce::dontSendNotification);}const auto grid=processor.getEditableGrid();for(int r=0;r<4;++r){laneButtons[(size_t)r].setToggleState(processor.isGridLaneEnabled((size_t)r),juce::dontSendNotification);for(int c=0;c<8;++c){const auto slot=*grid.get((size_t)r,(size_t)c);auto& b=gridCells[(size_t)r][(size_t)c];b.type=(int)slot.type;b.gridEngineOff=!gridMode();b.routingSkipped=custom&&c<routes.rows[r].entryColumn;b.blockEnabled=gridMode()&&slot.enabled&&processor.isGridLaneEnabled((size_t)r)&&!b.routingSkipped;b.selected=r==selectedRow&&c==selectedColumn;b.caption=juce::String::charToString((juce::juce_wchar)('A'+c));const auto description="Row "+juce::String(r+1)+", slot "+b.caption+": "+CortexBlockButton::nameFor((int)slot.type)+(!gridMode()?" (grid engine off)":b.routingSkipped?" (skipped by routing)":b.blockEnabled?"":" (bypassed)");b.setName(description);b.setTooltip(description+". Drag to move; select to edit.");b.repaint();}}
+ for(int r=0;r<4;++r){routeButtons[r].setButtonText(custom?(routes.rows[r].output?"OUT":"BUS"):"ROUTE");routeButtons[r].setToggleState(gridMode()&&processor.isGridLaneEnabled(r)&&custom&&routes.rows[r].output,juce::dontSendNotification);}const auto grid=processor.getEditableGrid();for(int r=0;r<4;++r){laneButtons[(size_t)r].setToggleState(processor.isGridLaneEnabled((size_t)r),juce::dontSendNotification);for(int c=0;c<8;++c){const auto slot=*grid.get((size_t)r,(size_t)c);auto& b=gridCells[(size_t)r][(size_t)c];b.type=(int)slot.type;b.gridEngineOff=!gridMode();b.routingSkipped=custom&&c<routes.rows[r].entryColumn;b.blockEnabled=gridMode()&&slot.enabled&&processor.isGridLaneEnabled((size_t)r)&&!b.routingSkipped;b.selected=r==selectedRow&&c==selectedColumn;b.removeBadge->setVisible(b.selected&&b.type!=0);b.removeBadge->setColour(juce::TextButton::buttonColourId,CortexBlockButton::colourFor(b.type).brighter(.4f));b.caption=juce::String::charToString((juce::juce_wchar)('A'+c));const auto description="Row "+juce::String(r+1)+", slot "+b.caption+": "+CortexBlockButton::nameFor((int)slot.type)+(!gridMode()?" (grid engine off)":b.routingSkipped?" (skipped by routing)":b.blockEnabled?"":" (bypassed)");b.setName(description);b.setTooltip(description+". Drag to move; select to edit.");b.repaint();}}
  for(int c=0;c<8;++c){const auto slot=*grid.get((size_t)selectedRow,(size_t)c);auto& b=stomps[(size_t)c];b.type=(int)slot.type;b.blockEnabled=slot.enabled;b.selected=c==selectedColumn;b.repaint();}
  for(int c=0;c<8;++c)quickSelectors[(size_t)c].setToggleState(c==processor.selectedScene(),juce::dontSendNotification);
  slotEnabled.setToggleState(grid.get((size_t)selectedRow,(size_t)selectedColumn)->enabled,juce::dontSendNotification);
@@ -472,7 +503,7 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
  g.setColour(juce::Colour(0xff131313));g.fillRoundedRectangle(9,78,43,752,6);g.setColour(panel);g.fillRoundedRectangle(browserArea.toFloat(),6.f);
 
  const int rowStep=editorsVisible?46:160,rowTop=editorsVisible?132:153;
- for(int row=0;row<4;++row){const int y=rowTop+row*rowStep;const bool active=processor.isGridLaneEnabled((size_t)row);g.setColour(juce::Colour(active?0xffa3a3a3:0xff383838));const float cy=(float)y+(editorsVisible?22.f:47.f);g.drawLine(layoutX(352),cy,layoutX(1124),cy,1.f);g.setColour(juce::Colour(0xff111212));g.fillRoundedRectangle(layoutRect({1124,y+5,49,editorsVisible?39:84}).toFloat(),16);drawCaption(g,"Mix",{1125,y+(editorsVisible?9:30),47,25},12.f,juce::Colours::white,juce::Justification::centred);}
+ for(int row=0;row<4;++row){const int y=rowTop+row*rowStep;const bool active=processor.isGridLaneEnabled((size_t)row);g.setColour(juce::Colour(active?0xffe2dfd9:0xff444443));const float cy=(float)y+(editorsVisible?22.f:47.f);g.drawLine(layoutX(352),cy,layoutX(1124),cy,1.f);g.setColour(juce::Colour(0xff111212));g.fillRoundedRectangle(layoutRect({1124,y+5,49,editorsVisible?39:84}).toFloat(),16);drawCaption(g,"Mix",{1125,y+(editorsVisible?9:30),47,25},12.f,juce::Colours::white,juce::Justification::centred);}
  if(processor.getRoutingMode()==3){
   const auto routes=processor.getRowRouting();
   for(int destination=1;destination<4;++destination)for(int source=0;source<destination;++source){
@@ -490,7 +521,7 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
    const auto points=routingWire(source,destination,route);
    juce::Path wire;wire.startNewSubPath(points[0].x,points[0].y);
    for(std::size_t i=1;i<points.size();++i)wire.lineTo(points[i].x,points[i].y);
-   g.strokePath(wire,juce::PathStrokeType(wireWidth));
+   g.strokePath(wire.createPathWithRoundedCorners(3.f),juce::PathStrokeType(wireWidth));
    g.fillEllipse(startX-2.f,startY-2.f,4.f,4.f);
    juce::Path arrow;arrow.startNewSubPath(endX-3.f,endY-5.f);arrow.lineTo(endX,endY);arrow.lineTo(endX+3.f,endY-5.f);
    g.strokePath(arrow,juce::PathStrokeType(wireWidth));
@@ -513,7 +544,7 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
 
  g.setColour(panel);g.fillRect(layoutRect({302,598,172,232}));g.setColour(juce::Colour(0xff070707));g.drawRect(layoutRect({302,598,172,36}),1);drawCaption(g,"Gig view",{343,599,125,33},20.f,juce::Colours::white,juce::Justification::centredLeft,true);drawCaption(g,"Parameter Editor",{310,796,156,32},14.f,muted);
  }
- drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.51.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
+ drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.52.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
 }
 void VirtualCortexEditor::applyPreset(int index){auto set=[this](const char* id,float value){if(auto* p=processor.parameters.getParameter(id))p->setValueNotifyingHost(p->convertTo0to1(value));};if(index<2)return;set("gridMode",0.f);
  if(index==2){set("drive",.12f);set("tone",.7f);set("level",.65f);set("delayMix",.12f);set("reverbMix",.25f);set("ampBias",0.f);set("delayOn",1.f);set("reverbOn",1.f);}

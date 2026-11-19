@@ -639,6 +639,20 @@ int main(int argc,char** argv){
    auto* source=editor->findChildWithID("grid-0-0");require(editor->moveGridSlotToPosition(3,7,source->getBoundsInParent().getCentre().toFloat()),"Scaled return drop failed");
    require(!editor->moveGridSlotToPosition(0,0,{-10.f,-10.f}),"Outside drop accepted");
   }
+  editor->selectSlot(2,3);require(editor->insertBlock(1),"Gate fixture failed");
+  auto* gate=dynamic_cast<CortexBlockButton*>(editor->findChildWithID("grid-2-3"));
+  require(gate&&gate->removeBadge&&gate->removeBadge->isVisible(),"Selected gate remove control missing");
+  for(auto size:{juce::Point<int>(2560,1440),juce::Point<int>(822,600)}){
+   for(bool show:{false,true}){
+    editor->setEditorsVisible(show);
+    capture("gate-grid-"+juce::String(show?"editor-":"expanded-")+juce::String(size.x)+".png",size.x,size.y);
+    auto centre=gate->removeBadge->getBounds().getCentre();
+    require(gate->getComponentAt(centre)==gate->removeBadge.get(),"Remove badge misses its hit target");
+   }
+  }
+  editor->selectSlot(0,0);require(!gate->removeBadge->isVisible(),"Remove badge remained on previous slot");
+  editor->selectSlot(2,3);gate->removeBadge->onClick();
+  require((int)processor->getEditableGrid().get(2,3)->type==0&&!gate->removeBadge->isVisible(),"Badge did not clear selected slot");
   editor.reset();processor->releaseResources();
   std::cout<<"PASS: native editor snapshots at three sizes, control binding, insertion and bypass\n";
   return 0;

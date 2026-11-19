@@ -19,6 +19,9 @@ class CortexBlockButton final : public juce::Button {
 public:
  CortexBlockButton();
  void paintButton(juce::Graphics&,bool,bool) override;
+ juce::Rectangle<float> tileBounds() const;
+ void resized() override;
+ std::unique_ptr<juce::Button> removeBadge;
  std::function<void(const juce::MouseEvent&)> onGridDrop;
  void mouseUp(const juce::MouseEvent& e) override {
   if(onGridDrop&&e.getDistanceFromDragStart()>8){juce::Button::mouseUp(e);onGridDrop(e);return;}
