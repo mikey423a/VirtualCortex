@@ -81,6 +81,18 @@ void CortexBlockButton::drawIcon(juce::Graphics& g,juce::Rectangle<float> r,int 
  if(type==30)type=5;else if(type==31)type=6;
  g.setColour(colour);const auto cx=r.getCentreX(),cy=r.getCentreY();const auto u=r.getWidth()/24.f;
  juce::Path p;
+ if(type==1){
+  // A fan of narrow gating envelopes, readable at sidebar and grid sizes.
+  for(float angle:{0.f,.48f,.96f,1.44f}){
+   juce::Path blade;
+   blade.startNewSubPath(0.f,0.f);
+   blade.lineTo(-1.8f*u,-17.f*u);
+   blade.quadraticTo(2.5f*u,-12.f*u,0.f,0.f);
+   blade.applyTransform(juce::AffineTransform::rotation(angle).translated(cx-7*u,cy+8*u));
+   g.strokePath(blade,juce::PathStrokeType(1.25f*u));
+  }
+  return;
+ }
  if(type==34){
   g.drawRoundedRectangle(r.reduced(1*u,3*u),2*u,1.2f);
   for(float offset:{-5.f,5.f}){g.drawEllipse(cx+(offset-3)*u,cy-5*u,6*u,6*u,1.2f);g.fillEllipse(cx+(offset-1)*u,cy-3*u,2*u,2*u);}
@@ -90,8 +102,33 @@ void CortexBlockButton::drawIcon(juce::Graphics& g,juce::Rectangle<float> r,int 
   const float heights[]={4,12,7,17};for(int i=0;i<4;++i)g.drawRect(cx+(i*5-9)*u,cy+(9-heights[i])*u,3*u,heights[i]*u,1.2f);return;
  }
  if(type==0){g.drawLine(cx-5*u,cy,cx+5*u,cy,1.2f);g.drawLine(cx,cy-5*u,cx,cy+5*u,1.2f);return;}
- if(type>=16&&type<=21){const char* symbols[]={"VI","RM","GN","CUT","EQ","RV"};drawCaption(g,symbols[type-16],r.toNearestInt(),r.getWidth()*.38f,colour,juce::Justification::centred,true);return;}
- if(type>=11&&type<=15){const char* symbols[]={"CH","FL","PH","WA","BC"};drawCaption(g,symbols[type-11],r.toNearestInt(),r.getWidth()*.45f,colour,juce::Justification::centred,true);return;}
+ // Render compact effect silhouettes at every grid and sidebar scale.
+ if(type==20)type=4;
+ if(type==21)type=6;
+ if(type>=11&&type<=19){
+  const auto stroke=juce::PathStrokeType(1.3f*u);
+  if(type==18||type==19){
+   p.startNewSubPath(cx-10*u,cy+7*u);
+   if(type==19){p.lineTo(cx-5*u,cy-5*u);p.lineTo(cx+5*u,cy-5*u);p.lineTo(cx+10*u,cy+7*u);}
+   else{p.lineTo(cx+9*u,cy-8*u);p.lineTo(cx+9*u,cy+7*u);p.closeSubPath();}
+  }else if(type==15){
+   p.startNewSubPath(cx-10*u,cy+8*u);
+   for(int step=0;step<4;++step){auto x=cx+(-10+5*step)*u;auto y=cy+(4-4*step)*u;p.lineTo(x,y);p.lineTo(x+5*u,y);}
+  }else{
+   const int curves=(type==11||type==12||type==13||type==17)?2:1;
+   for(int curve=0;curve<curves;++curve){
+    for(int i=0;i<=32;++i){
+     const float t=i/32.f;
+     const float cycles=type==16?2.5f:type==17?1.f+curve:1.f;
+     const float phase=curve*(type==13?3.14159f:type==12?1.57f:.65f);
+     const float x=cx+(20*t-10)*u;
+     const float y=cy+(type==14?8.f-15.f*std::sin(t*3.14159f):7.f*std::sin(t*6.2831853f*cycles+phase))*u;
+     if(i==0)p.startNewSubPath(x,y);else p.lineTo(x,y);
+    }
+   }
+  }
+  g.strokePath(p,stroke);return;
+ }
  if(type==8){g.drawLine(cx-10*u,cy+7*u,cx-3*u,cy-6*u,1.5f);g.drawLine(cx-3*u,cy-6*u,cx+10*u,cy-9*u,1.5f);return;}
  if(type==9||type==10){g.drawRoundedRectangle(r.reduced(3*u,1*u),2*u,1.4f);g.drawLine(cx-5*u,cy,cx+5*u,cy,1.2f);g.fillEllipse(cx-2*u,cy+5*u,4*u,4*u);return;}
  if(type==2){g.drawRoundedRectangle(r.reduced(2*u,5*u),1.f,1.4f);g.drawLine(r.getX()+5*u,cy,r.getRight()-5*u,cy,1.2f);return;}
@@ -127,7 +164,15 @@ void CortexBlockButton::paintButton(juce::Graphics& g,bool over,bool){
  g.setColour(blockEnabled?colour:colour.withAlpha(.3f));g.drawRoundedRectangle(box,corner,outline);
  drawIcon(g,box.reduced(side*.24f),type,blockEnabled?juce::Colours::white:muted.withAlpha(.55f));
  if(hasKeyboardFocus(false)){g.setColour(mint.withAlpha(.7f));g.drawRoundedRectangle(box.expanded(4),corner+3,1.f);}
- if(expanded&&type){g.setColour(blockEnabled?(selected?colour:juce::Colour(0xffd5dbd8)):muted);g.setFont(12.f);g.drawFittedText(nameFor(type),4,86,getWidth()-8,32,juce::Justification::centred,2);if(!blockEnabled)drawCaption(g,inactiveCaption(),{4,118,getWidth()-8,14},9.f,muted,juce::Justification::centred);}
+ if(expanded&&type&&selected){
+  const float width=juce::jmin(bounds.getWidth()-4.f,
+      juce::jmax(side,12.f+7.f*nameFor(type).length()));
+  auto label=juce::Rectangle<float>(width,18.f).withCentre({box.getCentreX(),box.getBottom()+11.f});
+  g.setColour(juce::Colour(0xff292c2b));g.fillRoundedRectangle(label,3.f);
+  drawCaption(g,nameFor(type),label.toNearestInt(),11.f,blockEnabled?juce::Colours::white:muted,juce::Justification::centred);
+  if(!blockEnabled)drawCaption(g,inactiveCaption(),{4,118,getWidth()-8,14},9.f,muted,juce::Justification::centred);
+ }
+ else if(expanded&&type){g.setColour(blockEnabled?(selected?colour:juce::Colour(0xffd5dbd8)):muted);g.setFont(12.f);g.drawFittedText(nameFor(type),4,86,getWidth()-8,32,juce::Justification::centred,2);if(!blockEnabled)drawCaption(g,inactiveCaption(),{4,118,getWidth()-8,14},9.f,muted,juce::Justification::centred);}
  if(type){const auto badge=juce::Rectangle<float>(side*.38f,side*.38f).withCentre({box.getX()-1,box.getY()+(expanded?-1.f:2.f)});g.setColour(juce::Colours::white);g.fillEllipse(badge);drawCaption(g,caption,badge.toNearestInt(),side*.24f,juce::Colours::black,juce::Justification::centred);}
 }
 VirtualCortexEditor::VirtualCortexEditor(VirtualCortexProcessor& p):AudioProcessorEditor(&p),processor(p){
@@ -455,7 +500,7 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
 
  g.setColour(panel);g.fillRect(layoutRect({302,598,172,232}));g.setColour(juce::Colour(0xff070707));g.drawRect(layoutRect({302,598,172,36}),1);drawCaption(g,"Gig view",{343,599,125,33},20.f,juce::Colours::white,juce::Justification::centredLeft,true);drawCaption(g,"Parameter Editor",{310,796,156,32},14.f,muted);
  }
- drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.42.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
+ drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.43.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
 }
 void VirtualCortexEditor::applyPreset(int index){auto set=[this](const char* id,float value){if(auto* p=processor.parameters.getParameter(id))p->setValueNotifyingHost(p->convertTo0to1(value));};if(index<2)return;set("gridMode",0.f);
  if(index==2){set("drive",.12f);set("tone",.7f);set("level",.65f);set("delayMix",.12f);set("reverbMix",.25f);set("ampBias",0.f);set("delayOn",1.f);set("reverbOn",1.f);}
