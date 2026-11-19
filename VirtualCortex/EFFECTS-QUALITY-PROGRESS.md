@@ -1,6 +1,8 @@
 # Effects quality — current status
 
-Delivered application: **6.41.0**, code `e9fbbcb64fdf8b6ee931c3504dde8da46d930d98`, Windows CI [44402148003](https://github.com/mikey423a/VirtualCortex/actions/runs/44402148003). See [reverb control efficiency verification](REVERB-CONTROLS-6.41.md). Settled reverb controls and unchanged envelope/wet-gain settings avoid redundant calculations. Frozen 6.40 renders matched bit-for-bit across tested automation/restarts. One paired Windows microbenchmark measured 1.88% lower steady time and 2.03% lower automated time; no app-wide or sonic claim. Previous IR/model transition fixes retained.
+Delivered application **6.49.0**. [Windows CI 44503146399](https://github.com/mikey423a/VirtualCortex/actions/runs/44503146399) built `5e7f98c14dece1f979ed700ccbe1439ae5b0e7f6`. Grid and post-chain reverb offer independent optional Tail Detail. See [6.49 verification and tone characterization](../validation/GRID-REVERB-DETAIL-6.49.md).
+
+The [6.41 reverb control optimization](REVERB-CONTROLS-6.41.md) preserved frozen 6.40 renders across tested automation and restarts. One paired Windows microbenchmark measured 1.88% lower steady time and 2.03% lower automated time for those control changes.
 
 ## Verified application behavior
 
