@@ -642,6 +642,30 @@ int main(int argc,char** argv){
   editor->selectSlot(2,3);require(editor->insertBlock(1),"Gate fixture failed");
   auto* gate=dynamic_cast<CortexBlockButton*>(editor->findChildWithID("grid-2-3"));
   require(gate&&gate->removeBadge&&gate->removeBadge->isVisible(),"Selected gate remove control missing");
+  editor->setEditorsVisible(true);
+  auto* gateMode=dynamic_cast<juce::Button*>(editor->findChildWithID("adjustable-gate"));
+  require(gateMode&&gateMode->isVisible()&&!gateMode->getToggleState(),"Legacy gate default");
+  gateMode->setToggleState(true,juce::sendNotificationSync);
+  auto* threshold=dynamic_cast<juce::Slider*>(editor->findChildWithID("slot-param-0"));
+  require(threshold&&threshold->isEnabled()&&threshold->isVisible(),"Gate threshold unavailable");
+  threshold->setValue(threshold->getValueFromText("-20.0 dB"),juce::sendNotificationSync);
+  auto tuned=processor->getGridSlotParameters(2,3);
+  require(tuned.adjustableGate&&std::abs(tuned.drive-.8f)<.001f,"Threshold binding failed");
+  juce::MemoryBlock gatePreset;
+  processor->getStateInformation(gatePreset);
+  require(processor->storeScene(7),"Gate scene save failed");
+  tuned.adjustableGate=false;processor->setGridSlotParameters(2,3,tuned);
+  require(processor->recallScene(7)&&processor->getGridSlotParameters(2,3).adjustableGate,"Gate scene recall failed");
+  auto oldGate=juce::AudioProcessor::getXmlFromBinary(gatePreset.getData(),(int)gatePreset.getSize());
+  require(oldGate!=nullptr,"Gate fixture decode failed");
+  oldGate->removeAttribute("slot_2_3_adjustableGate");
+  juce::MemoryBlock oldGatePreset;
+  juce::AudioProcessor::copyXmlToBinary(*oldGate,oldGatePreset);
+  processor->setStateInformation(oldGatePreset.getData(),(int)oldGatePreset.getSize());
+  require(!processor->getGridSlotParameters(2,3).adjustableGate,"Legacy gate preset enabled adjustable mode");
+  processor->setStateInformation(gatePreset.getData(),(int)gatePreset.getSize());
+  require(processor->getGridSlotParameters(2,3).adjustableGate,"Gate preset recall failed");
+  editor->selectSlot(2,3);
   for(auto size:{juce::Point<int>(2560,1440),juce::Point<int>(822,600)}){
    for(bool show:{false,true}){
     editor->setEditorsVisible(show);

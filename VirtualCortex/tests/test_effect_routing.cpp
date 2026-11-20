@@ -139,7 +139,49 @@ static void checkConnectionBlending(double rate,bool average){
  std::cout<<"SOURCE_CONNECTION rate="<<rate<<" average="<<average<<" immediate_step="<<rawStep
           <<" blended_step="<<blendStep<<" retained_tail_energy="<<tail<<"\n";
 }
+static void checkGridGate(double rate){
+ vc::PortableAudioEngine engine;
+ vc::SignalGrid grid;
+ grid.set(0,0,{vc::BlockType::Gate,true});
+ check(engine.configure(grid,{true,false,false,false}),"Gate fixture");
+ vc::SlotParameters settings;
+ engine.prepare(rate,32);
+ float detector=0.f;
+ for(int i=0;i<1200;++i){
+  const float x=i<250||i>900?.003f:.2f;
+  detector=.995f*detector+.005f*std::abs(x);
+  float y=x;
+  check(engine.process(&y,1,1)&&y==(detector<.006f?x*.05f:x),"Legacy gate output changed");
+ }
+ settings.adjustableGate=true;
+ settings.drive=.8f; // -20 dB
+ settings.mix=.4f;
+ settings.time=.2f;
+ settings.feedback=.25f;
+ check(engine.setSlotParameters(0,0,settings),"Gate controls rejected");
+ engine.prepare(rate,32); // Stored controls must survive device restart.
+ auto tick=[&](float x){
+  float frame[]={x,.02f};check(engine.process(frame,1,2),"Gate render");
+  check(std::abs(frame[1]-.001f)<1.e-7f,"Gate channels leaked");
+  return frame[0]/x;
+ };
+ check(std::abs(tick(.09f)-.05f)<1.e-6f,"Threshold opened too early");
+ const int attack=static_cast<int>(std::ceil(rate*.001*vc::SlotParameters::gateAttackMs(settings.mix)));
+ const int hold=static_cast<int>(std::lround(rate*.001*vc::SlotParameters::gateHoldMs(settings.time)));
+ const int release=static_cast<int>(std::ceil(rate*.001*vc::SlotParameters::gateReleaseMs(settings.feedback)));
+ for(int i=0;i<=attack;++i){
+  const float gain=tick(.11f);
+  if(i==attack/2)check(gain>.50f&&gain<.55f,"Gate attack duration wrong");
+ }
+ for(int i=0;i<hold;++i)check(tick(.02f)>.999f,"Gate hold ended early");
+ for(int i=0;i<=release;++i){
+  const float gain=tick(.02f);
+  if(i==release/2)check(gain>.50f&&gain<.55f,"Gate release duration wrong");
+ }
+ check(tick(.02f)<.051f,"Gate did not close");
+}
 int main(){try{
+ for(double rate:{44100.,48000.,96000.})checkGridGate(rate);
  for(double rate:{44100.,48000.,96000.})for(bool average:{false,true})checkConnectionBlending(rate,average);
  for(double rate:{44100.,48000.,96000.})for(bool average:{false,true})checkRowOutputBlending(rate,average);
  for(double sampleRate:{44100.,48000.,96000.}) for(auto type:{vc::BlockType::GridStereoDelay,vc::BlockType::GridStereoReverb}){

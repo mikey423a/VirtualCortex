@@ -26,6 +26,12 @@ struct SlotParameters {
  float drive=0.5f, mix=0.2f, time=0.5f, feedback=0.35f, rate=0.5f, depth=0.5f;
  bool repeatFx=false;
  bool detailedModulation=false;
+ bool adjustableGate=false;
+ // The grid editor exposes these four stored slot values in physical units.
+ static constexpr float gateThresholdDb(float v) noexcept {return -80.f+75.f*v;}
+ static constexpr float gateAttackMs(float v) noexcept {return .2f+49.8f*v*v;}
+ static constexpr float gateHoldMs(float v) noexcept {return 500.f*v*v;}
+ static constexpr float gateReleaseMs(float v) noexcept {return 2.f+998.f*v*v;}
  static bool valid(const SlotParameters& p) noexcept {
   const float values[]={p.drive,p.mix,p.time,p.feedback,p.rate,p.depth};
   for (float v:values) if (!std::isfinite(v) || v<0.f || v>1.f) return false;
@@ -139,6 +145,10 @@ public:
  }
  bool setSlotParameters(std::size_t row,std::size_t col,const SlotParameters& p) noexcept {
   if (!SignalGrid::valid(row,col) || !SlotParameters::valid(p)) return false;
+  const auto& previous=parameters_[row][col];
+  if(p.adjustableGate && (!previous.adjustableGate || previous.drive!=p.drive || previous.mix!=p.mix ||
+                         previous.time!=p.time || previous.feedback!=p.feedback))
+   configureGate(row,col,p);
   parameters_[row][col]=p;
   if(liveAmps_[row][col])liveAmps_[row][col]->setGains(-24+48*p.drive,-24+48*p.mix);
   if(reverbSlots_[row][col]){StereoReverbParameters d;d.enabled=true;d.decay=.2f+19.8f*p.time;d.mix=p.mix;d.size=.5f+1.5f*p.drive;d.preDelay=500*p.rate;d.diffusion=p.depth;d.width=1.5f*p.feedback;d.preGlide=false;reverbSlots_[row][col]->configure(d);}
@@ -201,6 +211,8 @@ public:
    ch.delay.assign(std::max<std::size_t>(n,2),0.f);
    ch.room.prepare((float)rate_);
   }
+  for(std::size_t r=0;r<4;++r)for(std::size_t c=0;c<8;++c)
+   if(parameters_[r][c].adjustableGate)configureGate(r,c,parameters_[r][c]);
  }
  // Interleaved audio. Channels 1 or 2, prepared before calling process.
  bool process(float* samples, std::size_t frames, std::size_t channels, ParallelGrid::Mode mode=ParallelGrid::Mode::Parallel, MidiSink midi=nullptr,void* midiContext=nullptr) noexcept {
@@ -252,6 +264,8 @@ private:
  struct FIR { std::array<float,maxIrTaps> taps{}; std::size_t count=0; };
  struct CabinetIR { FIR current{}, previous{}, pending{}; std::size_t fade=0; bool transition=false,hasPending=false; };
  struct Channel {
+  float gateThreshold=0.f, gateRise=0.f, gateFall=0.f, gateGain=.05f;
+  int gateHold=0, gateRemaining=0;
   RepeatFeedback repeatLoop;
   GainUtility utility;
   CutFilters cuts;
@@ -284,13 +298,38 @@ private:
  };
  struct NeuralSlot { NeuralAmpModel model{}, previousModel{}; bool enabled=false,previousEnabled=false,transition=false; std::size_t fade=0; };
  bool ready() const noexcept { return !(*state_)[0][0][0].delay.empty(); }
+ void configureGate(std::size_t row,std::size_t col,const SlotParameters& p) noexcept {
+  const float framesPerMs=static_cast<float>(rate_)*.001f;
+  const float threshold=std::pow(10.f,SlotParameters::gateThresholdDb(p.drive)/20.f);
+  const float rise=.95f/std::max(1.f,framesPerMs*SlotParameters::gateAttackMs(p.mix));
+  const float fall=.95f/std::max(1.f,framesPerMs*SlotParameters::gateReleaseMs(p.feedback));
+  const int hold=static_cast<int>(std::lround(framesPerMs*SlotParameters::gateHoldMs(p.time)));
+  for(auto& channel:(*state_)[row][col]){
+   channel.gateThreshold=threshold;
+   channel.gateRise=rise;
+   channel.gateFall=fall;
+   channel.gateHold=hold;
+   channel.gateRemaining=std::min(channel.gateRemaining,hold);
+  }
+ }
  float apply(Channel& s,const SlotParameters& p,const CabinetIR& ir,const NeuralSlot& neural,BlockType b,float x) noexcept {
   const float pi=3.14159265358979323846f;
   const float fs=static_cast<float>(rate_);
   switch(b) {
    case BlockType::Gate: {
     s.gate=0.995f*s.gate+0.005f*std::abs(x);
-    return s.gate<0.006f ? x*0.05f : x;
+    const float legacyGain=s.gate<0.006f?.05f:1.f;
+    if(!p.adjustableGate){
+     s.gateGain=legacyGain;
+     s.gateRemaining=0;
+     return x*legacyGain;
+    }
+    const bool above=std::abs(x)>=s.gateThreshold;
+    const bool open=above || s.gateRemaining>0;
+    if(above)s.gateRemaining=s.gateHold;
+    else if(s.gateRemaining>0)--s.gateRemaining;
+    s.gateGain=open?std::min(1.f,s.gateGain+s.gateRise):std::max(.05f,s.gateGain-s.gateFall);
+    return x*s.gateGain;
    }
    case BlockType::Amp: {
     // Only evaluate the fallback amp if it contributes to this sample.

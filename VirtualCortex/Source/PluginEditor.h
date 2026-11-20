@@ -100,6 +100,7 @@ private:
  std::array<juce::Slider,6> slotSliders;
  std::array<juce::String,6> slotLabels{{"DRIVE","MIX","TIME","FEEDBACK","RATE","DEPTH"}};
  juce::TextButton addButton{"ADD TO SLOT"},removeButton{"REMOVE"};
+ juce::ToggleButton adjustableGateButton{"ADJUSTABLE GATE"};
  juce::ToggleButton slotEnabled{"ENABLED"},repeatFxButton{"REPEAT FX"},detailedModulationButton{"DETAIL READ"};
  juce::TextButton clearNeuralButton{"REMOVE AMP MODEL"};
  juce::TextButton loadGridIRButton{"LOAD SLOT IR"},loadNeuralButton{"LOAD AMP MODEL"};
