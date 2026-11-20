@@ -666,10 +666,30 @@ int main(int argc,char** argv){
   processor->setStateInformation(gatePreset.getData(),(int)gatePreset.getSize());
   require(processor->getGridSlotParameters(2,3).adjustableGate,"Gate preset recall failed");
   editor->selectSlot(2,3);
+  auto gateRoutes=processor->getRowRouting();
+  gateRoutes.rows[1].sources|=2u;
+  gateRoutes.rows[1].sourceTaps[0]=3;
+  gateRoutes.rows[1].entryColumn=4;
+  require(processor->setRowRouting(gateRoutes),"Gate wire fixture rejected");
   for(auto size:{juce::Point<int>(2560,1440),juce::Point<int>(822,600)}){
    for(bool show:{false,true}){
     editor->setEditorsVisible(show);
     capture("gate-grid-"+juce::String(show?"editor-":"expanded-")+juce::String(size.x)+".png",size.x,size.y);
+    if(show){
+     require(gate->tileBounds().getWidth()>=60.f,"Selected Gate view still uses the small editor-open tile");
+     auto* upper=editor->findChildWithID("grid-0-3");
+     auto* lower=editor->findChildWithID("grid-1-3");
+     require(upper&&lower,"Gate routing cells missing");
+     auto high=upper->getBoundsInParent(),low=lower->getBoundsInParent();
+     juce::Point<int> gutter{low.getCentreX(),(high.getBottom()+low.getY())/2};
+     require(editor->getComponentAt(gutter)==editor.get(),"Gate wire gutter intercepted");
+     editor->selectRoutingWireAt(gutter.toFloat());
+     require(editor->selectedRoutingWire()==std::array<int,2>{0,1},"Gate wire gutter selected wrong route");
+     editor->selectRoutingWireAt({1.f,1.f});
+     auto* lastRow=editor->findChildWithID("grid-3-7");
+     require(lastRow&&lastRow->getBoundsInParent().getBottom()<=gateMode->getBoundsInParent().getY(),"Gate header overlaps fourth row");
+     require(gateMode->getBoundsInParent().getBottom()<=threshold->getBoundsInParent().getY(),"Gate mode overlaps the parameter knobs");
+    }
     auto centre=gate->removeBadge->getBounds().getCentre();
     require(gate->getComponentAt(centre)==gate->removeBadge.get(),"Remove badge misses its hit target");
    }

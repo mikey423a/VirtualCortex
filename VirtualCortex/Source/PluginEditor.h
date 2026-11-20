@@ -117,6 +117,12 @@ private:
  void refreshDeviceList();
  void applyDeviceVariant(int);
  bool lastGridMode=false,masterPage=false,editorsVisible=false,lastStereoSync=false,lastStereoPing=false;
+ struct GridLayout {
+  int top=132, step=46, cellHeight=44, endpointHeight=39;
+  float centre=22.f;
+  int parameterOffset=0;
+ };
+ GridLayout gridLayout;
  juce::Rectangle<int> browserArea,gridArea,parameterArea,stompArea;
  bool gridMode() const;
  int currentType() const;

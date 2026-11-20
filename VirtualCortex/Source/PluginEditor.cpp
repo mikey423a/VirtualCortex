@@ -456,7 +456,11 @@ bool VirtualCortexEditor::moveGridSlotToPosition(int row,int col,juce::Point<flo
 void VirtualCortexEditor::setEditorsVisible(bool visible){editorsVisible=visible;lastView=-1;updateView();}
 void VirtualCortexEditor::resized(){
  designScale=juce::jmin(getWidth()/1184.f,getHeight()/864.f);designWidth=getWidth()/designScale;designOffsetX=0.f;designOffsetY=(getHeight()-864.f*designScale)*.5f;
- browserArea={53,78,240,752};gridArea={302,132,872,184};parameterArea={302,318,872,272};stompArea={474,598,700,232};
+ gridLayout={};
+ if(!editorsVisible)gridLayout={153,160,134,84,47.f,0};
+ else if(!masterPage&&gridMode()&&currentType()==1)gridLayout={132,74,68,58,34.f,112};
+ const int offset=gridLayout.parameterOffset;
+ browserArea={53,78,240,752};gridArea={302,gridLayout.top,872,4*gridLayout.step};parameterArea={302,318+offset,872,272-offset};stompArea={474,598,700,232};
  previousPreset.setBounds(302,78,35,36);nextPreset.setBounds(339,78,35,36);presetBox.setBounds(376,78,340,36);savePresetButton.setBounds(718,78,35,36);loadPresetButton.setBounds(755,78,34,36);
  for(int i=0;i<8;++i)quickSelectors[(size_t)i].setBounds(798+i*38,78,35,36);headerStompButton.setBounds(1106,78,68,36);
  bankButtons[0].setBounds(224,37,25,27);bankButtons[1].setBounds(253,37,25,27);directoryButton.setBounds(638,30,142,44);ioButton.setBounds(1046,35,32,32);switches[6].button.setBounds(976,35,32,32);switches[9].button.setBounds(354,837,120,24);
@@ -465,18 +469,18 @@ void VirtualCortexEditor::resized(){
  for(int i=0;i<8;++i)deviceEntries[(size_t)i].setBounds(62,119+i*38,224,36);
  addButton.setBounds(62,789,224,31);
  bankButtons[0].setVisible(false);bankButtons[1].setVisible(false);
- const int rowStep=editorsVisible?46:160,rowTop=editorsVisible?132:153;
- for(int r=0;r<4;++r){laneButtons[(size_t)r].setVisible(true);laneButtons[(size_t)r].setBounds(302,rowTop+r*rowStep+5,49,editorsVisible?39:84);for(int c=0;c<8;++c){auto& cell=gridCells[(size_t)r][(size_t)c];cell.setVisible(true);cell.setBounds(363+c*93,rowTop+r*rowStep,94,editorsVisible?44:134);}}
+ const int rowStep=gridLayout.step,rowTop=gridLayout.top;
+ for(int r=0;r<4;++r){laneButtons[(size_t)r].setVisible(true);laneButtons[(size_t)r].setBounds(302,rowTop+r*rowStep+5,49,gridLayout.endpointHeight);for(int c=0;c<8;++c){auto& cell=gridCells[(size_t)r][(size_t)c];cell.setVisible(true);cell.setBounds(363+c*93,rowTop+r*rowStep,94,gridLayout.cellHeight);}}
  routingSelector.setBounds(638,35,165,32);directoryButton.setVisible(false);catalogButton.setBounds(511,35,115,32);catalogPanel.setBounds(53,78,1121,752);routingPanel.setBounds(53,78,1121,752);
- for(int r=0;r<4;++r)routeButtons[r].setBounds(1124,rowTop+r*rowStep+5,49,editorsVisible?39:84);
+ for(int r=0;r<4;++r)routeButtons[r].setBounds(1124,rowTop+r*rowStep+5,49,gridLayout.endpointHeight);
  fullScreenButton.setBounds(805,35,162,32);
  editorsButton.setButtonText(editorsVisible?"HIDE EDITORS":"SHOW EDITORS");editorsButton.setBounds(205,837,140,24);
  advancedEditor.setBounds(302,354,872,236);advancedEditor.setVisible(editorsVisible&&gridMode()&&!masterPage&&vc::isAdvanced(currentType()));
  const auto indices=gridMode()&&!masterPage?visibleSlotControls():visibleKnobs();
- for(int j=0;j<(int)indices.size();++j){const int i=indices[(size_t)j];const int x=302+(j%5)*174,y=354+(j/5)*118;
-  const auto knob=juce::Rectangle<int>(x+92,y+43,76,76),value=juce::Rectangle<int>(x+6,y+83,92,28);
+ for(int j=0;j<(int)indices.size();++j){const int i=indices[(size_t)j];const int width=offset?218:174;const int x=302+(j%5)*width,y=354+offset+(j/5)*118;
+  const auto knob=juce::Rectangle<int>(x+width-82,y+43,76,76),value=juce::Rectangle<int>(x+6,y+83,92,28);
   if(gridMode()&&!masterPage){slotSliders[(size_t)i].setBounds(knob);slotValues[(size_t)i].setBounds(value);}else{knobs[(size_t)i].slider.setBounds(knob);knobs[(size_t)i].value.setBounds(value);}}
- for(auto& sw:switches)if(&sw!=&switches[6]&&&sw!=&switches[9])sw.button.setBounds(1137,318,36,35);slotEnabled.setBounds(1137,318,36,35);repeatFxButton.setBounds(838,492,245,32);detailedModulationButton.setBounds(838,492,245,32);adjustableGateButton.setBounds(838,492,245,32);
+ for(auto& sw:switches)if(&sw!=&switches[6]&&&sw!=&switches[9])sw.button.setBounds(1137,318,36,35);slotEnabled.setBounds(1137,318+offset,36,35);repeatFxButton.setBounds(838,492,245,32);detailedModulationButton.setBounds(838,492,245,32);adjustableGateButton.setBounds(918,319+offset,210,32);
  switches[10].button.setBounds(1137,318,36,35);for(int i=11;i<14;++i)switches[(std::size_t)i].button.setBounds(650+(i-11)*170,489,165,34);
  for(int i=0;i<3;++i){stereoPages[(std::size_t)i].setBounds(650+i*170,537,165,32);reverbPages[(std::size_t)i].setBounds(650+i*170,537,165,32);}
  for(int i=0;i<4;++i)echoPages[i].setBounds(480+i*170,537,165,32);
@@ -490,7 +494,7 @@ void VirtualCortexEditor::resized(){
  switches[26].button.setComponentID("reverb-tail-detail");
  switches[26].button.setTooltip("Use cubic interpolation on the audible reverb tail. The feedback and early reflections keep their existing settings.");
  switches[15].button.setBounds(650,489,165,34);switches[15].button.setComponentID("reverb-pre-glide");switches[15].button.setTooltip("Off: clean 20 ms pre-delay crossfade. On: pitch-changing glide. Size and modulation retain their moving reads.");
- switches[8].button.setBounds(309,489,150,34);removeButton.setBounds(302,318,35,35);
+ switches[8].button.setBounds(309,489,150,34);removeButton.setBounds(302,318+offset,35,35);
  for(auto* b:{&loadIRButton,&loadGridIRButton,&loadNeuralButton})b->setBounds(838,492,245,32);
  for(auto* l:{&irName,&gridIRName,&neuralName})l->setBounds(838,530,245,25);clearNeuralButton.setBounds(838,530,245,25);neuralName.setBounds(838,558,290,25);
  presetMenuButton.setBounds(302,635,172,52);rowSelector.setBounds(302,688,172,52);stompModeButton.setBounds(302,741,172,52);
@@ -530,8 +534,8 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
  drawCaption(g,"GRID",{438,30,66,45},14.f,juce::Colours::white,juce::Justification::centred);g.setColour(juce::Colour(0xff85f87d));g.fillRect(layoutRect({438,26,66,2}));
  g.setColour(juce::Colour(0xff131313));g.fillRoundedRectangle(9,78,43,752,6);g.setColour(panel);g.fillRoundedRectangle(browserArea.toFloat(),6.f);
 
- const int rowStep=editorsVisible?46:160,rowTop=editorsVisible?132:153;
- for(int row=0;row<4;++row){const int y=rowTop+row*rowStep;const bool active=processor.isGridLaneEnabled((size_t)row);g.setColour(juce::Colour(active?0xffe2dfd9:0xff444443));const float cy=(float)y+(editorsVisible?22.f:47.f);g.drawLine(layoutX(352),cy,layoutX(1124),cy,1.f);g.setColour(juce::Colour(0xff111212));g.fillRoundedRectangle(layoutRect({1124,y+5,49,editorsVisible?39:84}).toFloat(),16);drawCaption(g,"Mix",{1125,y+(editorsVisible?9:30),47,25},12.f,juce::Colours::white,juce::Justification::centred);}
+ const int rowStep=gridLayout.step,rowTop=gridLayout.top;
+ for(int row=0;row<4;++row){const int y=rowTop+row*rowStep;const bool active=processor.isGridLaneEnabled((size_t)row);g.setColour(juce::Colour(active?0xffe2dfd9:0xff444443));const float cy=(float)y+gridLayout.centre;g.drawLine(layoutX(352),cy,layoutX(1124),cy,1.f);g.setColour(juce::Colour(0xff111212));g.fillRoundedRectangle(layoutRect({1124,y+5,49,gridLayout.endpointHeight}).toFloat(),16);drawCaption(g,"Mix",{1125,y+static_cast<int>(gridLayout.centre)-12,47,25},12.f,juce::Colours::white,juce::Justification::centred);}
  if(processor.getRoutingMode()==3){
   const auto routes=processor.getRowRouting();
   for(int destination=1;destination<4;++destination)for(int source=0;source<destination;++source){
@@ -539,8 +543,8 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
    if(!(route.sources&(2u<<source)))continue;
    const float startX=layoutX(357.f+93.f*route.sourceTaps[source]);
    const float endX=layoutX(357.f+93.f*route.entryColumn);
-   const float startY=(float)(rowTop+source*rowStep)+(editorsVisible?22.f:47.f);
-   const float endY=(float)(rowTop+destination*rowStep)+(editorsVisible?22.f:47.f);
+   const float startY=(float)(rowTop+source*rowStep)+gridLayout.centre;
+   const float endY=(float)(rowTop+destination*rowStep)+gridLayout.centre;
    const bool active=gridMode()&&processor.isGridLaneEnabled(source)&&processor.isGridLaneEnabled(destination);
    const bool focused=source==selectedRow||destination==selectedRow;
    const bool individuallySelected=source==selectedWireSource&&destination==selectedWireDestination;
@@ -564,15 +568,16 @@ void VirtualCortexEditor::paint(juce::Graphics& g){
  if(!editorsVisible&&(switches[10].button.getToggleState()||switches[14].button.getToggleState()))drawCaption(g,juce::String("POST CHAIN: ")+(switches[10].button.getToggleState()?"STEREO DELAY":"")+(switches[10].button.getToggleState()&&switches[14].button.getToggleState()?" > ":"")+(switches[14].button.getToggleState()?"STEREO REVERB":""),{363,801,760,25},13.f,mint);
  if(!editorsVisible&&processor.getRoutingMode()!=3)drawCaption(g,processor.getRoutingMode()==0?"PARALLEL: same input / averaged rows":processor.getRoutingMode()==1?"SERIES: row 1 > 2 > 3 > 4":processor.getRoutingMode()==3?"CUSTOM: select OUT / BUS to edit connections and row levels":"DUAL MONO: L rows 1 > 2 / R rows 3 > 4 / grid effects only",{363,768,760,35},14.f,muted);
  if(editorsVisible){
- g.setColour(juce::Colour(0xff111111));g.fillRoundedRectangle(parameterArea.toFloat(),5);g.setColour(panel);g.fillRect(layoutRect({302,354,872,236}));
- for(int i=0;i<3;++i){g.setColour(muted);g.fillEllipse(layoutX(318.f),325.f+i*7.f,2.f,2.f);g.fillEllipse(layoutX(318.f),605.f+i*7.f,2.f,2.f);}
- drawCaption(g,CortexBlockButton::nameFor(currentType()),{347,319,vc::isAdvanced(currentType())?350:currentType()==26?195:135,33},18.f,muted);drawCaption(g,currentType()==2?(gridMode()&&processor.isGridNAM(selectedRow,selectedColumn)?processor.getGridNeuralModelName(selectedRow,selectedColumn):juce::String("Original amplifier")):currentType()==3?"Cabinet IR":currentType()>=30?"GRID DEVICE":currentType()>=28?"INPUT PROCESSOR":currentType()>=23?"POST CHAIN":currentType()==8?"Original peak compressor":currentType()==9?"Original soft clipping":currentType()==10?"Original hard clipping":"Original",{vc::isAdvanced(currentType())?710:currentType()==26?545:485,319,vc::isAdvanced(currentType())?410:currentType()==26?540:600,33},18.f,CortexBlockButton::colourFor(currentType()));
- const auto indices=gridMode()&&!masterPage?visibleSlotControls():visibleKnobs();for(int j=0;j<10;++j){int x=302+(j%5)*174,y=354+(j/5)*118;g.setColour(juce::Colour(0xff070707));g.drawLine(layoutX((float)x+174),(float)y+8,layoutX((float)x+174),(float)y+118,1.f);g.drawLine(layoutX((float)x),(float)y+118,layoutX((float)x+174),(float)y+118,1.f);if(j<(int)indices.size()){int i=indices[(size_t)j];drawCaption(g,gridMode()&&!masterPage?slotLabels[(size_t)i]:knobs[(size_t)i].label,{x+9,y+6,156,23},15.f);}}
+ const int offset=gridLayout.parameterOffset;
+ g.setColour(juce::Colour(0xff111111));g.fillRoundedRectangle(parameterArea.toFloat(),5);g.setColour(panel);g.fillRect(layoutRect({302,354+offset,872,236-offset}));
+ for(int i=0;i<3;++i){g.setColour(muted);g.fillEllipse(layoutX(318.f),325.f+offset+i*7.f,2.f,2.f);g.fillEllipse(layoutX(318.f),605.f+i*7.f,2.f,2.f);}
+ drawCaption(g,CortexBlockButton::nameFor(currentType()),{347,319+offset,vc::isAdvanced(currentType())?350:currentType()==26?195:135,33},18.f,muted);drawCaption(g,currentType()==2?(gridMode()&&processor.isGridNAM(selectedRow,selectedColumn)?processor.getGridNeuralModelName(selectedRow,selectedColumn):juce::String("Original amplifier")):currentType()==3?"Cabinet IR":currentType()>=30?"GRID DEVICE":currentType()>=28?"INPUT PROCESSOR":currentType()>=23?"POST CHAIN":currentType()==8?"Original peak compressor":currentType()==9?"Original soft clipping":currentType()==10?"Original hard clipping":"Original",{vc::isAdvanced(currentType())?710:currentType()==26?545:485,319+offset,vc::isAdvanced(currentType())?410:currentType()==26?540:600,33},18.f,CortexBlockButton::colourFor(currentType()));
+ const auto indices=gridMode()&&!masterPage?visibleSlotControls():visibleKnobs();const int cellWidth=offset?218:174;for(int j=0;j<(offset?4:10);++j){int x=302+(j%5)*cellWidth,y=354+offset+(j/5)*118;g.setColour(juce::Colour(0xff070707));g.drawLine(layoutX((float)x+cellWidth),(float)y+8,layoutX((float)x+cellWidth),(float)y+118,1.f);g.drawLine(layoutX((float)x),(float)y+118,layoutX((float)x+cellWidth),(float)y+118,1.f);if(j<(int)indices.size()){int i=indices[(size_t)j];drawCaption(g,gridMode()&&!masterPage?slotLabels[(size_t)i]:knobs[(size_t)i].label,{x+9,y+6,156,23},15.f);}}
  if(indices.empty())drawCaption(g,currentType()==0?"Select a slot, then choose a device from the directory.":currentType()==3?"Load a cabinet impulse response.":"Fixed settings in the current grid engine.",{320,381,730,44},14.f,muted);
 
  g.setColour(panel);g.fillRect(layoutRect({302,598,172,232}));g.setColour(juce::Colour(0xff070707));g.drawRect(layoutRect({302,598,172,36}),1);drawCaption(g,"Gig view",{343,599,125,33},20.f,juce::Colours::white,juce::Justification::centredLeft,true);drawCaption(g,"Parameter Editor",{310,796,156,32},14.f,muted);
  }
- drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.53.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
+ drawCaption(g,gridMode()?"GRID":"SERIAL",{20,836,65,24},11.f,muted);drawCaption(g,processor.getSampleRate()>0?juce::String(processor.getSampleRate()/1000.,1)+" kHz":"AUDIO",{103,836,100,24},11.f,muted);drawCaption(g,"Virtual Cortex v6.54.0",{1006,837,170,22},11.f,juce::Colour(0xff676767));
 }
 void VirtualCortexEditor::applyPreset(int index){auto set=[this](const char* id,float value){if(auto* p=processor.parameters.getParameter(id))p->setValueNotifyingHost(p->convertTo0to1(value));};if(index<2)return;set("gridMode",0.f);
  if(index==2){set("drive",.12f);set("tone",.7f);set("level",.65f);set("delayMix",.12f);set("reverbMix",.25f);set("ampBias",0.f);set("delayOn",1.f);set("reverbOn",1.f);}
@@ -671,11 +676,11 @@ void VirtualCortexEditor::applyDeviceVariant(int index){
 }
 
 vc::WirePolyline VirtualCortexEditor::routingWire(int source,int destination,const vc::RowRoute& route) const {
- const int step=editorsVisible?46:160,top=editorsVisible?132:153;
+ const int step=gridLayout.step,top=gridLayout.top;
  const float startX=layoutX(357.f+93.f*route.sourceTaps[source]);
  const float endX=layoutX(357.f+93.f*route.entryColumn);
- const float startY=float(top+source*step)+(editorsVisible?22.f:47.f);
- const float endY=float(top+destination*step)+(editorsVisible?22.f:47.f);
+ const float startY=float(top+source*step)+gridLayout.centre;
+ const float endY=float(top+destination*step)+gridLayout.centre;
  const float railX=layoutX(357.f+93.f*route.sourceTaps[source]-6.f+3.f*source);
  const float bendY=float(top+destination*step)-2.f;
  return {{{startX,startY},{railX,startY},{railX,bendY},{endX,bendY},{endX,endY}}};
